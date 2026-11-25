@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>C/C++ Playground</title>
+<meta name="description" content="Write C or C++ in the browser and see the output beside the editor. The program is compiled with Clang (WebAssembly) and re-run automatically as you type. No installation and no server.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+:root{
+  --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
+  --ok:#15803d; --warn:#b45309; --err:#be123c; --code-bg:#fbfcfd; --gutter:#f1f4f7;
+  --t-kw:#7c3aed; --t-type:#0a6f8c; --t-str:#b45309; --t-num:#15803d; --t-com:#7b8794; --t-meta:#be123c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--ink); font:15px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif; padding:0 16px}
+.wrap{max-width:1400px; margin:0 auto; padding:20px 0 24px; display:flex; flex-direction:column; gap:14px; min-height:100vh}
+header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:8px 20px}
+.eyebrow{font:700 .72rem/1 "JetBrains Mono",monospace; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 6px}
+h1{font:800 clamp(1.6rem,3.4vw,2.3rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.lede{color:var(--muted); margin:6px 0 0; max-width:70ch}
+.bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.seg button{font:700 .9rem "JetBrains Mono",monospace; border:0; background:var(--surface); color:var(--ink); padding:7px 14px; cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+label.f{display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted)}
+select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px}
+.btn{font:700 .9rem "Atkinson Hyperlegible",sans-serif; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:7px 14px; cursor:pointer}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45; cursor:default}
+.spacer{flex:1}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.main{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:14px; flex:1; min-height:520px}
+@media (max-width:900px){ .main{grid-template-columns:minmax(0,1fr)} }
+.pane{background:var(--surface); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden}
+.phead{display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line); font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.phead .r{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:600}
+.editor{flex:1; min-height:420px; position:relative}
+.CodeMirror{position:absolute; inset:0; height:auto; font:14px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace; background:var(--code-bg); color:var(--ink)}
+.CodeMirror-gutters{background:var(--gutter); border-right:1px solid var(--line)}
+.CodeMirror-linenumber{color:var(--muted)}
+.CodeMirror-cursor{border-left:2px solid var(--accent)}
+.CodeMirror-selected,.CodeMirror-focused .CodeMirror-selected{background:color-mix(in oklab,var(--accent) 22%,transparent)}
+.CodeMirror-matchingbracket{color:var(--ink)!important; background:color-mix(in oklab,var(--accent) 25%,transparent); outline:1px solid var(--accent)}
+.cm-s-default .cm-keyword{color:var(--t-kw); font-weight:600} .cm-s-default .cm-type,.cm-s-default .cm-builtin,.cm-s-default .cm-variable-3{color:var(--t-type)} .cm-s-default .cm-string,.cm-s-default .cm-string-2{color:var(--t-str)}
+.cm-s-default .cm-number,.cm-s-default .cm-atom{color:var(--t-num)} .cm-s-default .cm-comment{color:var(--t-com); font-style:italic} .cm-s-default .cm-meta{color:var(--t-meta)} .cm-s-default .cm-def{color:var(--ink); font-weight:600}
+.cm-s-default .cm-variable,.cm-s-default .cm-variable-2,.cm-s-default .cm-property,.cm-s-default .cm-operator,.cm-s-default .cm-punctuation,.cm-s-default .cm-qualifier{color:var(--ink)}
+.errline{background:color-mix(in oklab,var(--err) 14%,transparent)}
+.warnline{background:color-mix(in oklab,var(--warn) 12%,transparent)}
+.right{display:grid; grid-template-rows:minmax(0,1fr) auto; gap:14px; min-height:0}
+.out{flex:1; margin:0; padding:12px 14px; overflow:auto; font:14px/1.5 "JetBrains Mono",ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; min-height:260px; background:var(--code-bg)}
+.out .e{color:var(--err)} .out .w{color:var(--warn)} .out .m{color:var(--muted); font-style:italic} .out .d{color:var(--muted)}
+.out .ln{cursor:pointer; text-decoration:underline dotted}
+textarea.stdin{border:0; resize:vertical; min-height:90px; padding:10px 14px; font:14px/1.5 "JetBrains Mono",monospace; background:var(--code-bg); color:var(--ink); outline:none}
+.status{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted)}
+.dot{width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none}
+.dot.busy{background:var(--warn); animation:pulse 1s infinite} .dot.ok{background:var(--ok)} .dot.err{background:var(--err)}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){ .dot.busy{animation:none} }
+.meter{height:5px; width:140px; border-radius:3px; background:var(--bg); overflow:hidden} .meter i{display:block; height:100%; width:0; background:var(--accent)}
+.exit{font:700 .78rem "JetBrains Mono",monospace; padding:2px 8px; border-radius:999px; border:1px solid var(--line)}
+.exit.ok{color:var(--ok); border-color:var(--ok)} .exit.bad{color:var(--err); border-color:var(--err)}
+details.help{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 14px; color:var(--muted); font-size:.9rem}
+details.help summary{cursor:pointer; color:var(--ink); font-weight:700}
+details.help li{margin:3px 0}
+footer{color:var(--muted); font-size:.85rem}
+footer a{color:var(--accent)}
+kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; background:var(--surface)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Programming · C and C++</p>
+      <h1>C/C++ Playground</h1>
+      <p class="lede">Type C or C++ on the left. There is no compile button: a moment after you stop typing, the program is compiled with Clang and run in your browser, and its output appears on the right.</p>
+    </div>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Settings">
+    <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="c">C</button><button type="button" data-lang="cpp">C++</button></div>
+    <label class="f">Standard <select id="std"></select></label>
+    <label class="f">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
+    <label class="f">Example <select id="ex"></select></label>
+    <label class="f"><input type="checkbox" id="auto" checked> Run as I type</label>
+    <span class="spacer"></span>
+    <button class="btn primary" type="button" id="run" title="Ctrl + Enter">Run now</button>
+  </div>
+
+  <div class="main">
+    <section class="pane" aria-label="Editor">
+      <div class="phead"><span id="fname">main.cpp</span><span class="r" id="pos"></span></div>
+      <div class="editor" id="editor"></div>
+    </section>
+    <div class="right">
+      <section class="pane" aria-label="Output">
+        <div class="phead">Output <span class="r status"><span class="dot" id="dot"></span><span id="stat">Starting…</span><span class="meter" id="meter" hidden><i id="bar"></i></span><span class="exit" id="exit" hidden></span></span></div>
+        <pre class="out" id="out" aria-live="polite"></pre>
+      </section>
+      <section class="pane" aria-label="Input">
+        <div class="phead"><label for="stdin">Input (stdin)</label><span class="r">read by scanf / cin; the program runs again when it changes</span></div>
+        <textarea class="stdin" id="stdin" spellcheck="false" placeholder="Type the input your program reads, e.g. 5 7"></textarea>
+      </section>
+    </div>
+  </div>
+
+  <details class="help">
+    <summary>How it works and what is supported</summary>
+    <ul>
+      <li>The compiler is Clang/LLVM 22 compiled to WebAssembly (the <a href="https://yowasp.org/">YoWASP</a> build). The first visit downloads about 100 MB; later visits load it from the browser cache.</li>
+      <li>Your program is compiled to WebAssembly (WASI) and run by <a href="https://github.com/bjorn3/browser_wasi_shim">browser_wasi_shim</a> in a separate worker. Nothing is sent to a server.</li>
+      <li>Standard input is the text in the Input box, read all at once. A program that waits for more input than you gave sees end-of-file.</li>
+      <li>C++ is compiled with <code>-fno-exceptions</code>: <code>throw</code> and <code>try</code> are not available. Threads, networking and files outside the program are not available either.</li>
+      <li>A run is stopped after 5 seconds, so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
+      <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs immediately. Click a line number in an error message to jump to it. Your code is kept in this browser.</li>
+    </ul>
+  </details>
+  <footer>Made by Mazharul Islam · <a href="https://mazhar1807102.github.io/algorithm-simulations/">Algorithm simulations</a></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const EXAMPLES = {
+    c: {
+      'Hello, world': ['#include <stdio.h>\n\nint main(void) {\n    printf("Hello, world!\\n");\n    return 0;\n}\n', ''],
+      'Read two numbers': ['#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    scanf("%d %d", &a, &b);\n    printf("%d + %d = %d\\n", a, b, a + b);\n    printf("%d * %d = %d\\n", a, b, a * b);\n    return 0;\n}\n', '5 7'],
+      'Loops: multiplication table': ['#include <stdio.h>\n\nint main(void) {\n    int n = 5;\n    for (int i = 1; i <= 10; i++)\n        printf("%d x %2d = %3d\\n", n, i, n * i);\n    return 0;\n}\n', ''],
+      'Arrays: bubble sort': ['#include <stdio.h>\n\nint main(void) {\n    int a[] = {5, 2, 9, 1, 7, 3};\n    int n = sizeof a / sizeof a[0];\n    for (int i = 0; i < n - 1; i++)\n        for (int j = 0; j < n - 1 - i; j++)\n            if (a[j] > a[j + 1]) {\n                int t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;\n            }\n    for (int i = 0; i < n; i++) printf("%d ", a[i]);\n    printf("\\n");\n    return 0;\n}\n', ''],
+      'Recursion: factorial and Fibonacci': ['#include <stdio.h>\n\nlong long fact(int n) { return n <= 1 ? 1 : n * fact(n - 1); }\nint fib(int n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }\n\nint main(void) {\n    for (int i = 0; i <= 10; i++)\n        printf("%2d! = %-8lld  F(%d) = %d\\n", i, fact(i), i, fib(i));\n    return 0;\n}\n', ''],
+      'Structs and pointers': ['#include <stdio.h>\n#include <string.h>\n\nstruct Student { char name[20]; int marks; };\n\nvoid bonus(struct Student *s, int extra) { s->marks += extra; }\n\nint main(void) {\n    struct Student st[3] = {{"Rahim", 72}, {"Karim", 85}, {"Ayesha", 91}};\n    bonus(&st[0], 5);\n    for (int i = 0; i < 3; i++)\n        printf("%-8s %d\\n", st[i].name, st[i].marks);\n    return 0;\n}\n', ''],
+      'Math library': ['#include <stdio.h>\n#include <math.h>\n\nint main(void) {\n    double x;\n    while (scanf("%lf", &x) == 1)\n        printf("sqrt(%g) = %.4f   sin(%g) = %.4f\\n", x, sqrt(x), x, sin(x));\n    return 0;\n}\n', '2 9 3.14159']
+    },
+    cpp: {
+      'Hello, world': ['#include <iostream>\n\nint main() {\n    std::cout << "Hello, world!" << std::endl;\n    return 0;\n}\n', ''],
+      'Read input with cin': ['#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    string name;\n    int age;\n    cin >> name >> age;\n    cout << "Hi " << name << ", next year you will be " << age + 1 << ".\\n";\n    return 0;\n}\n', 'Mazhar 21'],
+      'vector and sort': ['#include <algorithm>\n#include <iostream>\n#include <numeric>\n#include <vector>\nusing namespace std;\n\nint main() {\n    vector<int> v;\n    int x;\n    while (cin >> x) v.push_back(x);\n    sort(v.begin(), v.end());\n    cout << "sorted:";\n    for (int y : v) cout << \' \' << y;\n    cout << "\\nsum: " << accumulate(v.begin(), v.end(), 0) << "\\n";\n    return 0;\n}\n', '42 7 19 3 88 1'],
+      'map: word count': ['#include <iostream>\n#include <map>\n#include <string>\nusing namespace std;\n\nint main() {\n    map<string, int> count;\n    string w;\n    while (cin >> w) count[w]++;\n    for (const auto& [word, c] : count)\n        cout << word << ": " << c << "\\n";\n    return 0;\n}\n', 'the cat and the dog and the bird'],
+      'Classes': ['#include <iostream>\n#include <string>\nusing namespace std;\n\nclass Shape {\npublic:\n    virtual double area() const = 0;\n    virtual string name() const = 0;\n    virtual ~Shape() = default;\n};\n\nclass Rect : public Shape {\n    double w, h;\npublic:\n    Rect(double w, double h) : w(w), h(h) {}\n    double area() const override { return w * h; }\n    string name() const override { return "rectangle"; }\n};\n\nclass Circle : public Shape {\n    double r;\npublic:\n    explicit Circle(double r) : r(r) {}\n    double area() const override { return 3.14159265 * r * r; }\n    string name() const override { return "circle"; }\n};\n\nint main() {\n    Rect a(3, 4);\n    Circle b(2);\n    const Shape* shapes[] = {&a, &b};\n    for (const Shape* s : shapes)\n        cout << s->name() << " area = " << s->area() << "\\n";\n    return 0;\n}\n', ''],
+      'Dynamic programming: LCS': ['#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\nint main() {\n    string x, y;\n    cin >> x >> y;\n    int m = x.size(), n = y.size();\n    vector<vector<int>> c(m + 1, vector<int>(n + 1, 0));\n    for (int i = 1; i <= m; i++)\n        for (int j = 1; j <= n; j++)\n            c[i][j] = x[i - 1] == y[j - 1] ? c[i - 1][j - 1] + 1 : max(c[i - 1][j], c[i][j - 1]);\n    string lcs;\n    for (int i = m, j = n; i > 0 && j > 0;) {\n        if (x[i - 1] == y[j - 1]) { lcs = x[i - 1] + lcs; i--; j--; }\n        else if (c[i - 1][j] >= c[i][j - 1]) i--;\n        else j--;\n    }\n    cout << "LCS length " << c[m][n] << ": " << lcs << "\\n";\n    return 0;\n}\n', 'ABCBDAB BDCABA'],
+      'Templates and lambdas': ['#include <iostream>\n#include <vector>\n#include <algorithm>\nusing namespace std;\n\ntemplate <typename T>\nT biggest(const vector<T>& v) { return *max_element(v.begin(), v.end()); }\n\nint main() {\n    vector<int> a{4, 8, 15, 16, 23, 42};\n    vector<double> b{2.5, 1.5, 9.75};\n    cout << biggest(a) << " " << biggest(b) << "\\n";\n    auto evens = count_if(a.begin(), a.end(), [](int x) { return x % 2 == 0; });\n    cout << evens << " even numbers\\n";\n    return 0;\n}\n', '']
+    }
+  };
+  const STDS = { c: ['c17', 'c11', 'c99', 'c89', 'c23'], cpp: ['c++20', 'c++17', 'c++14', 'c++11', 'c++23'] };
+  const store = { get(k) { try { return localStorage.getItem('ccp.' + k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem('ccp.' + k, v); } catch (_) {} } };
+
+  let lang = store.get('lang') === 'c' ? 'c' : 'cpp';
+  const cm = CodeMirror($('editor'), { lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: true, mode: 'text/x-c++src', extraKeys: { 'Ctrl-Enter': () => runNow(), 'Cmd-Enter': () => runNow(), Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') } });
+
+  function setLang(l, keepText) {
+    lang = l; store.set('lang', l);
+    document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
+    cm.setOption('mode', l === 'c' ? 'text/x-csrc' : 'text/x-c++src');
+    $('fname').textContent = l === 'c' ? 'main.c' : 'main.cpp';
+    $('std').innerHTML = STDS[l].map(s => `<option>${s}</option>`).join(''); $('std').value = store.get('std.' + l) || STDS[l][0];
+    $('ex').innerHTML = '<option value="">Choose…</option>' + Object.keys(EXAMPLES[l]).map(k => `<option>${k}</option>`).join('');
+    if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[l === 'c' ? 1 : 1]); }
+  }
+  function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); schedule(0); }
+  document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (!b || b.dataset.lang === lang) return; setLang(b.dataset.lang); schedule(0); });
+  $('ex').onchange = () => { if ($('ex').value) loadExample($('ex').value); $('ex').value = ''; };
+  $('std').onchange = () => { store.set('std.' + lang, $('std').value); schedule(0); };
+  $('opt').onchange = () => schedule(0);
+  $('auto').checked = store.get('auto') !== '0';
+  $('auto').onchange = () => { store.set('auto', $('auto').checked ? '1' : '0'); if ($('auto').checked) schedule(0); };
+  $('run').onclick = () => runNow();
+  cm.on('changes', () => { store.set('code.' + lang, cm.getValue()); if ($('auto').checked) schedule(650); });
+  cm.on('cursorActivity', () => { const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`; });
+  $('stdin').addEventListener('input', () => { store.set('stdin.' + lang, $('stdin').value); if ($('auto').checked) schedule(650); });
+
+  /* ---------- status ---------- */
+  function status(kind, text) { $('dot').className = 'dot ' + kind; $('stat').textContent = text; }
+  function exitBadge(code) { const e = $('exit'); if (code == null) { e.hidden = true; return; } e.hidden = false; e.textContent = typeof code === 'number' ? `exit ${code}` : code; e.className = 'exit ' + (code === 0 ? 'ok' : 'bad'); }
+
+  /* ---------- output ---------- */
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  let marks = [];
+  function clearMarks() { marks.forEach(([l, c]) => cm.removeLineClass(l, 'background', c)); marks = []; }
+  function showDiag(diag) {
+    clearMarks();
+    if (!diag.trim()) return '';
+    const re = /^(main\.cc?p?p?):(\d+):(\d+): (fatal error|error|warning|note): /;
+    return diag.split('\n').map(line => {
+      const m = line.match(re);
+      if (!m) return `<span class="d">${esc(line)}</span>`;
+      const ln = +m[2] - 1, kind = m[4].includes('error') ? 'e' : m[4] === 'warning' ? 'w' : 'd';
+      if (kind !== 'd' && ln < cm.lineCount()) { const c = kind === 'e' ? 'errline' : 'warnline'; cm.addLineClass(ln, 'background', c); marks.push([ln, c]); }
+      return `<span class="${kind}"><span class="ln" data-line="${ln}" data-col="${+m[3] - 1}">${esc(m[1])}:${m[2]}:${m[3]}</span>${esc(line.slice(m[1].length + m[2].length + m[3].length + 2))}</span>`;
+    }).join('\n') + '\n';
+  }
+  $('out').addEventListener('click', e => { const t = e.target.closest('.ln'); if (!t) return; cm.focus(); cm.setCursor({ line: +t.dataset.line, ch: +t.dataset.col }); cm.scrollIntoView(null, 80); });
+
+  /* ---------- compiler worker ---------- */
+  const compiler = new Worker('compiler.js', { type: 'module' });
+  let ready = false, compiling = false, pending = false, reqId = 0, timer = null;
+  compiler.onmessage = ({ data }) => {
+    if (data.type === 'progress') { $('meter').hidden = false; $('bar').style.width = (100 * data.done / data.total).toFixed(1) + '%'; status('busy', `Downloading the compiler… ${Math.round(100 * data.done / data.total)}% of ${(data.total / 1048576).toFixed(0)} MB`); }
+    else if (data.type === 'ready') { ready = true; $('meter').hidden = true; status('ok', 'Compiler ready'); runNow(); }
+    else if (data.type === 'fatal') { status('err', 'Could not load the compiler'); $('out').innerHTML = `<span class="e">${esc(data.message)}</span>\n<span class="m">Check your internet connection and reload the page.</span>`; }
+    else if (data.type === 'compiled') onCompiled(data);
+  };
+  status('busy', 'Loading the compiler…');
+  compiler.postMessage({ type: 'load' });
+
+  function schedule(ms) { clearTimeout(timer); timer = setTimeout(runNow, ms); }
+  function runNow() {
+    clearTimeout(timer);
+    if (!ready) return;
+    if (compiling) { pending = true; return; }
+    compiling = true; pending = false; reqId++;
+    status('busy', 'Compiling…'); exitBadge(null);
+    compiler.postMessage({ type: 'compile', id: reqId, lang, source: cm.getValue(), std: $('std').value, opt: $('opt').value });
+  }
+  let runner = null, killTimer = null, lastDiag = '';
+  function onCompiled(r) {
+    compiling = false;
+    if (pending) { runNow(); return; }   // the code changed while compiling: this result is already stale
+    lastDiag = showDiag(r.diag);
+    if (!r.ok) { status('err', `Compile error (${(r.ms / 1000).toFixed(1)} s)`); exitBadge(null); $('out').innerHTML = lastDiag || '<span class="e">Compilation failed.</span>'; return; }
+    startRun(r.wasm, r.ms);
+  }
+  function startRun(wasm, cms) {
+    if (runner) runner.terminate();
+    clearTimeout(killTimer);
+    runner = new Worker('runner.js', { type: 'module' });
+    let html = lastDiag ? lastDiag + '<span class="m">— program output —</span>\n' : '', any = false;
+    const out = $('out');
+    out.innerHTML = html;
+    status('busy', 'Running…');
+    runner.onmessage = ({ data }) => {
+      if (data.type === 'out') {
+        let add = ''; data.chunks.forEach(([s, t]) => { any = true; add += s === 2 ? `<span class="e">${esc(t)}</span>` : esc(t); });
+        out.insertAdjacentHTML('beforeend', add);
+      } else if (data.type === 'done') {
+        clearTimeout(killTimer); runner.terminate(); runner = null;
+        if (data.trap) { out.insertAdjacentHTML('beforeend', `\n<span class="e">Runtime error: ${esc(data.trap)}</span>\n<span class="m">(for example an out-of-bounds access, a stack overflow from deep recursion, or division by zero)</span>`); status('err', 'Crashed'); exitBadge('crashed'); return; }
+        if (!any) out.insertAdjacentHTML('beforeend', '<span class="m">(the program printed nothing)</span>');
+        status('ok', `Compiled in ${(cms / 1000).toFixed(1)} s · ran in ${data.ms < 1000 ? Math.round(data.ms) + ' ms' : (data.ms / 1000).toFixed(1) + ' s'}`);
+        exitBadge(data.code);
+      }
+    };
+    runner.onerror = e => { status('err', 'Runner failed'); out.insertAdjacentHTML('beforeend', `<span class="e">${esc(e.message || 'The runner could not start.')}</span>`); };
+    killTimer = setTimeout(() => {
+      if (!runner) return; runner.terminate(); runner = null;
+      out.insertAdjacentHTML('beforeend', '\n<span class="e">Stopped after 5 seconds. Is there an infinite loop?</span>');
+      status('err', 'Time limit exceeded'); exitBadge('stopped');
+    }, 5000);
+    runner.postMessage({ wasm, stdin: $('stdin').value }, [wasm.buffer]);
+  }
+
+  setLang(lang);
+  if (store.get('code.' + lang) == null) loadExample(Object.keys(EXAMPLES[lang])[1]);
+  const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`;
+})();
+</script>
+</body>
+</html>
