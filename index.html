@@ -127,7 +127,7 @@ label.f[hidden]{display:none}
 .files[hidden]{display:none}
 .exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
 .exambadge[hidden]{display:none}
-.exam #guide, .exam #exlabel, .exam .weblink{display:none}
+.exam #guide, .exam #exlabel, .exam .weblink, .exam #toStl{display:none}
 .exam label.f:has(#sugg){opacity:.5}
 dialog{border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); padding:20px 22px; width:min(420px,calc(100vw - 32px))}
 dialog::backdrop{background:rgba(0,0,0,.5)}
@@ -163,7 +163,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <p class="byline">by MAZHAR</p>
     </div>
     <div class="hright">
-      <nav class="modes" aria-label="Mode"><a href="index.html" aria-current="page">Code editor</a><a href="notebook.html" id="toNotebook" title="Python notebook for data science and machine learning">Notebook</a></nav>
+      <nav class="modes" aria-label="Mode"><a href="index.html" aria-current="page">Code editor</a><a href="stl.html" id="toStl" title="C++ STL guide with runnable examples">C++ STL</a><a href="notebook.html" id="toNotebook" title="Python notebook for data science and machine learning">Notebook</a></nav>
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button class="btn" type="button" id="menuBtn" aria-haspopup="dialog" title="Header and library guide, how it works">Guide &amp; help</button>
     </div>
@@ -254,6 +254,10 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/runmode/runmode.min.js"></script>
 <script src="guide.js"></script>
 <script src="guide-more.js"></script>
+<script src="examples-c.js"></script>
+<script src="examples-cpp.js"></script>
+<script src="examples-java.js"></script>
+<script src="examples-python.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -485,6 +489,15 @@ print("best:", best[0])
   };
   const STDS = { c: ['c17', 'c11', 'c99', 'c89', 'c23'], cpp: ['c++20', 'c++17', 'c++14', 'c++11', 'c++23'], java: ['Java 25'], python: ['Python 3.14'] };
   const isClang = l => l === 'c' || l === 'cpp';
+  // the Example menu: the first examples, then the groups from examples-*.js (classic programs, patterns, algorithms…)
+  const EX_GROUPS = {};
+  for (const l of Object.keys(EXAMPLES)) {
+    EX_GROUPS[l] = { 'Getting started': Object.keys(EXAMPLES[l]) };
+    for (const [group, name, code, input] of (window.MORE_EXAMPLES || {})[l] || []) {
+      (EX_GROUPS[l][group] = EX_GROUPS[l][group] || []).push(name);
+      EXAMPLES[l][name] = [code, input];
+    }
+  }
   const store = { get(k) { try { return localStorage.getItem('ccp.' + k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem('ccp.' + k, v); } catch (_) {} } };
 
   let lang = LANGS[store.get('lang')] ? store.get('lang') : 'cpp';
@@ -508,7 +521,8 @@ print("best:", best[0])
     $('stdlabel').firstChild.textContent = isClang(l) ? 'Standard ' : 'Version ';
     $('optlabel').hidden = !isClang(l);
     $('stdinnote').textContent = `read by ${LANGS[l].reads}; the program runs again when it changes`;
-    $('ex').innerHTML = '<option value="">Choose…</option>' + Object.keys(EXAMPLES[l]).map(k => `<option>${k}</option>`).join('');
+    $('ex').innerHTML = '<option value="">Choose…</option>' + Object.entries(EX_GROUPS[l]).map(([g, names]) =>
+      `<optgroup label="${g}">` + names.map(k => `<option value="${k.replace(/"/g, '&quot;')}">${k}</option>`).join('') + '</optgroup>').join('');
     renderGuide();
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[1]); }
   }
@@ -1281,6 +1295,14 @@ print("best:", best[0])
     status('err', 'Runtime error'); exitBadge(1);
   }
 
+  // "Open in editor" on the STL page hands its program over through sessionStorage
+  let handoff = null;
+  try { handoff = JSON.parse(sessionStorage.getItem('ccp.handoff') || 'null'); sessionStorage.removeItem('ccp.handoff'); } catch (_) {}
+  if (handoff && LANGS[handoff.lang] && typeof handoff.code === 'string') {
+    lang = handoff.lang;
+    store.set('code.' + lang, handoff.code);
+    store.set('stdin.' + lang, handoff.input || '');
+  }
   setLang(lang);
   if (store.get('code.' + lang) == null) loadExample(Object.keys(EXAMPLES[lang])[1]);
   runNow();   // loads the engine for this language, then runs the program
@@ -1291,6 +1313,7 @@ print("best:", best[0])
   if (D) {
     $('filebtns').hidden = false;
     $('toNotebook').onclick = e => { e.preventDefault(); D.go('notebook'); };
+    $('toStl').onclick = e => { e.preventDefault(); D.go('stl'); };
     let path = null, saved = cm.getValue();
     const base = f => f.split(/[\\/]/).pop();
     const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;

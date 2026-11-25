@@ -94,6 +94,8 @@ const localPage = f => readFileSync(join(root, f), 'utf8')
   .replace(/'https:\/\/cdn\.jsdelivr\.net\/npm\/@live-codes\/java-wasm@[^/]+\/dist\/'/, "'./vendor/java-wasm/'");
 writeFileSync(join(web, 'index.html'), localPage('index.html'));
 writeFileSync(join(web, 'notebook.html'), localPage('notebook.html'));
+writeFileSync(join(web, 'stl.html'), localPage('stl.html'));
+for (const f of ['examples-c.js', 'examples-cpp.js', 'examples-java.js', 'examples-python.js', 'stl-data.js', 'stl.js']) cpSync(join(root, f), join(web, f));
 const pyLocal = "new URL('./vendor/pyodide/', self.location.href).href";
 let nbRunner = readFileSync(join(root, 'notebook-runner.js'), 'utf8')
   .replace(/^const PYODIDE = .*$/m, `const PYODIDE = ${pyLocal};`)
@@ -112,7 +114,7 @@ cpSync(join(root, 'guide-more.js'), join(web, 'guide-more.js'));
 
 // every file the page loads must now be local: fail the build if a CDN address is left anywhere it would be fetched
 const problems = [];
-for (const f of ['index.html', 'notebook.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
+for (const f of ['index.html', 'notebook.html', 'stl.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
   const text = readFileSync(join(web, f), 'utf8');
   for (const m of text.matchAll(/(?:src|href)="(https?:[^"]+)"|import\s*\(?\s*['"](https?:[^'"]+)|=\s*'(https?:\/\/cdn[^']+)'/g)) {
     const url = m[1] || m[2] || m[3];

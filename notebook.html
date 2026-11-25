@@ -162,7 +162,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 .toast button{font:700 .85rem "Atkinson Hyperlegible",sans-serif; background:none; border:0; color:var(--accent); cursor:pointer}
 .exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
 .exambadge[hidden]{display:none}
-.exam #exlabel{display:none}
+.exam #exlabel, .exam #toStl{display:none}
 .pwf{display:flex; flex-direction:column; gap:4px; margin:0 0 10px; font-size:.88rem; color:var(--muted)}
 .pwf input{font:15px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px}
 .pwf[hidden]{display:none}
@@ -178,7 +178,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <p class="byline">by MAZHAR</p>
     </div>
     <div class="hright">
-      <nav class="modes" aria-label="Mode"><a href="index.html" id="toEditor">Code editor</a><a href="notebook.html" aria-current="page">Notebook</a></nav>
+      <nav class="modes" aria-label="Mode"><a href="index.html" id="toEditor">Code editor</a><a href="stl.html" id="toStl">C++ STL</a><a href="notebook.html" aria-current="page">Notebook</a></nav>
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button class="btn" type="button" id="helpBtn" aria-haspopup="dialog">Help</button>
     </div>

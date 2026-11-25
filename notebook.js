@@ -660,6 +660,7 @@
   /* ---------- desktop app ---------- */
   if (D) {
     $('toEditor').onclick = e => { e.preventDefault(); D.go('editor'); };
+    $('toStl').onclick = e => { e.preventDefault(); D.go('stl'); };
     const dlg = $('pwdlg');
     let pwMode = 'on';
     function applyExam(on) {

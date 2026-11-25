@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Playground C++ STL</title>
+<meta name="description" content="The C++ Standard Template Library with runnable, editable examples: vector, string, map, set, stack, queue, priority_queue, algorithms and more.">
+<script>
+  try { const t = localStorage.getItem('ccp.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+:root{
+  --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
+  --ok:#15803d; --warn:#b45309; --err:#be123c; --code-bg:#fbfcfd; --gutter:#f1f4f7;
+  --t-kw:#7c3aed; --t-type:#0a6f8c; --t-str:#b45309; --t-num:#15803d; --t-com:#7b8794; --t-meta:#be123c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0}
+html{scroll-padding-top:150px}
+body{background:var(--bg); color:var(--ink); font:15px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif; padding:0 16px}
+.top{position:sticky; top:0; z-index:20; background:var(--bg); padding:10px 0; display:flex; flex-direction:column; gap:10px}
+header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 20px}
+.hright{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
+h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
+.modes{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.modes a{font:700 .88rem "Atkinson Hyperlegible",sans-serif; color:var(--ink); background:var(--surface); padding:7px 14px; text-decoration:none}
+.modes a[aria-current="page"]{background:var(--accent); color:var(--accent-ink)}
+label.f{display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted)}
+select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px}
+.bar{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:8px 12px}
+.bar h2{font:800 1.1rem "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.bar .sub{color:var(--muted); font-size:.88rem}
+.spacer{flex:1}
+.status{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted)}
+.dot{width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none}
+.dot.busy{background:var(--warn); animation:pulse 1s infinite} .dot.ok{background:var(--ok)} .dot.err{background:var(--err)}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){ .dot.busy{animation:none} }
+.meter{height:5px; width:120px; border-radius:3px; background:var(--bg); overflow:hidden} .meter i{display:block; height:100%; width:0; background:var(--accent)}
+.meter[hidden]{display:none}
+#q{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:7px 10px; width:min(260px,100%)}
+.btn{font:700 .85rem "Atkinson Hyperlegible",sans-serif; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:6px 12px; cursor:pointer; white-space:nowrap}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45; cursor:default}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+
+.layout{display:grid; grid-template-columns:220px minmax(0,1fr); gap:18px; max-width:1300px; margin:4px auto 40px}
+nav.toc{position:sticky; top:150px; align-self:start; max-height:calc(100dvh - 170px); overflow:auto; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 8px}
+nav.toc h3{font:700 .7rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:10px 8px 4px}
+nav.toc h3:first-child{margin-top:2px}
+nav.toc a{display:block; padding:4px 8px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:.92rem}
+nav.toc a:hover{background:var(--bg)}
+nav.toc a.cur{background:color-mix(in oklab,var(--accent) 15%,transparent); color:var(--accent); font-weight:700}
+nav.toc a[hidden]{display:none}
+main{display:flex; flex-direction:column; gap:18px; min-width:0}
+section.topic{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px 18px}
+section.topic[hidden]{display:none}
+.thead{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 14px}
+.thead h2{font:800 1.45rem/1.15 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.thead code{font:700 .9rem "JetBrains Mono",monospace; color:var(--accent)}
+.about{margin:6px 0 12px; color:var(--ink); max-width:75ch}
+table.ops{width:100%; border-collapse:collapse; font-size:.9rem; margin-bottom:6px}
+table.ops th{font:700 .7rem "JetBrains Mono",monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); text-align:left; padding:6px 8px; border-bottom:2px solid var(--line)}
+table.ops td{padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+table.ops td:first-child{font:13px/1.5 "JetBrains Mono",monospace; white-space:pre-wrap; word-break:break-word; width:42%}
+table.ops td:last-child{font:12.5px "JetBrains Mono",monospace; color:var(--muted); white-space:nowrap}
+.ex{margin-top:16px; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--code-bg)}
+.exhead{display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 10px; background:var(--surface); border-bottom:1px solid var(--line)}
+.exhead b{font-size:.95rem; margin-right:auto}
+.exhead .hint{font-size:.78rem; color:var(--muted)}
+.CodeMirror{height:auto; font:13.5px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace; background:var(--code-bg); color:var(--ink)}
+.CodeMirror-gutters{background:var(--gutter); border-right:1px solid var(--line)}
+.CodeMirror-linenumber{color:var(--muted)}
+.CodeMirror-cursor{border-left:2px solid var(--accent)}
+.CodeMirror-selected,.CodeMirror-focused .CodeMirror-selected{background:color-mix(in oklab,var(--accent) 22%,transparent)}
+.CodeMirror-matchingbracket{color:var(--ink)!important; background:color-mix(in oklab,var(--accent) 25%,transparent); outline:1px solid var(--accent)}
+.cm-s-default .cm-keyword{color:var(--t-kw); font-weight:600} .cm-s-default .cm-type,.cm-s-default .cm-builtin,.cm-s-default .cm-variable-3{color:var(--t-type)} .cm-s-default .cm-string,.cm-s-default .cm-string-2{color:var(--t-str)}
+.cm-s-default .cm-number,.cm-s-default .cm-atom{color:var(--t-num)} .cm-s-default .cm-comment{color:var(--t-com); font-style:italic} .cm-s-default .cm-meta{color:var(--t-meta)} .cm-s-default .cm-def{color:var(--ink); font-weight:600}
+.cm-s-default .cm-variable,.cm-s-default .cm-variable-2,.cm-s-default .cm-property,.cm-s-default .cm-operator,.cm-s-default .cm-punctuation,.cm-s-default .cm-qualifier{color:var(--ink)}
+.errline{background:color-mix(in oklab,var(--err) 14%,transparent)}
+.exio{display:grid; grid-template-columns:minmax(0,1fr); border-top:1px solid var(--line)}
+.exio.withinput{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.exio label{display:flex; flex-direction:column; border-right:1px solid var(--line)}
+.exio label span,.exout span.lab{font:700 .68rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:6px 10px 0}
+.exio textarea{border:0; resize:vertical; min-height:70px; padding:6px 10px 8px; font:13px/1.5 "JetBrains Mono",monospace; background:var(--code-bg); color:var(--ink); outline:none}
+.exout{display:flex; flex-direction:column; min-width:0}
+.exout pre{margin:0; padding:6px 10px 10px; font:13px/1.5 "JetBrains Mono",monospace; white-space:pre-wrap; word-break:break-word; max-height:320px; overflow:auto; min-height:2.2em}
+.exout pre .e{color:var(--err)} .exout pre .w{color:var(--warn)} .exout pre .m{color:var(--muted); font-style:italic}
+.exout .st{font:600 .72rem "JetBrains Mono",monospace; color:var(--muted); padding:0 10px 6px}
+.exout .st.ok{color:var(--ok)} .exout .st.bad{color:var(--err)}
+.none{color:var(--muted); padding:10px}
+@media (max-width:860px){ .layout{grid-template-columns:minmax(0,1fr)} nav.toc{position:static; max-height:none; display:flex; flex-wrap:wrap; gap:2px} nav.toc h3{width:100%} .exio.withinput{grid-template-columns:minmax(0,1fr)} .exio label{border-right:0; border-bottom:1px solid var(--line)} .top{position:static} html{scroll-padding-top:10px} table.ops td:first-child{width:auto} }
+</style>
+</head>
+<body>
+<div class="top">
+  <header>
+    <div class="brand">
+      <h1>Playground</h1>
+      <p class="byline">by MAZHAR</p>
+    </div>
+    <div class="hright">
+      <nav class="modes" aria-label="Mode"><a href="index.html" id="toEditor">Code editor</a><a href="stl.html" aria-current="page">C++ STL</a><a href="notebook.html" id="toNotebook">Notebook</a></nav>
+      <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    </div>
+  </header>
+  <div class="bar">
+    <h2>C++ Standard Template Library</h2>
+    <span class="sub">Every example can be edited and run. <kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs the example you are in.</span>
+    <span class="spacer"></span>
+    <input type="search" id="q" placeholder="Search, e.g. lower_bound" aria-label="Search the STL guide" autocomplete="off" spellcheck="false">
+    <span class="status"><span class="dot" id="dot"></span><span id="stat">Starting…</span><span class="meter" id="meter" hidden><i id="bar"></i></span></span>
+  </div>
+</div>
+<div class="layout">
+  <nav class="toc" id="toc" aria-label="Topics"></nav>
+  <main id="topics"></main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="stl-data.js"></script>
+<script src="stl.js"></script>
+</body>
+</html>
