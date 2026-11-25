@@ -1,7 +1,7 @@
 // Playground: the C/C++ playground as a desktop app (Electron main process).
 // The web page, Clang (WebAssembly) and every library are bundled in ./web and served from the private
 // app:// scheme, so the app never needs the internet. All http(s) requests are blocked.
-const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell, session, nativeTheme } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -39,7 +39,7 @@ function askDiscard() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1400, height: 900, minWidth: 760, minHeight: 560, title: NAME, backgroundColor: '#0e1318', show: false,
+    width: 1400, height: 900, minWidth: 760, minHeight: 560, title: NAME, backgroundColor: nativeTheme.shouldUseDarkColors ? '#0e1318' : '#eef2f5', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: !app.isPackaged, spellcheck: false }
   });
   win.once('ready-to-show', () => win.show());
@@ -87,7 +87,7 @@ function buildMenu() {
 }
 
 /* ---------- messages from the page ---------- */
-const FILTERS = [{ name: 'C and C++ files', extensions: ['c', 'cpp', 'cc', 'cxx', 'h', 'hpp'] }, { name: 'All files', extensions: ['*'] }];
+const FILTERS = [{ name: 'Source files', extensions: ['c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'java', 'py'] }, { name: 'All files', extensions: ['*'] }];
 ipcMain.on('doc-state', (_, s) => { doc = { dirty: !!s.dirty, path: s.path || null, name: String(s.name || 'Untitled') }; setTitle(); });
 ipcMain.handle('discard-ok', () => askDiscard());
 ipcMain.handle('open-file', async () => {

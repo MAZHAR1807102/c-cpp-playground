@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>C/C++ Playground</title>
 <meta name="description" content="Write C or C++ in the browser and see the output beside the editor. The program is compiled with Clang (WebAssembly) and re-run automatically as you type. No installation and no server.">
+<script>
+  // apply the saved theme before the page is drawn, so it does not flash in the wrong colours
+  try { const t = localStorage.getItem('ccp.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
@@ -101,7 +105,7 @@ details.hdr summary{cursor:pointer; padding:9px 12px; display:flex; flex-wrap:wr
 details.hdr summary .habout{flex:1 1 220px}
 details.hdr summary::-webkit-details-marker{display:none}
 details.hdr summary::before{content:"▸"; color:var(--muted); flex:none} details.hdr[open] summary::before{content:"▾"}
-.hname{font:700 .95rem "JetBrains Mono",monospace; color:var(--accent); flex:none}
+.hname{font:700 .95rem "JetBrains Mono",monospace; color:var(--accent); flex:0 1 auto; min-width:0; overflow-wrap:anywhere}
 .habout{color:var(--muted); font-size:.88rem; min-width:0}
 .hbody{padding:0 12px 12px}
 .hrow{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:4px 16px; padding:7px 0; border-top:1px solid var(--line)}
@@ -114,6 +118,7 @@ details.hdr summary::before{content:"▸"; color:var(--muted); flex:none} detail
 .hex .exin{margin-top:6px; font-size:.85rem; color:var(--muted)} .hex .exin code{font:13px "JetBrains Mono",monospace; color:var(--ink)}
 .gnone{color:var(--muted); margin:6px 0 0}
 mark{background:color-mix(in oklab,var(--warn) 30%,transparent); color:inherit; border-radius:2px}
+label.f[hidden]{display:none}
 .files{display:inline-flex; gap:6px}
 .files[hidden]{display:none}
 .exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
@@ -141,16 +146,17 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <div class="wrap">
   <header>
     <div>
-      <p class="eyebrow">Programming · C and C++</p>
+      <p class="eyebrow">Programming · C, C++, Java and Python</p>
       <h1>C/C++ Playground <span class="exambadge" id="exambadge" hidden>Exam mode</span></h1>
     </div>
+    <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
   </header>
 
   <div class="bar" role="toolbar" aria-label="Settings">
-    <span class="files" id="filebtns" hidden><button class="btn" type="button" id="newBtn" title="New file (Ctrl + N)">New</button><button class="btn" type="button" id="openBtn" title="Open a .c or .cpp file (Ctrl + O)">Open…</button><button class="btn" type="button" id="saveBtn" title="Save (Ctrl + S)">Save</button></span>
-    <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="c">C</button><button type="button" data-lang="cpp">C++</button></div>
-    <label class="f">Standard <select id="std"></select></label>
-    <label class="f">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
+    <span class="files" id="filebtns" hidden><button class="btn" type="button" id="newBtn" title="New file (Ctrl + N)">New</button><button class="btn" type="button" id="openBtn" title="Open a .c, .cpp, .java or .py file (Ctrl + O)">Open…</button><button class="btn" type="button" id="saveBtn" title="Save (Ctrl + S)">Save</button></span>
+    <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="c">C</button><button type="button" data-lang="cpp">C++</button><button type="button" data-lang="java">Java</button><button type="button" data-lang="python">Python</button></div>
+    <label class="f" id="stdlabel">Standard <select id="std"></select></label>
+    <label class="f" id="optlabel">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
     <label class="f" id="exlabel">Example <select id="ex"></select></label>
     <label class="f"><input type="checkbox" id="auto" checked> Run as I type</label>
     <label class="f" title="Keyword suggestions while you type, and hints with fixes for errors"><input type="checkbox" id="sugg" checked> Suggestions</label>
@@ -169,7 +175,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
         <pre class="out" id="out" aria-live="polite"></pre>
       </section>
       <section class="pane" aria-label="Input">
-        <div class="phead"><label for="stdin">Input (stdin)</label><span class="r">read by scanf / cin; the program runs again when it changes</span></div>
+        <div class="phead"><label for="stdin">Input (stdin)</label><span class="r" id="stdinnote">read by scanf / cin; the program runs again when it changes</span></div>
         <textarea class="stdin" id="stdin" spellcheck="false" placeholder="Type the input your program reads, e.g. 5 7"></textarea>
       </section>
     </div>
@@ -190,12 +196,15 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   <details class="help">
     <summary>How it works and what is supported</summary>
     <ul>
-      <li>The compiler is Clang/LLVM 22 compiled to WebAssembly (the <a href="https://yowasp.org/">YoWASP</a> build). The first visit downloads about 100 MB; later visits load it from the browser cache.</li>
-      <li>Your program is compiled to WebAssembly (WASI) and run by <a href="https://github.com/bjorn3/browser_wasi_shim">browser_wasi_shim</a> in a separate worker. Nothing is sent to a server.</li>
+      <li>Everything runs in your browser; nothing is sent to a server. Each language's tools download the first time you use that language and are cached after that.</li>
+      <li><b>C and C++:</b> Clang/LLVM 22 compiled to WebAssembly (the <a href="https://yowasp.org/">YoWASP</a> build), about 100 MB. Programs run as WebAssembly (WASI) with <a href="https://github.com/bjorn3/browser_wasi_shim">browser_wasi_shim</a> in a separate worker.</li>
+      <li><b>Python:</b> CPython 3.14 compiled to WebAssembly (<a href="https://pyodide.org/">Pyodide</a>), about 14 MB, with the whole standard library (math, random, collections and so on). Packages such as numpy are not included.</li>
+      <li><b>Java:</b> OpenJDK's <code>javac</code> and the <a href="https://teavm.org/">TeaVM</a> compiler running in the browser (<a href="https://github.com/live-codes/java">LiveCodes java-wasm</a>), about 8 MB. It understands modern Java (records, switch expressions, text blocks) and runs programs on TeaVM's version of the standard library, which covers the common classes (Scanner, String, Math, ArrayList, HashMap, streams…) but not all of them. An out-of-bounds array access stops the program even inside <code>try</code>/<code>catch</code>; output appears when the program finishes; a run, compiling included, is stopped after 10 seconds.</li>
       <li>Standard input is the text in the Input box, read all at once. A program that waits for more input than you gave sees end-of-file.</li>
       <li><code>#include &lt;bits/stdc++.h&gt;</code> works in C++: it includes every standard header (except <code>&lt;csetjmp&gt;</code> and <code>&lt;csignal&gt;</code>, which WebAssembly cannot support). It makes compiling take a second or so longer.</li>
       <li>C++ is compiled with <code>-fno-exceptions</code>: <code>throw</code> and <code>try</code> are not available. Threads, networking and files outside the program are not available either.</li>
-      <li>A run is stopped after 5 seconds, so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
+      <li><b>Theme:</b> choose System, Light or Dark in the toolbar; the choice is remembered in this browser.</li>
+      <li>A run is stopped after 5 seconds (Java: 10 seconds), so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
       <li>With <b>Suggestions</b> on, a list of keywords, library names and names from your code appears as you type (pick with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Esc</kbd>, open it any time with <kbd>Ctrl</kbd> + <kbd>Space</kbd>). Errors get a short explanation and, when there is an obvious fix, a button that applies it. Untick Suggestions to turn both off.</li>
       <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs immediately. Click a line number in an error message to jump to it. Your code is kept in this browser.</li>
     </ul>
@@ -216,11 +225,13 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/runmode/runmode.min.js"></script>
 <script src="guide.js"></script>
+<script src="guide-more.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -242,23 +253,242 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       'Classes': ['#include <iostream>\n#include <string>\nusing namespace std;\n\nclass Shape {\npublic:\n    virtual double area() const = 0;\n    virtual string name() const = 0;\n    virtual ~Shape() = default;\n};\n\nclass Rect : public Shape {\n    double w, h;\npublic:\n    Rect(double w, double h) : w(w), h(h) {}\n    double area() const override { return w * h; }\n    string name() const override { return "rectangle"; }\n};\n\nclass Circle : public Shape {\n    double r;\npublic:\n    explicit Circle(double r) : r(r) {}\n    double area() const override { return 3.14159265 * r * r; }\n    string name() const override { return "circle"; }\n};\n\nint main() {\n    Rect a(3, 4);\n    Circle b(2);\n    const Shape* shapes[] = {&a, &b};\n    for (const Shape* s : shapes)\n        cout << s->name() << " area = " << s->area() << "\\n";\n    return 0;\n}\n', ''],
       'Dynamic programming: LCS': ['#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\nint main() {\n    string x, y;\n    cin >> x >> y;\n    int m = x.size(), n = y.size();\n    vector<vector<int>> c(m + 1, vector<int>(n + 1, 0));\n    for (int i = 1; i <= m; i++)\n        for (int j = 1; j <= n; j++)\n            c[i][j] = x[i - 1] == y[j - 1] ? c[i - 1][j - 1] + 1 : max(c[i - 1][j], c[i][j - 1]);\n    string lcs;\n    for (int i = m, j = n; i > 0 && j > 0;) {\n        if (x[i - 1] == y[j - 1]) { lcs = x[i - 1] + lcs; i--; j--; }\n        else if (c[i - 1][j] >= c[i][j - 1]) i--;\n        else j--;\n    }\n    cout << "LCS length " << c[m][n] << ": " << lcs << "\\n";\n    return 0;\n}\n', 'ABCBDAB BDCABA'],
       'Templates and lambdas': ['#include <iostream>\n#include <vector>\n#include <algorithm>\nusing namespace std;\n\ntemplate <typename T>\nT biggest(const vector<T>& v) { return *max_element(v.begin(), v.end()); }\n\nint main() {\n    vector<int> a{4, 8, 15, 16, 23, 42};\n    vector<double> b{2.5, 1.5, 9.75};\n    cout << biggest(a) << " " << biggest(b) << "\\n";\n    auto evens = count_if(a.begin(), a.end(), [](int x) { return x % 2 == 0; });\n    cout << evens << " even numbers\\n";\n    return 0;\n}\n', '']
+    },
+    java: {
+      'Hello, world': [String.raw`public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, world!");
+    }
+}
+`, ''],
+      'Read input with Scanner': [String.raw`import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        String name = sc.next();
+        int age = sc.nextInt();
+        System.out.println("Hi " + name + ", next year you will be " + (age + 1) + ".");
+    }
+}
+`, 'Mazhar 21'],
+      'Loops and arrays: bubble sort': [String.raw`import java.util.Arrays;
+
+public class Main {
+    public static void main(String[] args) {
+        int[] a = {5, 2, 9, 1, 7, 3};
+        for (int i = 0; i < a.length - 1; i++)
+            for (int j = 0; j < a.length - 1 - i; j++)
+                if (a[j] > a[j + 1]) {
+                    int t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;
+                }
+        System.out.println(Arrays.toString(a));
+        for (int i = 1; i <= 5; i++)
+            System.out.printf("%d x %d = %2d%n", 7, i, 7 * i);
+    }
+}
+`, ''],
+      'Methods and recursion': [String.raw`public class Main {
+    static long factorial(int n) {
+        return n <= 1 ? 1 : n * factorial(n - 1);
+    }
+
+    static int fib(int n) {
+        return n < 2 ? n : fib(n - 1) + fib(n - 2);
+    }
+
+    public static void main(String[] args) {
+        for (int i = 0; i <= 10; i++)
+            System.out.println(i + "! = " + factorial(i) + ",  F(" + i + ") = " + fib(i));
+    }
+}
+`, ''],
+      'Classes and objects': [String.raw`import java.util.ArrayList;
+import java.util.List;
+
+abstract class Shape {
+    abstract double area();
+    abstract String name();
+}
+
+class Rect extends Shape {
+    private final double w, h;
+    Rect(double w, double h) { this.w = w; this.h = h; }
+    double area() { return w * h; }
+    String name() { return "rectangle"; }
+}
+
+class Circle extends Shape {
+    private final double r;
+    Circle(double r) { this.r = r; }
+    double area() { return Math.PI * r * r; }
+    String name() { return "circle"; }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        List<Shape> shapes = new ArrayList<>();
+        shapes.add(new Rect(3, 4));
+        shapes.add(new Circle(2));
+        for (Shape s : shapes)
+            System.out.printf("%s area = %.2f%n", s.name(), s.area());
+    }
+}
+`, ''],
+      'ArrayList and HashMap: word count': [String.raw`import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Map<String, Integer> count = new TreeMap<>();   // TreeMap keeps the words sorted
+        List<String> words = new ArrayList<>();
+        while (sc.hasNext()) {
+            String w = sc.next();
+            words.add(w);
+            count.put(w, count.getOrDefault(w, 0) + 1);
+        }
+        System.out.println(words.size() + " words");
+        for (Map.Entry<String, Integer> e : count.entrySet())
+            System.out.println(e.getKey() + ": " + e.getValue());
+    }
+}
+`, 'the cat and the dog and the bird'],
+      'Strings: palindromes': [String.raw`import java.util.Scanner;
+
+public class Main {
+    static boolean isPalindrome(String s) {
+        String t = s.toLowerCase().replaceAll("[^a-z0-9]", "");
+        return new StringBuilder(t).reverse().toString().equals(t);
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        while (sc.hasNextLine()) {
+            String line = sc.nextLine();
+            System.out.println(line + " -> " + (isPalindrome(line) ? "palindrome" : "not a palindrome"));
+        }
+    }
+}
+`, 'Racecar\nhello\nNever odd or even']
+    },
+    python: {
+      'Hello, world': [String.raw`print("Hello, world!")
+`, ''],
+      'Read input': [String.raw`name = input()
+age = int(input())
+print(f"Hi {name}, next year you will be {age + 1}.")
+
+numbers = list(map(int, input().split()))
+print("sum:", sum(numbers), " largest:", max(numbers))
+`, 'Mazhar\n21\n4 8 15 16 23 42'],
+      'Loops and lists': [String.raw`a = [5, 2, 9, 1, 7, 3]
+
+# bubble sort
+for i in range(len(a) - 1):
+    for j in range(len(a) - 1 - i):
+        if a[j] > a[j + 1]:
+            a[j], a[j + 1] = a[j + 1], a[j]
+print(a)
+
+for i in range(1, 6):
+    print(f"7 x {i} = {7 * i:2}")
+
+squares = [x * x for x in range(10) if x % 2 == 0]
+print(squares)
+`, ''],
+      'Functions and recursion': [String.raw`from functools import lru_cache
+
+def factorial(n):
+    return 1 if n <= 1 else n * factorial(n - 1)
+
+@lru_cache(maxsize=None)
+def fib(n):
+    return n if n < 2 else fib(n - 1) + fib(n - 2)
+
+for i in range(11):
+    print(f"{i}! = {factorial(i)},  F({i}) = {fib(i)}")
+print("F(90) =", fib(90))
+`, ''],
+      'Dictionaries: word count': [String.raw`from collections import Counter
+
+text = input()
+words = text.split()
+count = {}
+for w in words:
+    count[w] = count.get(w, 0) + 1
+
+for word in sorted(count):
+    print(f"{word}: {count[word]}")
+
+print("most common:", Counter(words).most_common(2))
+`, 'the cat and the dog and the bird'],
+      'Classes and objects': [String.raw`import math
+
+class Shape:
+    def area(self):
+        raise NotImplementedError
+
+class Rect(Shape):
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+    def area(self):
+        return self.w * self.h
+
+class Circle(Shape):
+    def __init__(self, r):
+        self.r = r
+    def area(self):
+        return math.pi * self.r ** 2
+
+for s in [Rect(3, 4), Circle(2)]:
+    print(f"{type(s).__name__} area = {s.area():.2f}")
+`, ''],
+      'Sorting with keys': [String.raw`students = [("Rahim", 72), ("Ayesha", 91), ("Karim", 85)]
+
+by_mark = sorted(students, key=lambda s: s[1], reverse=True)
+for rank, (name, mark) in enumerate(by_mark, start=1):
+    print(rank, name, mark)
+
+best = max(students, key=lambda s: s[1])
+print("best:", best[0])
+`, '']
     }
   };
-  const STDS = { c: ['c17', 'c11', 'c99', 'c89', 'c23'], cpp: ['c++20', 'c++17', 'c++14', 'c++11', 'c++23'] };
+  // per-language settings: file name, editor mode, version menu, what reads the Input box
+  const LANGS = {
+    c: { file: 'main.c', mode: 'text/x-csrc', label: 'C', reads: 'scanf' },
+    cpp: { file: 'main.cpp', mode: 'text/x-c++src', label: 'C++', reads: 'cin' },
+    java: { file: 'Main.java', mode: 'text/x-java', label: 'Java', reads: 'Scanner / BufferedReader' },
+    python: { file: 'main.py', mode: 'text/x-python', label: 'Python', reads: 'input()' }
+  };
+  const STDS = { c: ['c17', 'c11', 'c99', 'c89', 'c23'], cpp: ['c++20', 'c++17', 'c++14', 'c++11', 'c++23'], java: ['Java 25'], python: ['Python 3.14'] };
+  const isClang = l => l === 'c' || l === 'cpp';
   const store = { get(k) { try { return localStorage.getItem('ccp.' + k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem('ccp.' + k, v); } catch (_) {} } };
 
-  let lang = store.get('lang') === 'c' ? 'c' : 'cpp';
+  let lang = LANGS[store.get('lang')] ? store.get('lang') : 'cpp';
+
+  /* ---------- theme ---------- */
+  $('theme').value = store.get('theme') || 'system';
+  $('theme').onchange = () => {
+    const t = $('theme').value;
+    store.set('theme', t);
+    if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  };
   const cm = CodeMirror($('editor'), { lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: true, mode: 'text/x-c++src', extraKeys: { 'Ctrl-Enter': () => runNow(), 'Cmd-Enter': () => runNow(), Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') } });
 
   function setLang(l, keepText) {
     lang = l; store.set('lang', l);
     document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
-    cm.setOption('mode', l === 'c' ? 'text/x-csrc' : 'text/x-c++src');
-    $('fname').textContent = l === 'c' ? 'main.c' : 'main.cpp';
+    cm.setOption('mode', LANGS[l].mode);
+    $('fname').textContent = LANGS[l].file;
     $('std').innerHTML = STDS[l].map(s => `<option>${s}</option>`).join(''); $('std').value = store.get('std.' + l) || STDS[l][0];
+    $('std').disabled = STDS[l].length < 2;
+    $('stdlabel').firstChild.textContent = isClang(l) ? 'Standard ' : 'Version ';
+    $('optlabel').hidden = !isClang(l);
+    $('stdinnote').textContent = `read by ${LANGS[l].reads}; the program runs again when it changes`;
     $('ex').innerHTML = '<option value="">Choose…</option>' + Object.keys(EXAMPLES[l]).map(k => `<option>${k}</option>`).join('');
     renderGuide();
-    if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[l === 'c' ? 1 : 1]); }
+    if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[1]); }
   }
   function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); schedule(0); }
   document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (!b || b.dataset.lang === lang) return; setLang(b.dataset.lang, keepTextOnToggle()); schedule(0); });
@@ -283,20 +513,24 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       for (; (j = low.indexOf(q, i)) >= 0; i = j + q.length) out += esc(s.slice(i, j)) + '<mark>' + esc(s.slice(j, j + q.length)) + '</mark>';
       return out + esc(s.slice(i));
     };
-    $('gsub').textContent = `${lang === 'c' ? 'C' : 'C++'} headers: which one to include for each function, how to write it, and what it does. Switch the language above for ${lang === 'c' ? 'C++' : 'C'}.`;
+    $('guide-title').textContent = isClang(lang) ? 'Header guide' : 'Library guide';
+    $('gq').placeholder = 'Search, e.g. ' + { c: 'printf, strlen, sqrt', cpp: 'sort, vector, setprecision', java: 'Scanner, substring, HashMap', python: 'input, append, Counter' }[lang];
+    $('gsub').textContent = isClang(lang)
+      ? `${LANGS[lang].label} headers: which one to include for each function, how to write it, and what it does. Switch the language above for the others.`
+      : `${LANGS[lang].label}: what to import for each class or function, how to write it, and what it does. Switch the language above for the others.`;
     let shown = 0;
     $('glist').innerHTML = data.map((g, gi) => {
-      const headerHit = q && g.h.toLowerCase().includes(q);
+      const headerHit = q && (g.show || g.h).toLowerCase().includes(q);
       const rows = g.items.filter(([s, d]) => !q || headerHit || (s + ' ' + d).toLowerCase().includes(q));
       if (q && !rows.length) return '';
       shown++;
-      return `<details class="hdr"${q ? ' open' : ''}><summary><span class="hname">${hl('#include <' + g.h + '>')}</span><span class="habout">${esc(g.about)}</span></summary><div class="hbody">`
+      return `<details class="hdr"${q ? ' open' : ''}><summary><span class="hname">${hl(g.show || '#include <' + g.h + '>')}</span><span class="habout">${esc(g.about)}</span></summary><div class="hbody">`
         + rows.map(([s, d]) => `<div class="hrow"><code>${hl(s)}</code><span>${hl(d)}</span></div>`).join('')
         + (g.ex ? `<div class="hex"><div class="exhead">Example<button type="button" class="fix exbtn" data-ex="${gi}">Load into editor</button></div><pre class="cm-s-default" data-code="${gi}"></pre>${g.input ? `<div class="exin">Input: <code>${esc(g.input.replace(/\n/g, ' ⏎ '))}</code></div>` : ''}</div>` : '')
         + '</div></details>';
     }).join('');
     $('gnone').hidden = shown > 0;
-    $('glist').querySelectorAll('pre[data-code]').forEach(pre => CodeMirror.runMode(data[+pre.dataset.code].ex, lang === 'c' ? 'text/x-csrc' : 'text/x-c++src', pre));
+    $('glist').querySelectorAll('pre[data-code]').forEach(pre => CodeMirror.runMode(data[+pre.dataset.code].ex, LANGS[lang].mode, pre));
   }
   $('gq').addEventListener('input', () => renderGuide());
   $('glist').addEventListener('click', e => {
@@ -316,7 +550,9 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   /* ---------- suggestions: words the completion list offers ---------- */
   const KW = {
     c: 'auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while main'.split(' '),
-    cpp: 'alignas alignof auto bool break case catch char class const constexpr const_cast continue decltype default delete do double dynamic_cast else enum explicit extern false final float for friend goto if inline int long mutable namespace new noexcept nullptr operator override private protected public register reinterpret_cast return short signed sizeof static static_assert static_cast struct switch template this throw true try typedef typename union unsigned using virtual void volatile while main std'.split(' ')
+    cpp: 'alignas alignof auto bool break case catch char class const constexpr const_cast continue decltype default delete do double dynamic_cast else enum explicit extern false final float for friend goto if inline int long mutable namespace new noexcept nullptr operator override private protected public register reinterpret_cast return short signed sizeof static static_assert static_cast struct switch template this throw true try typedef typename union unsigned using virtual void volatile while main std'.split(' '),
+    java: 'abstract assert boolean break byte case catch char class continue default do double else enum extends final finally float for if implements import instanceof int interface long new package private protected public record return short static super switch this throw throws try var void while true false null main args'.split(' '),
+    python: 'False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield match case self'.split(' ')
   };
   const LIB = {
     c: {
@@ -341,15 +577,46 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       'tuple': 'tuple make_tuple tie',
       'cmath': 'sqrt pow abs sin cos tan floor ceil round log exp fabs hypot', 'cstdio': 'printf scanf puts', 'cstring': 'strlen strcpy strcmp memset',
       'cstdlib': 'rand srand exit malloc free', 'climits': 'INT_MAX INT_MIN LLONG_MAX LLONG_MIN', 'cassert': 'assert'
+    },
+    java: {   // package -> classes; java.lang needs no import
+      'java.lang': 'System String StringBuilder Math Integer Long Double Character Boolean Object Exception RuntimeException',
+      'java.util': 'Scanner ArrayList List HashMap Map HashSet Set TreeMap TreeSet LinkedHashMap LinkedHashSet LinkedList Queue Deque ArrayDeque PriorityQueue Stack Arrays Collections Random Iterator Comparator Collection Objects Optional StringJoiner InputMismatchException NoSuchElementException',
+      'java.util.stream': 'Collectors IntStream Stream',
+      'java.io': 'BufferedReader InputStreamReader IOException PrintWriter'
+    },
+    python: {   // module -> names; built-ins need no import
+      'built-in': 'print input int float str bool len range list dict set tuple sorted sum min max abs round enumerate zip map filter reversed any all ord chr divmod pow isinstance type hex bin format open',
+      'math': 'sqrt pi floor ceil factorial gcd lcm isqrt hypot log log2 log10 exp sin cos tan radians degrees inf comb perm',
+      'random': 'randint random choice shuffle sample uniform seed',
+      'collections': 'Counter deque defaultdict OrderedDict namedtuple',
+      'itertools': 'permutations combinations product accumulate count cycle chain',
+      'functools': 'lru_cache cache reduce cmp_to_key',
+      'heapq': 'heappush heappop heapify nlargest nsmallest',
+      'bisect': 'bisect_left bisect_right insort',
+      'sys': 'sys stdin setrecursionlimit',
+      'string': 'ascii_lowercase ascii_uppercase digits punctuation',
+      'statistics': 'mean median mode stdev',
+      'time': 'time sleep perf_counter',
+      'datetime': 'datetime date timedelta',
+      're': 're findall sub search match fullmatch',
+      'fractions': 'Fraction', 'decimal': 'Decimal', 'json': 'json dumps loads'
     }
+  };
+  // common methods, offered after a dot (and anywhere else)
+  const METHODS = {
+    java: 'println print printf length charAt substring equals equalsIgnoreCase compareTo indexOf contains toUpperCase toLowerCase trim split replace isEmpty toCharArray nextInt nextLine next nextDouble nextLong hasNext hasNextInt hasNextLine readLine size add get set remove put containsKey getOrDefault keySet values entrySet sort parseInt valueOf toString append reverse',
+    python: 'append extend insert pop remove sort reverse index count split join strip lower upper replace startswith endswith find format items keys values get update add discard isdigit isalpha most_common appendleft popleft'
   };
   const NOT_STD = new Set(['cmath', 'cstdio', 'cstring', 'cstdlib', 'climits', 'cassert']);   // these names also work without std::
   const HEADER_OF = {}, POOL = {};
-  for (const l of ['c', 'cpp']) {
+  for (const l of Object.keys(LANGS)) {
     HEADER_OF[l] = {};
     for (const [h, names] of Object.entries(LIB[l])) for (const n of names.split(' ')) if (!HEADER_OF[l][n]) HEADER_OF[l][n] = h;
-    POOL[l] = [...KW[l].map(t => ({ text: t, tag: 'keyword' })), ...Object.entries(HEADER_OF[l]).filter(([n]) => !KW[l].includes(n)).map(([n, h]) => ({ text: n, tag: '<' + h + '>' }))];
+    POOL[l] = [...KW[l].map(t => ({ text: t, tag: 'keyword' })), ...Object.entries(HEADER_OF[l]).filter(([n]) => !KW[l].includes(n)).map(([n, h]) => ({ text: n, tag: isClang(l) ? '<' + h + '>' : h }))];
+    if (METHODS[l]) for (const m of METHODS[l].split(' ')) if (!HEADER_OF[l][m]) POOL[l].push({ text: m, tag: 'method' });
   }
+  const PY_MODULES = Object.keys(LIB.python).filter(m => m !== 'built-in').concat(['os', 'copy', 'array', 'operator', 'typing', 'dataclasses', 'enum', 'textwrap', 'calendar']);
+  const JAVA_IMPORTS = ['java.util.*', 'java.util.Scanner', 'java.util.ArrayList', 'java.util.HashMap', 'java.util.Arrays', 'java.util.stream.*', 'java.io.*'];
   const HEADERS = { c: [...Object.keys(LIB.c), 'stddef.h', 'stdarg.h', 'float.h', 'errno.h'], cpp: ['bits/stdc++.h', ...Object.keys(LIB.cpp)] };
   const DIRECTIVES = ['include', 'define', 'undef', 'ifdef', 'ifndef', 'if', 'else', 'elif', 'endif', 'pragma'];
   let examOn = false;   // desktop app only: set by the teacher, turns suggestions, examples and the guide off
@@ -361,11 +628,15 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     const pick = (cands, word) => cands.filter(x => x.text !== word && x.text.toLowerCase().startsWith(word.toLowerCase()))
       .sort((a, b) => (b.text.startsWith(word) - a.text.startsWith(word)) || rank(a) - rank(b) || a.text.length - b.text.length || a.text.localeCompare(b.text)).slice(0, 40);
     const rank = x => x.tag === 'in your code' ? 0 : x.tag === 'keyword' ? 1 : 2;
-    if ((m = before.match(/^\s*#\s*include\s*<([\w./+]*)$/))) {
+    if (isClang(lang) && (m = before.match(/^\s*#\s*include\s*<([\w./+]*)$/))) {
       const close = line.slice(cur.ch).startsWith('>') ? '' : '>';
       list = pick(HEADERS[lang].map(h => ({ text: h, tag: 'header' })), m[1]).map(x => ({ ...x, text: x.text + close, shown: x.text }));
       from = cur.ch - m[1].length;
-    } else if ((m = before.match(/^\s*#\s*(\w*)$/))) {
+    } else if (lang === 'python' && (m = before.match(/^\s*(?:import|from)\s+(\w*)$/))) {
+      list = pick(PY_MODULES.map(t => ({ text: t, tag: 'module' })), m[1]); from = cur.ch - m[1].length;
+    } else if (lang === 'java' && (m = before.match(/^\s*import\s+([\w.*]*)$/))) {
+      list = pick(JAVA_IMPORTS.map(t => ({ text: t, tag: 'package' })), m[1]); from = cur.ch - m[1].length;
+    } else if (isClang(lang) && (m = before.match(/^\s*#\s*(\w*)$/))) {
       list = pick(DIRECTIVES.map(d => ({ text: d, tag: 'directive' })), m[1]); from = cur.ch - m[1].length;
     } else {
       const tok = c.getTokenAt(cur);
@@ -389,7 +660,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   cm.on('inputRead', (c, ch) => {
     if (!suggOn() || c.state.completionActive || ch.origin !== '+input' || ch.text.length !== 1 || ch.text[0].length !== 1) return;
     const before = c.getLine(c.getCursor().line).slice(0, c.getCursor().ch);
-    if (/^\s*#\s*include\s*<[\w./]*$/.test(before) || /^\s*#\w*$/.test(before) || /(?:^|[^\w])[A-Za-z_]\w+$/.test(before)) c.showHint(HINT_OPTS);
+    if ((isClang(lang) && (/^\s*#\s*include\s*<[\w./]*$/.test(before) || /^\s*#\w*$/.test(before))) || /(?:^|[^\w])[A-Za-z_]\w+$/.test(before)) c.showHint(HINT_OPTS);
   });
 
   /* ---------- error hints: a plain explanation and, when possible, a fix ---------- */
@@ -451,7 +722,149 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     [/^switch case is in protected scope|^cannot jump from switch statement/, 'A variable declared inside a `case` needs its own block: wrap that case in `{ ... }`.'],
     [/^case value is not a constant expression/, 'A `case` label must be a constant, like `case 1:` or `case \'a\':`.']
   ];
+  /* hints shared by Java and Python */
+  // a fix that replaces the first whole-word `name` on a line
+  function swapWord(L, line, name, to) {
+    const m = new RegExp('(^|[^\\w.])' + name.replace(/[$]/g, '\\$&') + '(?!\\w)').exec(L[line] || '');
+    if (!m) return null;
+    const c = m.index + m[1].length;
+    return { label: `Change to ${to}`, edits: [{ l1: line, c1: c, l2: line, c2: c + name.length, text: to }] };
+  }
+  // a fix that adds text at the end of a line's code (before a trailing comment)
+  function appendToLine(L, line, text, commentMark) {
+    const s = L[line];
+    if (s == null) return null;
+    let end = s.replace(/\s+$/, '').length;
+    const k = s.indexOf(commentMark);
+    if (k >= 0 && !/["']/.test(s.slice(0, k))) end = s.slice(0, k).replace(/\s+$/, '').length;
+    return { label: `Add ${text.trim()} at the end of line ${line + 1}`, edits: [{ l1: line, c1: end, l2: line, c2: end, text }] };
+  }
+  const idsIn = src => [...new Set(src.match(/[A-Za-z_]\w{2,}/g) || [])];
+
+  const JAVA_SIMPLE = [
+    [/^'\)' expected/, 'A `(` is not closed. Add the missing `)`.'],
+    [/^'\]' expected/, 'A `[` is not closed. Add the missing `]`.'],
+    [/^'(\(|\{)' expected/, 'Java expected `$1` here. Check the line against the usual form, e.g. `public static void main(String[] args) {`.'],
+    [/reached end of file while parsing/, 'A `{` is never closed: the file ended while Java was still inside a class or method. Add the missing `}` at the end.'],
+    [/class, interface, enum, or record expected/, 'This line is outside every class. There is probably one `}` too many above it, or this code belongs inside a class.'],
+    [/^<identifier> expected/, 'Java expected a name here. Statements such as `System.out.println(...)` must be inside a method, for example inside `main`.'],
+    [/^illegal start of (expression|type)/, 'Something is out of place: often a missing `}` or `)` on an earlier line, or a method written inside another method.'],
+    [/^not a statement/, 'This line is a value on its own, not an action. Did you mean to store it (`x = ...`) or print it?'],
+    [/^unclosed string literal/, 'A string is not closed. Add the closing `"` on the same line.'],
+    [/^unclosed character literal|^empty character literal/, 'A `char` holds one character in single quotes, like `\'a\'`. Text uses double quotes: `"text"`.'],
+    [/^incompatible types: possible lossy conversion from (\w+) to (\w+)/, 'A `$1` value may not fit in an `$2`. Convert it on purpose with a cast, for example `($2) x`, or change the variable\'s type.'],
+    [/^incompatible types: (java\.lang\.)?String cannot be converted to (int|double|long)/, 'Text cannot be stored in a number variable. To turn text into a number use `Integer.parseInt(s)` or `Double.parseDouble(s)`; to read a number use `sc.nextInt()`.'],
+    [/^incompatible types: (int|double|long|char) cannot be converted to (java\.lang\.)?String/, 'To store a number as text use `String.valueOf(n)` or `"" + n`.'],
+    [/^incompatible types: .* cannot be converted to boolean/, 'A condition must be true or false. To compare, use `==` (not `=`), for example `if (x == 5)`.'],
+    [/^incompatible types/, 'The value has a different type from the variable it is stored in.'],
+    [/^missing return statement/, 'This method promises to return a value, but can reach its end without `return`. Add a `return` at the end.'],
+    [/^variable (\w+) might not have been initialized/, 'Give `$1` a starting value before it is used, for example `int $1 = 0;`.'],
+    [/^variable (\w+) is already defined/, '`$1` is declared twice in the same method. Rename one, or to change its value write `$1 = ...` without the type.'],
+    [/^unreachable statement/, 'This line can never run, because a `return`, `break` or endless loop comes before it.'],
+    [/^non-static (method|variable) (\w+).* cannot be referenced from a static context/, '`main` is `static`, so it can only use `static` methods and variables directly. Make `$2` `static`, or create an object first, for example `new Main()`.'],
+    [/^bad operand types? for binary operator '(.+)'/, 'The operator `$1` cannot be used with these two types. To compare strings use `a.equals(b)`, not `==`.'],
+    [/^cannot assign a value to final variable (\w+)/, '`$1` is `final`, so it cannot change after it gets its first value.'],
+    [/^method (\w+) in class (\w+) cannot be applied to given types/, 'The call passes the wrong number or types of arguments for `$1`. Compare it with the method\'s definition.'],
+    [/^(char|int|double|long|boolean) cannot be dereferenced/, '`$1` is a primitive type, so it has no methods. For example use `Character.isDigit(c)` rather than `c.isDigit()`.'],
+    [/^array required, but (.+) found/, 'Only arrays can be indexed with `[ ]`. For a String use `s.charAt(i)`; for a List use `list.get(i)`.'],
+    [/^incompatible types: unexpected return value|^cannot return a value from method whose result type is void/, 'This method is `void`, so it cannot return a value. Change `void` to the type it returns, or remove the value after `return`.'],
+    [/^'else' without 'if'/, 'This `else` has no matching `if`. Look for a `;` right after `if (...)` or a misplaced `}`.'],
+    [/^break outside switch or loop/, '`break` can only be used inside a loop or a `switch`.'],
+    [/^(\w+) is abstract; cannot be instantiated/, '`$1` is abstract, so you cannot write `new $1(...)`. Create an object of a class that extends it.']
+  ];
+  function explainJava(p, src) {
+    const L = src.split('\n'), msg = p.msg, full = p.lines.join('\n');
+    let m;
+    if (/^';' expected/.test(msg)) return { text: 'Every statement ends with a semicolon `;`. Add it at the end of this line.', fix: appendToLine(L, p.line, ';', '//') };
+    if ((m = msg.match(/^unreported exception (\S+); must be caught or declared to be thrown/))) {
+      const i = L.findIndex(l => /static\s+void\s+main\s*\([^)]*\)/.test(l) && !/throws/.test(l));
+      const k = i >= 0 ? L[i].search(/\)\s*\{?\s*$/) : -1;
+      return { text: `This call can throw \`${m[1].split('.').pop()}\`. Either wrap it in \`try { ... } catch (Exception e) { ... }\`, or add \`throws Exception\` after \`main(String[] args)\`.`, fix: k >= 0 ? { label: 'Add throws Exception to main', edits: [{ l1: i, c1: k + 1, l2: i, c2: k + 1, text: ' throws Exception' }] } : null };
+    }
+    if ((m = msg.match(/^package (\w+) does not exist/))) {
+      const c = closest(m[1], [...Object.keys(HEADER_OF.java), ...idsIn(src).filter(x => x !== m[1])]);
+      return c ? { text: `Did you mean \`${c}\`? Names must be spelled exactly, and upper and lower case are different.`, fix: swapWord(L, p.line, m[1], c) }
+               : { text: `Java does not know \`${m[1]}\`. Check the spelling, or add the \`import\` it needs.` };
+    }
+    if (/^cannot find symbol/.test(msg)) {
+      const s = full.match(/symbol:\s+(variable|class|method)\s+(\w+)/);
+      if (!s) return { text: 'Java does not know this name. Check the spelling: names are case-sensitive.' };
+      const [, kind, name] = s, pkg = HEADER_OF.java[name];
+      if (kind === 'class' && pkg && pkg !== 'java.lang' && !new RegExp(`import\\s+${pkg.replace(/\./g, '\\.')}\\.(\\*|${name})\\s*;`).test(src)) {
+        let at = -1; L.forEach((l, i) => { if (/^\s*(import|package)\b/.test(l)) at = i; });
+        return { text: `\`${name}\` is in \`${pkg}\`. Add \`import ${pkg}.${name};\` at the top of the file (or \`import ${pkg}.*;\` for the whole package).`, fix: { label: `Add import ${pkg}.${name};`, edits: [{ l1: at + 1, c1: 0, l2: at + 1, c2: 0, text: `import ${pkg}.${name};\n` }] } };
+      }
+      const c = closest(name, [...KW.java, ...Object.keys(HEADER_OF.java), ...METHODS.java.split(' '), ...idsIn(src).filter(x => x !== name)]);
+      if (c) return { text: `Did you mean \`${c}\`? Names must be spelled exactly, and upper and lower case are different.`, fix: swapWord(L, p.line, name, c) };
+      if (kind === 'class') return { text: `There is no class \`${name}\`. Check the spelling (class names start with a capital letter), or add the \`import\` it needs.` };
+      if (kind === 'method') return { text: `There is no method \`${name}\` with these arguments here. Check the spelling, and the number and types of the arguments.` };
+      return { text: `\`${name}\` has not been declared. Declare it before using it (for example \`int ${name} = 0;\`), and check it is not declared inside a \`{ }\` block that has already ended.` };
+    }
+    for (const [re, text] of JAVA_SIMPLE) if ((m = msg.match(re))) return { text: text.replace(/\$(\d)/g, (_, i) => m[i] || '') };
+    return null;
+  }
+
+  const PY_SIMPLE = [
+    [/^SyntaxError: '([(\[{])' was never closed/, 'A `$1` on this line is never closed. Add the matching closing bracket.'],
+    [/^SyntaxError: unmatched '(.)'/, 'There is an extra `$1` here with no opening bracket before it.'],
+    [/^SyntaxError: closing parenthesis '(.)' does not match opening parenthesis '(.)'/, 'The brackets are mixed up: `$2` is closed with `$1`.'],
+    [/^SyntaxError: unterminated (triple-quoted )?string literal/, 'A string is not closed. Add the closing quote.'],
+    [/^SyntaxError: invalid syntax\. Maybe you meant '==' or ':=' instead of '='/, 'To compare, use `==`. A single `=` stores a value and cannot be used in a condition.'],
+    [/^SyntaxError: invalid syntax\. Perhaps you forgot a comma/, 'Items in a list, a tuple or a function call are separated by commas.'],
+    [/^SyntaxError: invalid character '(.)'/, 'This line contains `$1`, which Python does not accept. It is often a curly quote or dash pasted from a document: retype it.'],
+    [/^SyntaxError: Missing parentheses in call to 'print'/, 'In Python 3, `print` is a function: write `print("text")`.'],
+    [/^SyntaxError: cannot assign to/, 'The left side of `=` must be a variable. To compare, use `==`.'],
+    [/^SyntaxError: '(return|yield)' outside function/, '`$1` can only be used inside a function (`def`).'],
+    [/^SyntaxError: '(break|continue)' (outside loop|not properly in loop)/, '`$1` can only be used inside a `for` or `while` loop.'],
+    [/^SyntaxError: invalid decimal literal/, 'A name cannot start with a digit, and a number cannot have letters right after it (write `2 * x`, not `2x`).'],
+    [/^SyntaxError/, 'Python could not understand this line. Look for a missing bracket, quote, comma or colon here or on the line above.'],
+    [/^IndentationError: expected an indented block/, 'The line after a `:` must be indented (4 spaces) to show it belongs to that block.'],
+    [/^IndentationError: unexpected indent/, 'This line is indented more than the lines around it. Remove the extra spaces at its start.'],
+    [/^IndentationError: unindent does not match/, 'This line\'s indentation does not line up with any block above. Use 4 spaces per level everywhere.'],
+    [/^TabError/, 'Tabs and spaces are mixed in the indentation. Use only spaces.'],
+    [/^TypeError: can only concatenate str \(not "(\w+)"\) to str/, 'This value is a `$1`, not text, so it cannot be joined to text with `+`. Convert it with `str(x)`, or use an f-string: `f"Total: {x}"`.'],
+    [/^TypeError: (unsupported operand type\(s\)|'.+' not supported between instances of) .*'str'/, 'One value is text (`str`) and the other a number. `input()` always returns text: convert it with `int(input())` or `float(input())`.'],
+    [/^TypeError: (\w+)\(\) missing (\d+) required positional argument/, 'The call to `$1()` passes too few arguments. Compare it with its `def` line.'],
+    [/^TypeError: (\w+\.)?(\w+)\(\) takes (\d+) positional arguments? but (\d+) (were|was) given/, 'The call to `$2()` passes too many arguments. Methods in a class need `self` as their first parameter.'],
+    [/^TypeError: '(\w+)' object is not subscriptable/, 'A `$1` cannot be indexed with `[ ]`.'],
+    [/^TypeError: '(\w+)' object is not callable/, 'A `$1` is not a function. Perhaps a variable has the same name as a function (for example `sum = 0` hides `sum()`).'],
+    [/^TypeError: '(\w+)' object is not iterable/, 'A `for` loop needs a sequence. To repeat something n times, use `range(n)`.'],
+    [/^TypeError: (list|string|tuple) indices must be integers/, 'Positions must be whole numbers. `/` gives a decimal; use `//` or `int(...)`.'],
+    [/^TypeError: '(\w+)' object does not support item assignment/, 'A `$1` cannot be changed in place. Build a new one, or use a list.'],
+    [/^ValueError: invalid literal for int\(\) with base 10: '(.*)'/, '`int()` could not turn `\'$1\'` into a number. Each `input()` reads one whole line; for several numbers on one line use `list(map(int, input().split()))`.'],
+    [/^ValueError: could not convert string to float/, '`float()` could not turn this text into a number. Check the Input box.'],
+    [/^ValueError: (not enough|too many) values to unpack/, 'The number of variables on the left does not match the number of values on the right.'],
+    [/^ZeroDivisionError/, 'A number is divided by zero. Check the divisor before dividing.'],
+    [/^IndexError: (list|string|tuple) index out of range/, 'The position is outside the $1: valid positions are 0 to `len(x) - 1`.'],
+    [/^IndexError: pop from empty/, 'There is nothing left to remove. Check `if items:` first.'],
+    [/^KeyError: (.*)/, 'The dictionary has no key $1. Check with `if key in d:` first, or use `d.get(key, default)`.'],
+    [/^AttributeError: '(\w+)' object has no attribute '(\w+)'/, 'A `$1` has no `$2`. (Lists add items with `.append()`; strings cannot be changed in place.)'],
+    [/^AttributeError: module '(\w+)' has no attribute '(\w+)'/, 'The `$1` module has no `$2`. Check the spelling.'],
+    [/^EOFError/, '`input()` ran out of input. Add more lines in the Input box: each `input()` reads one line.'],
+    [/^RecursionError/, 'The function calls itself too many times. Check that the recursion has a base case that stops it.'],
+    [/^ModuleNotFoundError: No module named '(\w+)'/, 'Only Python\'s standard library is available here (math, random, collections and so on), not `$1`.'],
+    [/^UnboundLocalError: cannot access local variable '(\w+)'/, '`$1` is assigned inside this function, so Python treats it as a new local variable. Pass it in as a parameter, or write `global $1` at the start of the function.'],
+    [/^OverflowError/, 'The number is too large for this operation (for example `math.exp` of a big number, or a float that is too big).']
+  ];
+  function explainPython(msg, line, src) {
+    const L = src.split('\n');
+    let m;
+    if (/^SyntaxError: expected ':'/.test(msg)) return { text: 'Lines that start a block (`if`, `elif`, `else`, `for`, `while`, `def`, `class`, `try`, `except`, `with`) end with a colon `:`.', fix: appendToLine(L, line, ':', '#') };
+    if ((m = msg.match(/^NameError: name '(\w+)' is not defined(?:\. Did you mean: '(\w+)'\?)?/))) {
+      const name = m[1], mod = HEADER_OF.python[name];
+      if (PY_MODULES.includes(name)) return { text: `\`${name}\` is a module. Add \`import ${name}\` at the top of the file.`, fix: { label: `Add import ${name}`, edits: [{ l1: 0, c1: 0, l2: 0, c2: 0, text: `import ${name}\n` }] } };
+      if (mod && mod !== 'built-in') return { text: `\`${name}\` is in the \`${mod}\` module. Add \`from ${mod} import ${name}\` at the top, or \`import ${mod}\` and write \`${mod}.${name}\`.`, fix: { label: `Add from ${mod} import ${name}`, edits: [{ l1: 0, c1: 0, l2: 0, c2: 0, text: `from ${mod} import ${name}\n` }] } };
+      const c = m[2] || closest(name, [...KW.python, ...Object.keys(HEADER_OF.python), ...idsIn(src).filter(x => x !== name)]);
+      if (c) return { text: `Did you mean \`${c}\`? Names must be spelled exactly, and upper and lower case are different (\`True\`, \`False\`, \`None\` start with a capital).`, fix: line >= 0 ? swapWord(L, line, name, c) : null };
+      return { text: `\`${name}\` has not been given a value yet. Assign it first (for example \`${name} = 0\`), and check the spelling. To use text, put it in quotes: \`"${name}"\`.` };
+    }
+    if ((m = msg.match(/^AttributeError: .* has no attribute '(\w+)'\. Did you mean: '(\w+)'\?/))) return { text: `Did you mean \`.${m[2]}\`?`, fix: line >= 0 ? swapWord(L, line, m[1], m[2]) : null };
+    for (const [re, text] of PY_SIMPLE) if ((m = msg.match(re))) return { text: text.replace(/\$(\d)/g, (_, i) => m[i] || '') };
+    return null;
+  }
+
   function explain(p, src) {
+    if (lang === 'java') return explainJava(p, src);
     const L = src.split('\n'), msg = p.msg;
     const at = (n) => (L[p.line] || '').substr(p.col, n.length) === n;
     const swap = (n, to) => at(n) ? { label: `Change to ${to}`, edits: [{ l1: p.line, c1: p.col, l2: p.line, c2: p.col + n.length, text: to }] } : null;
@@ -501,14 +914,15 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   }
   // Group clang's output: each error or warning with its notes, source excerpt and fix-its.
   function parseDiag(diag) {
-    const head = /^(main\.cc?p?p?):(\d+):(\d+): (fatal error|error|warning|note): (.*)$/, fixit = /^fix-it:"[^"]*":\{(\d+):(\d+)-(\d+):(\d+)\}:"(.*)"$/;
+    const head = /^(main\.c|main\.cpp|Main\.java):(\d+)(?::(\d+))?: (fatal error|error|warning|note): (.*)$/, fixit = /^fix-it:"[^"]*":\{(\d+):(\d+)-(\d+):(\d+)\}:"(.*)"$/;
     const groups = []; let cur = null, item = null;
     for (const line of diag.replace(/\n$/, '').split('\n')) {
       const f = line.match(fixit);
       if (f) { if (item) item.edits.push({ l1: f[1] - 1, c1: f[2] - 1, l2: f[3] - 1, c2: f[4] - 1, text: unC(f[5]) }); continue; }
       const m = line.match(head);
       if (m) {
-        item = { file: m[1], line: m[2] - 1, col: m[3] - 1, kind: m[4], msg: m[5], lines: [line], edits: [] };
+        item = { file: m[1], line: m[2] - 1, col: m[3] ? m[3] - 1 : 0, hasCol: !!m[3], kind: m[4], msg: m[5], lines: [line], edits: [] };
+        item.pre = `${m[1]}:${m[2]}${m[3] ? ':' + m[3] : ''}`;
         if (m[4] === 'note' && cur) cur.notes.push(item); else { cur = { main: item, notes: [] }; groups.push(cur); }
       } else if (item) item.lines.push(line);
       else groups.push({ main: { lines: [line], edits: [] }, notes: [] });
@@ -525,18 +939,21 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       if (i || !it.kind) return `<span class="d">${esc(line)}</span>`;
       const kind = it.kind.includes('error') ? 'e' : it.kind === 'warning' ? 'w' : 'd';
       if (kind !== 'd' && it.line < cm.lineCount()) { const c = kind === 'e' ? 'errline' : 'warnline'; cm.addLineClass(it.line, 'background', c); marks.push([it.line, c]); }
-      return `<span class="${kind}"><span class="ln" data-line="${it.line}" data-col="${it.col}">${esc(it.file)}:${it.line + 1}:${it.col + 1}</span>${esc(line.slice(it.file.length + String(it.line + 1).length + String(it.col + 1).length + 2))}</span>`;
+      return `<span class="${kind}"><span class="ln" data-line="${it.line}" data-col="${it.col}">${esc(it.pre)}</span>${esc(line.slice(it.pre.length))}</span>`;
     }).join('\n') + '\n';
   }
   function showDiag(diag) {
     clearMarks(); fixes = [];
     if (!diag.trim()) return '';
     let html = '';
-    const onLine = new Set(), stale = cm.getValue() !== compiledSrc;
+    const onLine = new Set(), seenHints = new Set(), stale = cm.getValue() !== compiledSrc;
     for (const g of parseDiag(diag)) {
       html += itemHtml(g.main) + g.notes.map(itemHtml).join('');
       if (!suggOn() || !g.main.kind || g.main.kind === 'note') continue;
       const ex = explain(g.main, compiledSrc) || {};
+      const key = g.main.line + '|' + (ex.text || g.main.msg);   // javac can report the same problem twice on a line
+      if (seenHints.has(key)) continue;
+      seenHints.add(key);
       const opts = [];
       if (g.main.edits.length) opts.push({ label: describe(g.main.edits, compiledSrc), edits: g.main.edits });
       for (const n of g.notes) if (n.edits.length && !/to silence this warning$/.test(n.msg) || /^initialize the variable/.test(n.msg) && n.edits.length) opts.push({ label: /^did you mean '([^']+)'/.test(n.msg) ? 'Change to ' + n.msg.match(/'([^']+)'/)[1] : n.msg[0].toUpperCase() + n.msg.slice(1), edits: n.edits });
@@ -571,67 +988,272 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   $('sugg').checked = store.get('sugg') !== '0';
   $('sugg').onchange = () => { store.set('sugg', $('sugg').checked ? '1' : '0'); if (!$('sugg').checked && cm.state.completionActive) cm.state.completionActive.close(); runNow(); };
 
-  /* ---------- compiler worker ---------- */
-  const compiler = new Worker('compiler.js', { type: 'module' });
-  let ready = false, compiling = false, pending = false, reqId = 0, timer = null, reqSrc = '';
-  compiler.onmessage = ({ data }) => {
-    if (data.type === 'progress') { $('meter').hidden = false; $('bar').style.width = (100 * data.done / data.total).toFixed(1) + '%'; status('busy', `Downloading the compiler… ${Math.round(100 * data.done / data.total)}% of ${(data.total / 1048576).toFixed(0)} MB`); }
-    else if (data.type === 'ready') { ready = true; $('meter').hidden = true; status('ok', 'Compiler ready'); runNow(); }
-    else if (data.type === 'fatal') { status('err', 'Could not load the compiler'); $('out').innerHTML = `<span class="e">${esc(data.message)}</span>\n<span class="m">Check your internet connection and reload the page.</span>`; }
-    else if (data.type === 'compiled') onCompiled(data);
-  };
-  status('busy', 'Loading the compiler…');
-  compiler.postMessage({ type: 'load' });
+  /* ---------- engines: Clang for C and C++, Pyodide for Python, javac + TeaVM for Java ---------- */
+  // Each engine is loaded the first time its language is used.
+  const JAVA_BASE = 'https://cdn.jsdelivr.net/npm/@live-codes/java-wasm@0.1.0/dist/';
+  const engineOf = l => isClang(l) ? 'clang' : l;
+  const ENGINE_NAME = { clang: 'the C/C++ compiler', python: 'Python', java: 'Java' };
+  const engines = { clang: { state: 'idle' }, python: { state: 'idle' }, java: { state: 'idle' } };   // idle, loading or ready
+  let busy = false, pending = false, wantRun = false, reqId = 0, timer = null, reqSrc = '', reqLang = lang;
+  const fmtMs = ms => ms < 1000 ? Math.round(ms) + ' ms' : (ms / 1000).toFixed(1) + ' s';
+
+  function ensureEngine(eng) {
+    if (engines[eng].state !== 'idle') return;
+    engines[eng].state = 'loading';
+    if (engineOf(lang) === eng && wantRun) status('busy', `Loading ${ENGINE_NAME[eng]}…`);
+    if (eng === 'clang') loadClang(); else if (eng === 'python') loadPython(); else loadJava();
+  }
+  function engineReady(eng, label) {
+    engines[eng].state = 'ready';
+    $('meter').hidden = true;
+    if (engineOf(lang) !== eng || !wantRun) return;   // reloaded after a stop: keep "Time limit exceeded" showing
+    status('ok', `${label} ready`);
+    runNow();
+  }
+  function engineFailed(eng, message) {
+    engines[eng].state = 'idle';   // the next run tries again
+    if (engineOf(lang) !== eng) return;
+    status('err', `Could not load ${ENGINE_NAME[eng]}`);
+    $('out').innerHTML = `<span class="e">${esc(message)}</span>\n<span class="m">Check your internet connection, then edit the code or press Run now to try again.</span>`;
+  }
 
   function schedule(ms) { clearTimeout(timer); timer = setTimeout(runNow, ms); }
   function runNow() {
     clearTimeout(timer);
-    if (!ready) return;
-    if (compiling) { pending = true; return; }
-    compiling = true; pending = false; reqId++; reqSrc = cm.getValue();
-    status('busy', 'Compiling…'); exitBadge(null);
-    compiler.postMessage({ type: 'compile', id: reqId, lang, source: reqSrc, std: $('std').value, opt: $('opt').value });
+    const eng = engineOf(lang);
+    if (engines[eng].state !== 'ready') { wantRun = true; ensureEngine(eng); return; }
+    if (busy) { pending = true; return; }
+    busy = true; pending = false; wantRun = false; reqId++; reqSrc = cm.getValue(); reqLang = lang;
+    exitBadge(null);
+    if (eng !== 'clang') stopRunner();
+    if (eng === 'clang') { status('busy', 'Compiling…'); compiler.postMessage({ type: 'compile', id: reqId, lang, source: reqSrc, std: $('std').value, opt: $('opt').value }); }
+    else if (eng === 'python') runPython();
+    else runJava();
+  }
+  // the run finished: false if its result is already out of date and a new run has started instead
+  function finished() {
+    busy = false;
+    if (pending || reqLang !== lang) { runNow(); return false; }
+    compiledSrc = reqSrc;
+    return true;
+  }
+  function stopped(note, secs = 5) {
+    $('out').insertAdjacentHTML('beforeend', `\n<span class="e">Stopped after ${secs} seconds. Is there an infinite loop?</span>${note ? `\n<span class="m">${note}</span>` : ''}`);
+    status('err', 'Time limit exceeded'); exitBadge('stopped');
+  }
+  function appendChunks(chunks) {
+    let add = '';
+    chunks.forEach(([s, t]) => { add += s === 2 ? `<span class="e">${esc(t)}</span>` : esc(t); });
+    $('out').insertAdjacentHTML('beforeend', add);
+  }
+  // a hint for an error found while the program ran (Python, Java): in the output and under the line
+  function runtimeHint(ex, line, title) {
+    if (!ex || !suggOn()) return;
+    const opts = ex.fix ? [ex.fix] : [], stale = cm.getValue() !== compiledSrc;
+    const buttons = opts.map(o => { fixes.push(o); return `<button type="button" class="fix" data-fix="${fixes.length - 1}"${stale ? ' disabled' : ''}>${esc(o.label)}</button>`; }).join('');
+    const body = T(ex.text) + (buttons ? '<br>' + buttons : '');
+    $('out').insertAdjacentHTML('beforeend', `\n<span class="hint"><b>Hint:</b> ${body}</span>`);
+    if (!stale && line >= 0 && line < cm.lineCount()) {
+      const node = document.createElement('div');
+      node.className = 'hintw';
+      node.innerHTML = `<b>${esc(title)}</b><br>${body}`;
+      widgets.push(cm.addLineWidget(line, node, { noHScroll: true }));
+    }
+  }
+  function markLine(line) { if (line >= 0 && line < cm.lineCount()) { cm.addLineClass(line, 'background', 'errline'); marks.push([line, 'errline']); } }
+
+  /* C and C++: compile in one worker, run each program in a fresh worker */
+  let compiler = null;
+  function loadClang() {
+    compiler = new Worker('compiler.js', { type: 'module' });
+    compiler.onmessage = ({ data }) => {
+      if (data.type === 'progress') {
+        if (engineOf(lang) !== 'clang') return;
+        $('meter').hidden = false; $('bar').style.width = (100 * data.done / data.total).toFixed(1) + '%';
+        status('busy', `Downloading the compiler… ${Math.round(100 * data.done / data.total)}% of ${(data.total / 1048576).toFixed(0)} MB`);
+      }
+      else if (data.type === 'ready') engineReady('clang', 'Compiler');
+      else if (data.type === 'fatal') { compiler.terminate(); compiler = null; engineFailed('clang', data.message); }
+      else if (data.type === 'compiled') onCompiled(data);
+    };
+    compiler.postMessage({ type: 'load' });
   }
   let runner = null, killTimer = null, lastDiag = '';
+  function stopRunner() { if (runner) { runner.terminate(); runner = null; } clearTimeout(killTimer); }
   function onCompiled(r) {
-    compiling = false;
-    if (pending) { runNow(); return; }   // the code changed while compiling: this result is already stale
-    compiledSrc = reqSrc;
+    if (!finished()) return;   // the code changed while compiling: this result is already stale
     lastDiag = showDiag(r.diag);
     if (!r.ok) { status('err', `Compile error (${(r.ms / 1000).toFixed(1)} s)`); exitBadge(null); $('out').innerHTML = lastDiag || '<span class="e">Compilation failed.</span>'; return; }
     startRun(r.wasm, r.ms);
   }
   function startRun(wasm, cms) {
-    if (runner) runner.terminate();
-    clearTimeout(killTimer);
+    stopRunner();
     runner = new Worker('runner.js', { type: 'module' });
-    let html = lastDiag ? lastDiag + '<span class="m">— program output —</span>\n' : '', any = false;
+    let any = false;
     const out = $('out');
-    out.innerHTML = html;
+    out.innerHTML = lastDiag ? lastDiag + '<span class="m">— program output —</span>\n' : '';
     status('busy', 'Running…');
     runner.onmessage = ({ data }) => {
-      if (data.type === 'out') {
-        let add = ''; data.chunks.forEach(([s, t]) => { any = true; add += s === 2 ? `<span class="e">${esc(t)}</span>` : esc(t); });
-        out.insertAdjacentHTML('beforeend', add);
-      } else if (data.type === 'done') {
-        clearTimeout(killTimer); runner.terminate(); runner = null;
+      if (data.type === 'out') { any = true; appendChunks(data.chunks); }
+      else if (data.type === 'done') {
+        stopRunner();
         if (data.trap) { out.insertAdjacentHTML('beforeend', `\n<span class="e">Runtime error: ${esc(data.trap)}</span>\n<span class="m">(for example an out-of-bounds access, a stack overflow from deep recursion, or division by zero)</span>`); status('err', 'Crashed'); exitBadge('crashed'); return; }
         if (!any) out.insertAdjacentHTML('beforeend', '<span class="m">(the program printed nothing)</span>');
-        status('ok', `Compiled in ${(cms / 1000).toFixed(1)} s · ran in ${data.ms < 1000 ? Math.round(data.ms) + ' ms' : (data.ms / 1000).toFixed(1) + ' s'}`);
+        status('ok', `Compiled in ${(cms / 1000).toFixed(1)} s · ran in ${fmtMs(data.ms)}`);
         exitBadge(data.code);
       }
     };
     runner.onerror = e => { status('err', 'Runner failed'); out.insertAdjacentHTML('beforeend', `<span class="e">${esc(e.message || 'The runner could not start.')}</span>`); };
-    killTimer = setTimeout(() => {
-      if (!runner) return; runner.terminate(); runner = null;
-      out.insertAdjacentHTML('beforeend', '\n<span class="e">Stopped after 5 seconds. Is there an infinite loop?</span>');
-      status('err', 'Time limit exceeded'); exitBadge('stopped');
-    }, 5000);
+    killTimer = setTimeout(() => { if (!runner) return; stopRunner(); stopped(); }, 5000);
     runner.postMessage({ wasm, stdin: $('stdin').value }, [wasm.buffer]);
+  }
+
+  /* Python: one worker keeps the interpreter loaded; it is replaced if a program has to be stopped */
+  let pyWorker = null, pyKill = null, pyAny = false;
+  function loadPython() {
+    pyWorker = new Worker('python-runner.js', { type: 'module' });
+    pyWorker.onmessage = onPython;
+    pyWorker.onerror = e => { pyWorker = null; engineFailed('python', e.message || 'Python could not start.'); };
+    pyWorker.postMessage({ type: 'load' });
+  }
+  function runPython() {
+    clearMarks(); fixes = []; lastDiag = ''; pyAny = false;
+    $('out').innerHTML = '';
+    status('busy', 'Running…');
+    pyWorker.postMessage({ type: 'run', source: reqSrc, stdin: $('stdin').value });
+  }
+  function onPython({ data }) {
+    if (data.type === 'ready') engineReady('python', `Python ${data.version}`);
+    else if (data.type === 'fatal') { pyWorker.terminate(); pyWorker = null; engineFailed('python', data.message); }
+    else if (data.type === 'started') { clearTimeout(pyKill); pyKill = setTimeout(killPython, 5000); }
+    else if (data.type === 'out') { if (!pending) { pyAny = true; appendChunks(data.chunks); } }
+    else if (data.type === 'done') {
+      clearTimeout(pyKill);
+      if (!finished()) return;
+      const out = $('out');
+      if (!pyAny && !data.msg) out.insertAdjacentHTML('beforeend', '<span class="m">(the program printed nothing)</span>');
+      if (data.msg) {
+        const line = data.line - 1;
+        markLine(line);
+        runtimeHint(explainPython(data.msg, line, compiledSrc), line, data.msg);
+        status('err', /^(SyntaxError|IndentationError|TabError)/.test(data.msg) ? 'Syntax error' : 'Runtime error');
+      } else status('ok', `Ran in ${fmtMs(data.ms)}`);
+      exitBadge(data.code);
+    }
+  }
+  function killPython() {
+    pyWorker.terminate(); pyWorker = null; engines.python.state = 'idle'; busy = false;
+    stopped('Python restarts in the background, which takes a moment.');
+    ensureEngine('python');   // load a fresh interpreter, but do not run the program again by itself
+    if (pending) runNow();
+  }
+
+  /* Java: javac and TeaVM in a worker owned by the JavaWasm runtime */
+  let javaRt = null, javaRunId = 0, javaKill = null;
+  function loadScript(src) {
+    return new Promise((ok, fail) => {
+      if (window.JavaWasm) return ok();
+      const s = document.createElement('script');
+      s.src = src; s.onload = ok; s.onerror = () => fail(new Error('Could not load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function loadJava() {
+    try {
+      await loadScript(JAVA_BASE + 'java-wasm.iife.js');
+      javaRt = await JavaWasm.createRuntime({ baseUrl: new URL(JAVA_BASE, location.href).href, onProgress: javaProgress });
+      engineReady('java', 'Java');
+    } catch (e) { javaRt = null; engineFailed('java', String(e && e.message || e)); }
+  }
+  // javac wants a public class in a file named after it, and this engine has no System.exit:
+  // adjust the source without moving any line, so that error line numbers stay right
+  function javaSource(src) {
+    let s = src;
+    const pub = /\bpublic(\s+(?:final\s+|abstract\s+)*class\s+)(\w+)/.exec(s);
+    if (pub && pub[2] !== 'Main') s = s.slice(0, pub.index) + '      ' + s.slice(pub.index + 6);
+    if (/\bSystem\s*\.\s*exit\s*\(/.test(s)) {
+      s = s.replace(/\bSystem\s*\.\s*exit\s*\(/g, '__PgExit.exit(');
+      s += '\nclass __PgExit { static void exit(int c) { throw new __PgExitSignal(c); } }\nclass __PgExitSignal extends Error { __PgExitSignal(int c) { super("__PG_EXIT__" + c); } }\n';
+    }
+    return s;
+  }
+  // javac's "Main.java:3: message" lines, in the form the diagnostics view understands, with the source line
+  function javacToDiag(err, src) {
+    const L = src.split('\n');
+    return err.split('\n').map(l => {
+      const m = l.match(/^Main\.java:(\d+): (.*)$/);
+      if (!m) return l;
+      const code = L[m[1] - 1];
+      return `Main.java:${m[1]}: error: ${m[2]}` + (code != null ? `\n${String(m[1]).padStart(5)} | ${code}` : '');
+    }).join('\n');
+  }
+  const JAVA_RUNTIME = [
+    [/out of bounds|IndexOutOfBounds/i, 'An index is outside the array, list or string: valid indexes are 0 to `length - 1`. (Here an out-of-bounds access stops the program even inside `try`/`catch`.)'],
+    [/\/ by zero/, 'An integer is divided by zero (with `/` or `%`). Check the divisor first.'],
+    [/null pointer|NullPointer/i, 'A variable is `null`, so there is no object to use. Give it a value (for example with `new`) before using it.'],
+    [/call stack|StackOverflow/i, 'A method calls itself too many times. Check that the recursion has a base case that stops it.'],
+    [/For input string: "(.*)"/, '`Integer.parseInt` (or `Double.parseDouble`) could not turn `"$1"` into a number. Check the Input box.'],
+    [/NoSuchElement|No line found|No token available|InputMismatch|end of file|EOF/i, 'The program read more input than the Input box has, or found a word where it expected a number. Check the Input box.']
+  ];
+  function javaProgress() {}   // the engine does not report stages, so the time limit counts from the start of the run
+  const JAVA_LIMIT = 10000;    // compiling takes about 0.3 to 2.5 s of this
+  // the top-level class whose body contains main (the engine runs "Main" unless told otherwise)
+  function javaMainClass(src) {
+    const s = src.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/g, m => ' '.repeat(m.length));
+    const mainAt = s.search(/\bstatic\s+(?:public\s+|final\s+)*void\s+main\s*\(/);
+    if (mainAt < 0) return 'Main';
+    const re = /\b(?:class|record|enum|interface)\s+(\w+)|[{}]/g;
+    let depth = 0, top = null, m;
+    while ((m = re.exec(s)) && m.index < mainAt) {
+      if (m[0] === '{') depth++; else if (m[0] === '}') depth--; else if (depth === 0) top = m[1];
+    }
+    return top || 'Main';
+  }
+  function runJava() {
+    clearMarks(); fixes = []; lastDiag = '';
+    $('out').innerHTML = '';
+    status('busy', 'Compiling and running…');
+    const id = ++javaRunId;
+    clearTimeout(javaKill); javaKill = setTimeout(killJava, JAVA_LIMIT);
+    javaRt.run(javaSource(reqSrc), { input: $('stdin').value, mainClass: javaMainClass(reqSrc) }).then(r => onJava(id, r), e => onJava(id, { ok: false, error: String(e && e.message || e), stderr: '' }));
+  }
+  function killJava() {
+    javaRunId++;   // ignore the result if it ever arrives
+    javaRt.destroy(); javaRt = null; engines.java.state = 'idle'; busy = false;
+    stopped('Java programs get 10 seconds, compiling included. Java restarts in the background, which takes a moment. Java output appears when the program finishes, so a stopped program shows none.', 10);
+    ensureEngine('java');
+    if (pending) runNow();
+  }
+  function onJava(id, r) {
+    if (id !== javaRunId) return;
+    clearTimeout(javaKill);
+    if (!finished()) return;
+    const out = $('out'), err = String(r.stderr || r.error || '');
+    if (!r.ok && r.generateMs == null && /^Main\.java:\d+: /m.test(err)) {
+      lastDiag = showDiag(javacToDiag(err, compiledSrc));
+      out.innerHTML = lastDiag;
+      status('err', 'Compile error'); exitBadge(null);
+      return;
+    }
+    if (r.stdout) out.insertAdjacentHTML('beforeend', esc(r.stdout));
+    const exit = err.match(/__PG_EXIT__(-?\d+)/);
+    const timing = r.compileMs != null ? `Compiled in ${((r.compileMs + (r.generateMs || 0)) / 1000).toFixed(1)} s · ran in ${fmtMs(r.runMs || 0)}` : 'Ran';
+    if (r.ok || exit) {
+      if (r.ok && err) out.insertAdjacentHTML('beforeend', `<span class="e">${esc(err)}</span>`);
+      if (!r.stdout && !(r.ok && err)) out.insertAdjacentHTML('beforeend', '<span class="m">(the program printed nothing)</span>');
+      status('ok', timing); exitBadge(exit ? +exit[1] : r.exitCode);
+      return;
+    }
+    out.insertAdjacentHTML('beforeend', `${r.stdout && !r.stdout.endsWith('\n') ? '\n' : ''}<span class="e">Exception: ${esc(err || 'the program stopped with an error')}</span>`);
+    let m, ex = null;
+    for (const [re, text] of JAVA_RUNTIME) if ((m = err.match(re))) { ex = { text: text.replace(/\$(\d)/g, (_, i) => m[i] || '') }; break; }
+    runtimeHint(ex, -1, err);
+    status('err', 'Runtime error'); exitBadge(1);
   }
 
   setLang(lang);
   if (store.get('code.' + lang) == null) loadExample(Object.keys(EXAMPLES[lang])[1]);
+  runNow();   // loads the engine for this language, then runs the program
   const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`;
 
   /* ---------- desktop app only: files and exam mode (window.desktop comes from the app's preload script) ---------- */
@@ -640,8 +1262,8 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     $('filebtns').hidden = false;
     let path = null, saved = cm.getValue();
     const base = f => f.split(/[\\/]/).pop();
-    const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : lang;
-    const defaultName = () => lang === 'c' ? 'main.c' : 'main.cpp';
+    const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;
+    const defaultName = () => LANGS[lang].file;
     function update() {
       const dirty = cm.getValue() !== saved;
       $('fname').textContent = (path ? base(path) : defaultName()) + (dirty ? ' •' : '');
@@ -685,7 +1307,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       $('sugg').disabled = on;
       $('sugg').checked = on ? false : store.get('sugg') !== '0';
       if (on && cm.state.completionActive) cm.state.completionActive.close();
-      if (ready) runNow();
+      runNow();
     }
     const dlg = $('pwdlg');
     let pwMode = 'on';

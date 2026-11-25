@@ -1,10 +1,10 @@
 # Desktop app
 
-The playground wrapped in [Electron](https://www.electronjs.org/) so it works with no internet connection. Users should download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest); this page is for building it.
+The playground (C, C++, Java, Python) wrapped in [Electron](https://www.electronjs.org/) so it works with no internet connection. Users should download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest); this page is for building it.
 
 ## How it works
 
-- `scripts/prepare-web.mjs` copies the website (`../index.html`, `../compiler.js`, `../runner.js`, `../guide.js`) into `web/` and replaces every CDN address with a local copy from `node_modules`: Clang (`@yowasp/clang`), the WASI shim, CodeMirror 5 and the fonts. The build fails if anything would still be loaded from the internet.
+- `scripts/prepare-web.mjs` copies the website (`../index.html`, `../compiler.js`, `../runner.js`, `../python-runner.js`, `../guide.js`, `../guide-more.js`) into `web/` and replaces every CDN address with a local copy from `node_modules`: Clang (`@yowasp/clang`), the WASI shim, Pyodide (`pyodide`), the Java engine (`@live-codes/java-wasm`), CodeMirror 5 and the fonts. The build fails if anything would still be loaded from the internet.
 - `main.js` serves `web/` from the private `app://` scheme (module workers and WebAssembly need a real origin), blocks all `http(s)` requests, and handles the menu, files, the unsaved-changes prompt and exam mode.
 - `preload.js` gives the page `window.desktop`. The page shows New/Open/Save and listens for exam mode only when that exists, so the website is unaffected.
 - Exam mode is stored in `settings.json` in the app's user-data folder, with the password hashed by scrypt.

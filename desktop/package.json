@@ -1,19 +1,21 @@
 {
   "name": "c-cpp-playground",
   "productName": "Playground",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "devDependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
     "@fontsource/atkinson-hyperlegible": "5.3.0",
     "@fontsource/bricolage-grotesque": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
+    "@live-codes/java-wasm": "0.1.0",
     "@yowasp/clang": "22.0.0-git20695-13",
     "codemirror": "5.65.16",
     "electron": "45.5.0",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "pyodide": "314.0.8"
   },
-  "description": "Write C and C++ and see the output as you type. Works offline: Clang runs inside the app.",
+  "description": "Write C, C++, Java and Python and see the output as you type. Works offline: the compilers run inside the app.",
   "author": "Mazharul Islam",
   "license": "MIT",
   "main": "main.js",
