@@ -76,6 +76,7 @@ function buildMenu() {
     ] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Run', submenu: [{ label: 'Run now', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
+    { label: 'Guide', submenu: [{ label: 'Guide & help', accelerator: 'F1', click: send('guide') }] },
     { label: 'View', submenu: [{ role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Exam', submenu: [
       { label: 'Start exam mode…', enabled: !exam, click: send('examOn') },
