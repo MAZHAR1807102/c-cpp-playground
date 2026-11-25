@@ -1,0 +1,86 @@
+# Builds the offline desktop app for Windows and macOS.
+# Push a tag such as desktop-v1.0.0 to build both and publish them on the Releases page;
+# "Run workflow" on the Actions tab builds them without publishing (download from the run's artifacts).
+name: Desktop app
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional: add the built files to this existing release (e.g. desktop-v1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: dist:win
+            files: |
+              desktop/dist/*.exe
+          - os: macos-latest
+            script: dist:mac
+            files: |
+              desktop/dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v') || inputs.release_tag != ''
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Add the files to an existing release
+        if: inputs.release_tag != ''
+        run: gh release upload "${{ inputs.release_tag }}" out/* --clobber --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: softprops/action-gh-release@v2
+        if: inputs.release_tag == ''
+        with:
+          name: Playground ${{ github.ref_name }} (desktop app)
+          files: out/*
+          body: |
+            Playground: write and run C, C++, Java and Python with **no internet**. The compilers run inside the app.
+
+            **Windows**
+            - `Playground-…-Windows-Setup.exe`: installs the app (Start menu and desktop shortcut).
+            - `Playground-…-Windows-Portable.exe`: runs without installing, e.g. from a USB stick.
+            - The first time, Windows may say "Windows protected your PC": click **More info → Run anyway**.
+
+            **Mac** (Apple Silicon and Intel)
+            - `Playground-…-Mac.dmg`: open it and drag the app to Applications.
+            - The first time, macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway** next to the message about the app.
+            - If macOS says the app "is damaged", run this once in Terminal: `xattr -cr "/Applications/Playground.app"`
+
+            **Exam mode:** menu **Exam → Start exam mode…**, choose a password. Suggestions, error hints, examples and the header guide are turned off until the password is entered again (**Exam → End exam mode…**), even after a restart.
