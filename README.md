@@ -22,6 +22,17 @@ Write C or C++ in the browser and see the output beside the editor. There is no 
 
 Below the editor, a searchable guide lists the common headers (10 for C, 19 for C++): what each is for, its main functions with their syntax and meaning, and a runnable example that **Load into editor** opens in the editor. It follows the C/C++ switch. The data is in `guide.js`.
 
+## Desktop app (offline, with exam mode)
+
+For computers with no internet, such as an exam hall, the playground is also a desktop app for **Windows** and **macOS** (Apple Silicon and Intel). Clang, the editor, fonts, examples and the header guide are all inside it, and it never uses the network. **Download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest).**
+
+- **Windows:** `…-Windows-Setup.exe` installs it; `…-Windows-Portable.exe` runs without installing (for example from a USB stick). The first time, Windows may show "Windows protected your PC": click **More info → Run anyway**.
+- **Mac:** open the `.dmg` and drag the app to Applications. The first time, macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway**. If it says the app "is damaged", run `xattr -cr "/Applications/C and C++ Playground.app"` once in Terminal.
+- **Files:** New, Open… and Save (Ctrl/Cmd + N, O, S) work with `.c` and `.cpp` files. Closing with unsaved changes asks first.
+- **Exam mode:** **Exam → Start exam mode…** and choose a password. Suggestions, error hints, the examples and the header guide are turned off, links are blocked and an "Exam mode" badge is shown. It stays on after the app restarts until **Exam → End exam mode…** with the same password. (The password is stored hashed in the app's settings file; it stops students from switching the aids back on in the app, but it is not protection against someone who edits files on the computer.)
+
+The app's source is in [`desktop/`](desktop/). Pushing a tag such as `desktop-v1.0.1` makes GitHub Actions build both versions and publish them as a release.
+
 ## Not supported
 
 - C++ exceptions (`throw`, `try`): the bundled libc++ is built without exception support, so C++ is compiled with `-fno-exceptions`.

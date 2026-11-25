@@ -114,6 +114,21 @@ details.hdr summary::before{content:"▸"; color:var(--muted); flex:none} detail
 .hex .exin{margin-top:6px; font-size:.85rem; color:var(--muted)} .hex .exin code{font:13px "JetBrains Mono",monospace; color:var(--ink)}
 .gnone{color:var(--muted); margin:6px 0 0}
 mark{background:color-mix(in oklab,var(--warn) 30%,transparent); color:inherit; border-radius:2px}
+.files{display:inline-flex; gap:6px}
+.files[hidden]{display:none}
+.exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
+.exambadge[hidden]{display:none}
+.exam #guide, .exam #exlabel, .exam .weblink{display:none}
+.exam label.f:has(#sugg){opacity:.5}
+dialog{border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); padding:20px 22px; width:min(420px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog h3{margin:0 0 6px; font:800 1.25rem "Bricolage Grotesque",system-ui,sans-serif}
+dialog p{margin:0 0 12px; color:var(--muted); font-size:.92rem}
+.pwf{display:flex; flex-direction:column; gap:4px; margin:0 0 10px; font-size:.88rem; color:var(--muted)}
+.pwf input{font:15px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px}
+.pwf[hidden]{display:none}
+.pwerr{color:var(--err)!important; min-height:1.2em; margin:0 0 8px!important}
+.pwbtns{display:flex; justify-content:flex-end; gap:8px}
 details.help{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 14px; color:var(--muted); font-size:.9rem}
 details.help summary{cursor:pointer; color:var(--ink); font-weight:700}
 details.help li{margin:3px 0}
@@ -127,15 +142,16 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   <header>
     <div>
       <p class="eyebrow">Programming · C and C++</p>
-      <h1>C/C++ Playground</h1>
+      <h1>C/C++ Playground <span class="exambadge" id="exambadge" hidden>Exam mode</span></h1>
     </div>
   </header>
 
   <div class="bar" role="toolbar" aria-label="Settings">
+    <span class="files" id="filebtns" hidden><button class="btn" type="button" id="newBtn" title="New file (Ctrl + N)">New</button><button class="btn" type="button" id="openBtn" title="Open a .c or .cpp file (Ctrl + O)">Open…</button><button class="btn" type="button" id="saveBtn" title="Save (Ctrl + S)">Save</button></span>
     <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="c">C</button><button type="button" data-lang="cpp">C++</button></div>
     <label class="f">Standard <select id="std"></select></label>
     <label class="f">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
-    <label class="f">Example <select id="ex"></select></label>
+    <label class="f" id="exlabel">Example <select id="ex"></select></label>
     <label class="f"><input type="checkbox" id="auto" checked> Run as I type</label>
     <label class="f" title="Keyword suggestions while you type, and hints with fixes for errors"><input type="checkbox" id="sugg" checked> Suggestions</label>
     <span class="spacer"></span>
@@ -184,8 +200,19 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs immediately. Click a line number in an error message to jump to it. Your code is kept in this browser.</li>
     </ul>
   </details>
-  <footer>Made by Mazharul Islam · <a href="https://mazhar1807102.github.io/algorithm-simulations/">Algorithm simulations</a></footer>
+  <footer>Made by Mazharul Islam<span class="weblink"> · <a href="https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest">Download the offline app (Windows, Mac)</a> · <a href="https://mazhar1807102.github.io/algorithm-simulations/">Algorithm simulations</a></span></footer>
 </div>
+
+<dialog id="pwdlg" aria-labelledby="pwtitle">
+  <form id="pwform">
+    <h3 id="pwtitle">Start exam mode</h3>
+    <p id="pwtext"></p>
+    <label class="pwf">Password <input type="password" id="pw1" autocomplete="off"></label>
+    <label class="pwf" id="pw2row">Type it again <input type="password" id="pw2" autocomplete="off"></label>
+    <p class="pwerr" id="pwerr" role="alert"></p>
+    <div class="pwbtns"><button type="button" class="btn" id="pwcancel">Cancel</button><button type="submit" class="btn primary" id="pwok">OK</button></div>
+  </form>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
@@ -234,7 +261,8 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[l === 'c' ? 1 : 1]); }
   }
   function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); schedule(0); }
-  document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (!b || b.dataset.lang === lang) return; setLang(b.dataset.lang); schedule(0); });
+  document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (!b || b.dataset.lang === lang) return; setLang(b.dataset.lang, keepTextOnToggle()); schedule(0); });
+  let keepTextOnToggle = () => false;   // the desktop app keeps an open file's text when the language changes
   $('ex').onchange = () => { if ($('ex').value) loadExample($('ex').value); $('ex').value = ''; };
   $('std').onchange = () => { store.set('std.' + lang, $('std').value); schedule(0); };
   $('opt').onchange = () => schedule(0);
@@ -324,7 +352,8 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   }
   const HEADERS = { c: [...Object.keys(LIB.c), 'stddef.h', 'stdarg.h', 'float.h', 'errno.h'], cpp: ['bits/stdc++.h', ...Object.keys(LIB.cpp)] };
   const DIRECTIVES = ['include', 'define', 'undef', 'ifdef', 'ifndef', 'if', 'else', 'elif', 'endif', 'pragma'];
-  const suggOn = () => $('sugg').checked;
+  let examOn = false;   // desktop app only: set by the teacher, turns suggestions, examples and the guide off
+  const suggOn = () => $('sugg').checked && !examOn;
 
   function completions(c) {
     const cur = c.getCursor(), line = c.getLine(cur.line), before = line.slice(0, cur.ch);
@@ -356,7 +385,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     };
   }
   const HINT_OPTS = { hint: completions, completeSingle: false, closeCharacters: /[\s()\[\]{};:,=+\-*\/%&|!?."'>]/ };
-  cm.setOption('extraKeys', { ...cm.getOption('extraKeys'), 'Ctrl-Space': c => c.showHint(HINT_OPTS) });
+  cm.setOption('extraKeys', { ...cm.getOption('extraKeys'), 'Ctrl-Space': c => { if (!examOn) c.showHint(HINT_OPTS); } });
   cm.on('inputRead', (c, ch) => {
     if (!suggOn() || c.state.completionActive || ch.origin !== '+input' || ch.text.length !== 1 || ch.text[0].length !== 1) return;
     const before = c.getLine(c.getCursor().line).slice(0, c.getCursor().ch);
@@ -604,6 +633,98 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   setLang(lang);
   if (store.get('code.' + lang) == null) loadExample(Object.keys(EXAMPLES[lang])[1]);
   const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`;
+
+  /* ---------- desktop app only: files and exam mode (window.desktop comes from the app's preload script) ---------- */
+  const D = window.desktop;
+  if (D) {
+    $('filebtns').hidden = false;
+    let path = null, saved = cm.getValue();
+    const base = f => f.split(/[\\/]/).pop();
+    const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : lang;
+    const defaultName = () => lang === 'c' ? 'main.c' : 'main.cpp';
+    function update() {
+      const dirty = cm.getValue() !== saved;
+      $('fname').textContent = (path ? base(path) : defaultName()) + (dirty ? ' •' : '');
+      D.docState({ dirty, path, name: path ? base(path) : 'Untitled' });
+    }
+    keepTextOnToggle = () => !!path;
+    cm.on('changes', update);
+    document.querySelector('.seg').addEventListener('click', () => setTimeout(update, 0));
+    async function doOpen() {
+      const r = await D.openFile();
+      if (!r) return;
+      const l = langOf(r.path);
+      if (l !== lang) setLang(l, true);
+      path = r.path; saved = r.content;
+      cm.setValue(r.content); cm.clearHistory(); update(); schedule(0);
+    }
+    async function doSave(saveAs) {
+      const content = cm.getValue();
+      const p = await D.saveFile({ path: saveAs ? null : path, content, suggested: path ? base(path) : defaultName() });
+      if (!p) return false;
+      path = p; saved = content;
+      const l = langOf(p);
+      if (l !== lang) { setLang(l, true); schedule(0); }
+      update();
+      return true;
+    }
+    async function doNew() {
+      if (!(await D.discardOk())) return;
+      path = null;
+      cm.setValue(EXAMPLES[lang]['Hello, world'][0]); cm.clearHistory();
+      saved = cm.getValue(); $('stdin').value = ''; store.set('stdin.' + lang, '');
+      update(); schedule(0);
+    }
+    $('newBtn').onclick = doNew; $('openBtn').onclick = doOpen; $('saveBtn').onclick = () => doSave(false);
+
+    /* exam mode: the password is checked by the app, not by this page */
+    function applyExam(on) {
+      examOn = on;
+      document.documentElement.classList.toggle('exam', on);
+      $('exambadge').hidden = !on;
+      $('sugg').disabled = on;
+      $('sugg').checked = on ? false : store.get('sugg') !== '0';
+      if (on && cm.state.completionActive) cm.state.completionActive.close();
+      if (ready) runNow();
+    }
+    const dlg = $('pwdlg');
+    let pwMode = 'on';
+    function askPassword(mode) {
+      pwMode = mode;
+      $('pwtitle').textContent = mode === 'on' ? 'Start exam mode' : 'End exam mode';
+      $('pwtext').textContent = mode === 'on'
+        ? 'Exam mode turns off suggestions and error hints, and hides the examples and the header guide. It stays on, even after the app restarts, until this password is entered. Choose a password that students do not know.'
+        : 'Enter the password that was chosen when exam mode was started.';
+      $('pw2row').hidden = mode !== 'on';
+      $('pw1').value = $('pw2').value = ''; $('pwerr').textContent = '';
+      dlg.showModal(); $('pw1').focus();
+    }
+    $('pwcancel').onclick = () => dlg.close();
+    $('pwform').onsubmit = async e => {
+      e.preventDefault();
+      const pw = $('pw1').value;
+      if (pwMode === 'on') {
+        if (pw.length < 4) { $('pwerr').textContent = 'Use at least 4 characters.'; return; }
+        if (pw !== $('pw2').value) { $('pwerr').textContent = 'The two passwords are different.'; return; }
+        await D.examEnable(pw); dlg.close();
+      } else if (await D.examDisable(pw)) dlg.close();
+      else { $('pwerr').textContent = 'Wrong password.'; $('pw1').select(); }
+    };
+    D.onExam(applyExam);
+    D.examState().then(on => { if (on) applyExam(true); });
+
+    D.onMenu(async action => {
+      if (action === 'new') doNew();
+      else if (action === 'open') doOpen();
+      else if (action === 'save') doSave(false);
+      else if (action === 'saveAs') doSave(true);
+      else if (action === 'saveThenClose') { if (await doSave(false)) D.closeNow(); }
+      else if (action === 'run') runNow();
+      else if (action === 'examOn') askPassword('on');
+      else if (action === 'examOff') askPassword('off');
+    });
+    update();
+  }
 })();
 </script>
 </body>
