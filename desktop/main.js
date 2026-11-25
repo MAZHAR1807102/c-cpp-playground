@@ -1,7 +1,7 @@
 // Playground: the C/C++ playground as a desktop app (Electron main process).
 // The web page, Clang (WebAssembly) and every library are bundled in ./web and served from the private
 // app:// scheme, so the app never needs the internet. All http(s) requests are blocked.
-const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell, session, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell, session, nativeTheme, clipboard } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -9,7 +9,10 @@ const crypto = require('node:crypto');
 const WEB = path.join(__dirname, 'web');
 const NAME = 'Playground';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.tar': 'application/x-tar', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.zip': 'application/zip', '.whl': 'application/zip' };
-const PAGES = { editor: 'index.html', algorithms: 'algorithms.html', stl: 'stl.html', notebook: 'notebook.html' };
+const PAGES = { editor: 'index.html', algorithms: 'algorithms.html', stl: 'stl.html', notebook: 'notebook.html', practice: 'practice.html' };
+// the tabs that can be hidden with the Window menu (the page keeps the list; the menu shows it)
+const TABS = [['algorithms', 'Algorithms'], ['stl', 'C++ STL'], ['notebook', 'Notebook'], ['practice', 'Practice']];
+let tabsHidden = [];
 
 // keep settings (exam mode, saved code) in a folder with a specific name: "Playground" alone could clash with
 // another program's folder, and this is also where version 1.0.0 kept them
@@ -64,8 +67,8 @@ function createWindow() {
 function buildMenu() {
   const send = a => () => {
     if (!win) return;
-    // the STL and Algorithms pages have no files or exam dialog: those actions open the code editor first
-    if (/\/(stl|algorithms)\.html/.test(win.webContents.getURL()) && a !== 'run') {
+    // the STL, Algorithms and Practice pages have no files or exam dialog: those actions open the code editor first
+    if (/\/(stl|algorithms|practice)\.html/.test(win.webContents.getURL()) && a !== 'run' && !a.startsWith('tabs:')) {
       if (go('editor')) win.webContents.once('did-finish-load', () => win && win.webContents.send('menu', a));
       return;
     }
@@ -86,7 +89,16 @@ function buildMenu() {
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Run', submenu: [{ label: 'Run now / run cell', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
     { label: 'Guide', submenu: [{ label: 'Guide & help', accelerator: 'F1', click: send('guide') }] },
-    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
+    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { label: 'Practice (Codeforces, CodeChef)', accelerator: 'CmdOrCtrl+5', click: () => go('practice') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
+    { label: 'Window', submenu: [
+      { label: 'Tabs to show', enabled: false },
+      { label: 'Code editor (always shown)', type: 'checkbox', checked: true, enabled: false },
+      ...TABS.map(([id, label]) => ({ label, type: 'checkbox', checked: !tabsHidden.includes(id), enabled: !(exam && id !== 'notebook'),
+        click: item => win && win.webContents.send('menu', 'tabs:' + id + ':' + (item.checked ? '1' : '0')) })),
+      { type: 'separator' },
+      { role: 'minimize' },
+      ...(mac ? [{ role: 'zoom' }, { type: 'separator' }, { role: 'front' }] : [{ role: 'togglefullscreen' }])
+    ] },
     { label: 'Exam', submenu: [
       { label: 'Start exam mode…', enabled: !exam, click: send('examOn') },
       { label: 'End exam mode…', enabled: exam, click: send('examOff') }
@@ -107,6 +119,10 @@ function go(page) {
   return true;
 }
 ipcMain.on('go', (_, page) => go(page));
+// the page reports which tabs are hidden, so the Window menu's ticks match
+ipcMain.on('tabs-state', (_, list) => { if (Array.isArray(list)) { tabsHidden = list.filter(x => typeof x === 'string'); buildMenu(); } });
+// Submit on the Practice page copies the code before opening the judge in the browser
+ipcMain.handle('copy', (_, text) => { if (typeof text === 'string' && text.length < 1e6) clipboard.writeText(text); return true; });
 ipcMain.on('doc-state', (_, s) => { doc = { dirty: !!s.dirty, path: s.path || null, name: String(s.name || 'Untitled') }; setTitle(); });
 ipcMain.handle('discard-ok', () => askDiscard());
 ipcMain.handle('open-file', async (_, o) => {

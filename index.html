@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+<link rel="stylesheet" href="shell.css">
 <style>
 :root{
   --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
@@ -40,9 +41,6 @@ header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-b
 .hright{display:flex; align-items:center; gap:12px}
 h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
 .byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
-.modes{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
-.modes a{font:700 .88rem "Atkinson Hyperlegible",sans-serif; color:var(--ink); background:var(--surface); padding:7px 14px; text-decoration:none}
-.modes a[aria-current="page"]{background:var(--accent); color:var(--accent-ink)}
 .bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
 .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
 .seg button{font:700 .9rem "JetBrains Mono",monospace; border:0; background:var(--surface); color:var(--ink); padding:7px 14px; cursor:pointer}
@@ -124,6 +122,18 @@ details.hdr summary::before{content:"▸"; color:var(--muted); flex:none} detail
 mark{background:color-mix(in oklab,var(--warn) 30%,transparent); color:inherit; border-radius:2px}
 label.f[hidden]{display:none}
 #animBtn[hidden]{display:none}
+/* the practice problem pinned above the editor */
+.pbar{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:7px 12px; border-radius:10px; border:1px solid color-mix(in oklab,var(--accent) 45%,var(--line)); background:linear-gradient(90deg,color-mix(in oklab,var(--accent) 16%,var(--surface)),var(--surface))}
+.pbar[hidden]{display:none}
+.pbar svg{width:19px; height:19px; stroke:var(--accent); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+.pbar .plab{font:700 .7rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pbar .pj{font:800 .7rem "JetBrains Mono",monospace; padding:3px 6px; border-radius:5px; color:#fff; background:#1f6fb2}
+.pbar .pj.cc{background:#7b4b2a}
+.pbar a#pName{font-weight:700; color:var(--ink); text-decoration:none} .pbar a#pName:hover{color:var(--accent)}
+.pbar .prt{font:700 .78rem "JetBrains Mono",monospace; color:var(--muted)}
+.pbar .btn{padding:5px 11px; text-decoration:none}
+.ptoast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:9px; font-size:.9rem; z-index:70; max-width:min(560px,90vw); box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.ptoast[hidden]{display:none}
 /* the animation panel: on the right, over the output, so the code stays visible and editable */
 .simpanel{position:fixed; top:0; right:0; z-index:40; width:min(860px,60vw); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
 .simpanel[hidden]{display:none}
@@ -142,7 +152,7 @@ body.simopen header .hright label.f{display:none}
 .files[hidden]{display:none}
 .exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
 .exambadge[hidden]{display:none}
-.exam #guide, .exam #exlabel, .exam .weblink, .exam #toStl, .exam #toAlgo, .exam #animBtn, .exam #simPanel{display:none!important}
+.exam #guide, .exam #exlabel, .exam .weblink, .exam #animBtn, .exam #simPanel, .exam #pbar{display:none!important}
 .exam label.f:has(#sugg){opacity:.5}
 dialog{border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); padding:20px 22px; width:min(420px,calc(100vw - 32px))}
 dialog::backdrop{background:rgba(0,0,0,.5)}
@@ -170,7 +180,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 @media (max-width:900px){ .wrap{height:auto; min-height:100vh} .main{grid-template-columns:minmax(0,1fr)} .editor{min-height:420px} .out{min-height:260px} }
 </style>
 </head>
-<body>
+<body data-page="editor">
 <div class="wrap">
   <header>
     <div class="brand">
@@ -178,11 +188,21 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <p class="byline">by MAZHAR</p>
     </div>
     <div class="hright">
-      <nav class="modes" aria-label="Mode"><a href="index.html" aria-current="page">Code editor</a><a href="algorithms.html" id="toAlgo" title="Animated algorithm simulations, with the code in every language">Algorithms</a><a href="stl.html" id="toStl" title="C++ STL guide with runnable examples">C++ STL</a><a href="notebook.html" id="toNotebook" title="Python notebook for data science and machine learning">Notebook</a></nav>
+      <nav id="modes"></nav>
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button class="btn" type="button" id="menuBtn" aria-haspopup="dialog" title="Header and library guide, how it works">Guide &amp; help</button>
     </div>
   </header>
+
+  <div class="pbar" id="pbar" hidden role="region" aria-label="Practice problem">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/></svg>
+    <span class="plab">Practising</span><span class="pj" id="pJudge"></span><a id="pName" target="_blank" rel="noopener" title="Open the problem"></a><span class="prt" id="pRating"></span>
+    <span class="spacer"></span>
+    <button class="btn" type="button" id="pHints">Hints</button>
+    <button class="btn primary" type="button" id="pSubmit" title="Copy this code and open the judge's submit page">Submit ↗</button>
+    <a class="btn" href="practice.html" id="pList" title="Back to the problem list">Problems</a>
+    <button class="btn" type="button" id="pClose" title="Stop practising this problem" aria-label="Close">✕</button>
+  </div>
 
   <div class="bar" role="toolbar" aria-label="Settings">
     <span class="files" id="filebtns" hidden><button class="btn" type="button" id="newBtn" title="New file (Ctrl + N)">New</button><button class="btn" type="button" id="openBtn" title="Open a .c, .cpp, .java or .py file (Ctrl + O)">Open…</button><button class="btn" type="button" id="saveBtn" title="Save (Ctrl + S)">Save</button></span>
@@ -280,6 +300,8 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="examples-java.js"></script>
 <script src="examples-python.js"></script>
 <script src="examples-algo.js"></script>
+<script src="practice-hints.js"></script>
+<script src="shell.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -553,9 +575,10 @@ print("best:", best[0])
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[1]); }
     if (!keepText) setExample(store.get('example.' + l) || '');   // each language remembers its own example
   }
-  function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); setExample(name); schedule(0); }
+  function loadExample(name) { if (practice) stopPractice(); const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); setExample(name); schedule(0); }
   /* ---------- the animated simulation that goes with the loaded example (sims/, see examples-algo.js) ---------- */
   let curExample = '';
+  let practice = null;   // the Practice problem being solved (set further down)
   const SIMS = window.EXAMPLE_SIMS || {};
   function setExample(name) {
     curExample = name || '';
@@ -1353,6 +1376,7 @@ print("best:", best[0])
   if (handoff && LANGS[handoff.lang] && typeof handoff.code === 'string') {
     lang = handoff.lang;
     store.set('example.' + lang, handoff.example || '');
+    if (!handoff.practice) { try { localStorage.removeItem('ccp.practice.current'); } catch (_) {} }
     store.set('code.' + lang, handoff.code);
     store.set('stdin.' + lang, handoff.input || '');
   }
@@ -1361,14 +1385,42 @@ print("best:", best[0])
   runNow();   // loads the engine for this language, then runs the program
   const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`;
 
+  /* ---------- practice problem from the Practice page (practice.html) ---------- */
+  try { practice = JSON.parse(store.get('practice.current') || 'null'); } catch (_) {}
+  function showPractice() {
+    $('pbar').hidden = !practice;
+    if (!practice) return;
+    $('pJudge').textContent = practice.judge === 'cf' ? 'CF' : 'CC';
+    $('pJudge').className = 'pj ' + practice.judge;
+    $('pName').textContent = practice.id + ' · ' + practice.name;
+    $('pName').href = practice.url;
+    $('pRating').textContent = practice.rating ? 'rating ' + practice.rating : '';
+  }
+  function stopPractice() { practice = null; try { localStorage.removeItem('ccp.practice.current'); } catch (_) {} showPractice(); }
+  // keep the work on this problem, per language, so it comes back when the problem is opened again
+  cm.on('changes', () => { if (practice) store.set('practice.code.' + practice.key + '.' + lang, cm.getValue()); });
+  $('stdin').addEventListener('input', () => { if (practice) store.set('practice.input.' + practice.key, $('stdin').value); });
+  $('pHints').onclick = () => practice && PracticeHints.open(practice);
+  $('pClose').onclick = stopPractice;
+  let ptt = 0;
+  $('pSubmit').onclick = () => {
+    if (!practice) return;
+    const judge = practice.judge;
+    Practice.submit(practice, cm.getValue()).then(copied => {
+      let t = document.querySelector('.ptoast');
+      if (!t) { t = document.createElement('div'); t.className = 'ptoast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+      t.textContent = (copied ? 'Your code is copied: paste it into the submit box and choose the language there. ' : 'Copy your code (Ctrl + A, Ctrl + C) and paste it into the submit box. ') + Practice.NOTE[judge];
+      t.hidden = false; clearTimeout(ptt); ptt = setTimeout(() => { t.hidden = true; }, 8000);
+    });
+  };
+  showPractice();
+
   /* ---------- desktop app only: files and exam mode (window.desktop comes from the app's preload script) ---------- */
   const D = window.desktop;
   if (D) {
     $('filebtns').hidden = false;
-    $('toNotebook').onclick = e => { e.preventDefault(); D.go('notebook'); };
-    $('toStl').onclick = e => { e.preventDefault(); D.go('stl'); };
-    $('toAlgo').onclick = e => { e.preventDefault(); D.go('algorithms'); };
     $('simFull').onclick = e => { e.preventDefault(); D.go('algorithms'); };
+    $('pList').onclick = e => { e.preventDefault(); D.go('practice'); };
     let path = null, saved = cm.getValue();
     const base = f => f.split(/[\\/]/).pop();
     const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;
@@ -1388,6 +1440,7 @@ print("best:", best[0])
       if (l !== lang) setLang(l, true);
       path = r.path; saved = r.content;
       setExample('');
+      stopPractice();
       cm.setValue(r.content); cm.clearHistory(); update(); schedule(0);
     }
     async function doSave(saveAs) {
@@ -1403,6 +1456,7 @@ print("best:", best[0])
     async function doNew() {
       if (!(await D.discardOk())) return;
       setExample('');
+      stopPractice();
       path = null;
       cm.setValue(EXAMPLES[lang]['Hello, world'][0]); cm.clearHistory();
       saved = cm.getValue(); $('stdin').value = ''; store.set('stdin.' + lang, '');

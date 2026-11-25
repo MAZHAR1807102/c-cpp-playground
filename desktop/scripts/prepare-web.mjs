@@ -97,6 +97,9 @@ writeFileSync(join(web, 'notebook.html'), localPage('notebook.html'));
 writeFileSync(join(web, 'stl.html'), localPage('stl.html'));
 writeFileSync(join(web, 'algorithms.html'), localPage('algorithms.html'));
 for (const f of ['algorithms.js', 'examples-algo.js']) cpSync(join(root, f), join(web, f));
+// the shared tab bar and the Practice page (its problem list is a saved copy; links open in the browser)
+writeFileSync(join(web, 'practice.html'), localPage('practice.html'));
+for (const f of ['shell.js', 'shell.css', 'practice.js', 'practice-hints.js', 'practice-data.js']) cpSync(join(root, f), join(web, f));
 // the animated simulations (sims/, copied from the algorithm-simulations project by tools/sync-sims.mjs), with local fonts
 cpSync(join(root, 'sims'), join(web, 'sims'), { recursive: true });
 for (const d of readdirSync(join(web, 'sims'))) {
@@ -125,7 +128,7 @@ cpSync(join(root, 'guide-more.js'), join(web, 'guide-more.js'));
 
 // every file the page loads must now be local: fail the build if a CDN address is left anywhere it would be fetched
 const problems = [];
-for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
+for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
   const text = readFileSync(join(web, f), 'utf8');
   for (const m of text.matchAll(/(?:src|href)="(https?:[^"]+)"|import\s*\(?\s*['"](https?:[^'"]+)|=\s*'(https?:\/\/cdn[^']+)'/g)) {
     const url = m[1] || m[2] || m[3];

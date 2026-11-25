@@ -180,12 +180,11 @@
   function clearMarks(ex) { for (const h of ex.marks) ex.cm.removeLineClass(h, 'background', 'errline'); ex.marks = []; }
 
   startCompiler();
+  // a topic asked for by another page (the desktop app cannot pass a #hash when it switches pages)
+  try { const go = sessionStorage.getItem('ccp.goto'); sessionStorage.removeItem('ccp.goto'); if (go && $(go)) $(go).scrollIntoView(); } catch (_) {}
 
   /* ---------- desktop app ---------- */
   if (D) {
-    $('toEditor').onclick = e => { e.preventDefault(); D.go('editor'); };
-    $('toAlgo').onclick = e => { e.preventDefault(); D.go('algorithms'); };
-    $('toNotebook').onclick = e => { e.preventDefault(); D.go('notebook'); };
     D.docState({ dirty: false, path: null, name: 'C++ STL' });
     D.onMenu(a => { if (a === 'run' && current) run(current); });
     // the STL guide is a study aid, so exam mode hides it like the header guide

@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="shell.css">
 <style>
 :root{
   --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
@@ -39,9 +40,6 @@ header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-b
 .hright{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
 h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
 .byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
-.modes{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
-.modes a{font:700 .88rem "Atkinson Hyperlegible",sans-serif; color:var(--ink); background:var(--surface); padding:7px 14px; text-decoration:none}
-.modes a[aria-current="page"]{background:var(--accent); color:var(--accent-ink)}
 label.f{display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted)}
 select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px}
 .bar{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:8px 12px}
@@ -110,7 +108,7 @@ table.ops td:last-child{font:12.5px "JetBrains Mono",monospace; color:var(--mute
 @media (max-width:860px){ .layout{grid-template-columns:minmax(0,1fr)} nav.toc{position:static; max-height:none; display:flex; flex-wrap:wrap; gap:2px} nav.toc h3{width:100%} .exio.withinput{grid-template-columns:minmax(0,1fr)} .exio label{border-right:0; border-bottom:1px solid var(--line)} .top{position:static} html{scroll-padding-top:10px} table.ops td:first-child{width:auto} }
 </style>
 </head>
-<body>
+<body data-page="stl">
 <div class="top">
   <header>
     <div class="brand">
@@ -118,7 +116,7 @@ table.ops td:last-child{font:12.5px "JetBrains Mono",monospace; color:var(--mute
       <p class="byline">by MAZHAR</p>
     </div>
     <div class="hright">
-      <nav class="modes" aria-label="Mode"><a href="index.html" id="toEditor">Code editor</a><a href="algorithms.html" id="toAlgo">Algorithms</a><a href="stl.html" aria-current="page">C++ STL</a><a href="notebook.html" id="toNotebook">Notebook</a></nav>
+      <nav id="modes"></nav>
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
     </div>
   </header>
@@ -141,5 +139,6 @@ table.ops td:last-child{font:12.5px "JetBrains Mono",monospace; color:var(--mute
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 <script src="stl-data.js"></script>
 <script src="stl.js"></script>
+<script src="shell.js"></script>
 </body>
 </html>

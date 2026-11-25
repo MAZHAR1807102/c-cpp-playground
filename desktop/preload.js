@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('desktop', {
   discardOk: () => ipcRenderer.invoke('discard-ok'),
   openFile: o => ipcRenderer.invoke('open-file', o),
   go: page => ipcRenderer.send('go', page),
+  tabsState: hidden => ipcRenderer.send('tabs-state', hidden),
+  copy: text => ipcRenderer.invoke('copy', text),
   saveFile: o => ipcRenderer.invoke('save-file', o),
   closeNow: () => ipcRenderer.send('close-now'),
   examState: () => ipcRenderer.invoke('exam-state'),

@@ -70,11 +70,12 @@
     if (D) D.go('editor'); else location.href = 'index.html';
   };
   addEventListener('hashchange', () => show(location.hash.slice(1)));
-  show(location.hash.slice(1) || store.get('sim') || SIMS[0][1]);
+  // a topic asked for by another page (the desktop app cannot pass a #hash when it switches pages)
+  let go = '';
+  try { go = sessionStorage.getItem('ccp.goto') || ''; sessionStorage.removeItem('ccp.goto'); } catch (_) {}
+  show(location.hash.slice(1) || go || store.get('sim') || SIMS[0][1]);
 
   if (D) {
-    for (const [btn, page] of [['toEditor', 'editor'], ['toStl', 'stl'], ['toNotebook', 'notebook']])
-      $(btn).onclick = e => { e.preventDefault(); D.go(page); };
     D.docState({ dirty: false, path: null, name: 'Algorithms' });
     // the simulations are a study aid, so exam mode hides them like the guides
     const applyExam = on => {

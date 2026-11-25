@@ -34,6 +34,22 @@ In the editor, an example that has an animation shows an **▶ Animation** butto
 
 The simulations are copied into `sims/` by `node tools/sync-sims.mjs` (run it again after changing the algorithm-simulations repository, then commit `sims/`).
 
+## Practice (Codeforces and CodeChef)
+
+**Practice** (`practice.html`) lists every Codeforces problem (about 11,500) and the rated CodeChef problems (about 6,500), with filters for the judge, topics (dp, greedy, graphs, math…), a difficulty range, a name or ID search, and sorting (most solved, easiest, hardest, newest, shuffle). For each problem:
+
+- **Problem ↗** opens the statement on the judge's site.
+- **Solve in editor** opens the code editor with a starting program in C, C++, Java or Python. The problem stays pinned above the editor (with its link, hints and Submit), and the work on each problem is kept.
+- **Submit ↗** copies the code and opens the judge's submit page in the browser; paste it there and choose the language. Log in to the judge once in that browser ("Remember me") and Submit goes straight to the form after that.
+- **Hints** are given one at a time: how to read the limits, then for each of the problem's topics the idea, when it fits, the steps and common mistakes, with links to the matching animation or STL page, and finally a search for the official editorial. They are built from the problem's topics and difficulty, not written for each problem.
+- **Mark solved** and **Hide solved** keep track of progress in the browser.
+
+The lists are saved in `practice-data.js` by `node tools/fetch-problems.mjs` (Codeforces' public API and CodeChef's problem list); run it again to bring in new problems. In the desktop app the list works offline, and Problem and Submit open the browser.
+
+## Tabs and the Window menu
+
+The tab bar at the top switches between the pages. Its **Window** button (and the **Window** menu in the desktop app) chooses which tabs are shown; the code editor is always shown. The choice is remembered.
+
 ## C++ STL guide
 
 **C++ STL** at the top of the page (`stl.html`) explains the Standard Template Library topic by topic: `vector`, `string`, `array`, `deque`, `list`, `stack`, `queue`, `priority_queue`, `set`/`multiset`, `map`/`multimap`, the unordered containers, `pair`/`tuple`, `bitset`, iterators, lambdas and comparators, and the algorithms (sorting, searching, min/max, changing ranges, numeric, permutations and set operations, `all_of`/`any_of`). Each topic has a table of the main operations with their time cost and examples that can be edited and run right there (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>), with their own input box; **Open in editor** copies an example into the code editor. The content is in `stl-data.js`.
@@ -62,7 +78,7 @@ For computers with no internet, such as an exam hall, the playground is also a d
 - **Windows:** `…-Windows-Setup.exe` installs it; `…-Windows-Portable.exe` runs without installing (for example from a USB stick). The first time, Windows may show "Windows protected your PC": click **More info → Run anyway**.
 - **Mac:** open the `.dmg` and drag the app to Applications. The first time, macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway**. If it says the app "is damaged", run `xattr -cr /Applications/Playground.app` once in Terminal.
 - **Files:** New, Open… and Save (Ctrl/Cmd + N, O, S) work with `.c`, `.cpp`, `.java` and `.py` files, and with `.ipynb` notebooks in the notebook. Closing with unsaved changes asks first.
-- **Pages:** **View → Code editor** (Ctrl/Cmd + 1), **Algorithm animations** (Ctrl/Cmd + 2), **C++ STL guide** (Ctrl/Cmd + 3) and **Notebook** (Ctrl/Cmd + 4). Exam mode hides the animations and the STL guide along with the other aids.
+- **Pages:** **View → Code editor** (Ctrl/Cmd + 1), **Algorithm animations** (Ctrl/Cmd + 2), **C++ STL guide** (Ctrl/Cmd + 3) and **Notebook** (Ctrl/Cmd + 4) and **Practice** (Ctrl/Cmd + 5); **Window** chooses which tabs are shown. Exam mode hides the animations, the STL guide and Practice along with the other aids.
 - **Notebook:** The app carries numpy, pandas, scipy, scikit-learn, matplotlib, seaborn, statsmodels, sympy, networkx and openpyxl, so the notebook works offline; other libraries need the website.
 - **Exam mode:** **Exam → Start exam mode…** and choose a password. Suggestions, error hints, the examples and the guide are turned off, links are blocked and an "Exam mode" badge is shown. It stays on after the app restarts until **Exam → End exam mode…** with the same password. (The password is stored hashed in the app's settings file; it stops students from switching the aids back on in the app, but it is not protection against someone who edits files on the computer.)
 
