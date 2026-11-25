@@ -39,6 +39,7 @@ body{background:var(--bg); color:var(--ink); font:15px/1.5 "Atkinson Hyperlegibl
 header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 20px}
 .hright{display:flex; align-items:center; gap:12px}
 h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
 .bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
 .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
 .seg button{font:700 .9rem "JetBrains Mono",monospace; border:0; background:var(--surface); color:var(--ink); padding:7px 14px; cursor:pointer}
@@ -154,7 +155,10 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <body>
 <div class="wrap">
   <header>
-    <h1>Playground <span class="exambadge" id="exambadge" hidden>Exam mode</span></h1>
+    <div class="brand">
+      <h1>Playground <span class="exambadge" id="exambadge" hidden>Exam mode</span></h1>
+      <p class="byline">by MAZHAR</p>
+    </div>
     <div class="hright">
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button class="btn" type="button" id="menuBtn" aria-haspopup="dialog" title="Header and library guide, how it works">Guide &amp; help</button>

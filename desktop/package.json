@@ -1,7 +1,7 @@
 {
   "name": "c-cpp-playground",
   "productName": "Playground",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "devDependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
