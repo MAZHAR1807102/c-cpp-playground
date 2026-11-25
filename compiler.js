@@ -45,7 +45,8 @@ onmessage = async ({ data }) => {
   if (data.type !== 'compile') return;
   const { id, lang, source, std, opt } = data;
   const file = lang === 'c' ? 'main.c' : 'main.cpp';
-  const args = [file, '-o', 'main.wasm', `-${opt}`, `-std=${std}`, '-Wall', '-Wextra', '-fno-color-diagnostics', '-fmessage-length=0', '-fdiagnostics-parseable-fixits'];
+  const args = [file, '-o', 'main.wasm', `-${opt}`, `-std=${std}`, '-Wall', '-Wextra', '-fno-color-diagnostics', '-fmessage-length=0', '-fdiagnostics-parseable-fixits',
+    '-D_WASI_EMULATED_PROCESS_CLOCKS', '-lwasi-emulated-process-clocks'];   // makes clock() work (measured with the wall clock)
   if (lang === 'cpp') args.push('-fno-exceptions', '-isystem', 'extra');   // the bundled libc++ is built without exception support
   if (lang === 'c') args.push('-lm');
   let diag = '';

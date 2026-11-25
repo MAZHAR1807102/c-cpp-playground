@@ -18,6 +18,10 @@ Write C or C++ in the browser and see the output beside the editor. There is no 
 - Compile errors and warnings are listed with clickable line numbers and highlighted in the editor.
 - **Suggestions** (on by default, untick to turn off): while you type, a list offers keywords, library names (with the header they come from), names from your own code, `#include` headers and preprocessor directives (<kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it any time). Each error gets a plain-English hint under the line, and a button that applies the fix when there is an obvious one: Clang's own fix-its (missing `;`, `==` for `=`, wrong `%` code), a missing `#include`, `std::`, or a misspelled keyword such as `retrun` → `return`.
 
+## Header guide
+
+Below the editor, a searchable guide lists the common headers (10 for C, 19 for C++): what each is for, its main functions with their syntax and meaning, and a runnable example that **Load into editor** opens in the editor. It follows the C/C++ switch. The data is in `guide.js`.
+
 ## Not supported
 
 - C++ exceptions (`throw`, `try`): the bundled libc++ is built without exception support, so C++ is compiled with `-fno-exceptions`.

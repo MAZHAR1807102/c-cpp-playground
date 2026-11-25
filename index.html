@@ -89,6 +89,31 @@ textarea.stdin{border:0; resize:vertical; min-height:90px; padding:10px 14px; fo
 .meter{height:5px; width:140px; border-radius:3px; background:var(--bg); overflow:hidden} .meter i{display:block; height:100%; width:0; background:var(--accent)}
 .exit{font:700 .78rem "JetBrains Mono",monospace; padding:2px 8px; border-radius:999px; border:1px solid var(--line)}
 .exit.ok{color:var(--ok); border-color:var(--ok)} .exit.bad{color:var(--err); border-color:var(--err)}
+.guide{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px 16px}
+.ghead{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 20px; margin-bottom:12px}
+.guide h2{font:800 1.35rem/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.gsub{margin:4px 0 0; color:var(--muted); font-size:.9rem}
+#gq{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; width:min(340px,100%)}
+.glist{display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr)); gap:10px; align-items:start}
+details.hdr{border:1px solid var(--line); border-radius:8px; background:var(--code-bg); min-width:0}
+details.hdr[open]{grid-column:1/-1}
+details.hdr summary{cursor:pointer; padding:9px 12px; display:flex; flex-wrap:wrap; gap:2px 10px; align-items:baseline; list-style:none}
+details.hdr summary .habout{flex:1 1 220px}
+details.hdr summary::-webkit-details-marker{display:none}
+details.hdr summary::before{content:"▸"; color:var(--muted); flex:none} details.hdr[open] summary::before{content:"▾"}
+.hname{font:700 .95rem "JetBrains Mono",monospace; color:var(--accent); flex:none}
+.habout{color:var(--muted); font-size:.88rem; min-width:0}
+.hbody{padding:0 12px 12px}
+.hrow{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:4px 16px; padding:7px 0; border-top:1px solid var(--line)}
+.hrow code{font:13px/1.5 "JetBrains Mono",monospace; color:var(--ink); white-space:pre-wrap; word-break:break-word}
+.hrow span{font-size:.9rem}
+@media (max-width:640px){ .hrow{grid-template-columns:minmax(0,1fr)} }
+.hex{margin-top:10px}
+.hex .exhead{display:flex; align-items:center; justify-content:space-between; gap:10px; font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+.hex pre{margin:0; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:var(--surface); font:13px/1.5 "JetBrains Mono",monospace; overflow:auto; max-height:340px}
+.hex .exin{margin-top:6px; font-size:.85rem; color:var(--muted)} .hex .exin code{font:13px "JetBrains Mono",monospace; color:var(--ink)}
+.gnone{color:var(--muted); margin:6px 0 0}
+mark{background:color-mix(in oklab,var(--warn) 30%,transparent); color:inherit; border-radius:2px}
 details.help{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 14px; color:var(--muted); font-size:.9rem}
 details.help summary{cursor:pointer; color:var(--ink); font-weight:700}
 details.help li{margin:3px 0}
@@ -134,6 +159,18 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     </div>
   </div>
 
+  <section class="guide" id="guide" aria-labelledby="guide-title">
+    <div class="ghead">
+      <div>
+        <h2 id="guide-title">Header guide</h2>
+        <p class="gsub" id="gsub">Which header to include for each function, how to write it, and what it does.</p>
+      </div>
+      <input type="search" id="gq" placeholder="Search, e.g. sort, strlen, setprecision" aria-label="Search the header guide" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="glist" id="glist"></div>
+    <p class="gnone" id="gnone" hidden>Nothing matches. Try a function name such as <code>printf</code> or <code>push_back</code>.</p>
+  </section>
+
   <details class="help">
     <summary>How it works and what is supported</summary>
     <ul>
@@ -155,6 +192,8 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/runmode/runmode.min.js"></script>
+<script src="guide.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -191,6 +230,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     $('fname').textContent = l === 'c' ? 'main.c' : 'main.cpp';
     $('std').innerHTML = STDS[l].map(s => `<option>${s}</option>`).join(''); $('std').value = store.get('std.' + l) || STDS[l][0];
     $('ex').innerHTML = '<option value="">Choose…</option>' + Object.keys(EXAMPLES[l]).map(k => `<option>${k}</option>`).join('');
+    renderGuide();
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[l === 'c' ? 1 : 1]); }
   }
   function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); schedule(0); }
@@ -204,6 +244,42 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   cm.on('changes', () => { store.set('code.' + lang, cm.getValue()); if ($('auto').checked) schedule(650); });
   cm.on('cursorActivity', () => { const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`; });
   $('stdin').addEventListener('input', () => { store.set('stdin.' + lang, $('stdin').value); if ($('auto').checked) schedule(650); });
+
+  /* ---------- header guide ---------- */
+  function renderGuide() {
+    const q = $('gq').value.trim().toLowerCase(), data = window.HEADER_GUIDE ? HEADER_GUIDE[lang] : [];
+    const hl = s => {
+      if (!q) return esc(s);
+      let out = '', i = 0, j;
+      const low = s.toLowerCase();
+      for (; (j = low.indexOf(q, i)) >= 0; i = j + q.length) out += esc(s.slice(i, j)) + '<mark>' + esc(s.slice(j, j + q.length)) + '</mark>';
+      return out + esc(s.slice(i));
+    };
+    $('gsub').textContent = `${lang === 'c' ? 'C' : 'C++'} headers: which one to include for each function, how to write it, and what it does. Switch the language above for ${lang === 'c' ? 'C++' : 'C'}.`;
+    let shown = 0;
+    $('glist').innerHTML = data.map((g, gi) => {
+      const headerHit = q && g.h.toLowerCase().includes(q);
+      const rows = g.items.filter(([s, d]) => !q || headerHit || (s + ' ' + d).toLowerCase().includes(q));
+      if (q && !rows.length) return '';
+      shown++;
+      return `<details class="hdr"${q ? ' open' : ''}><summary><span class="hname">${hl('#include <' + g.h + '>')}</span><span class="habout">${esc(g.about)}</span></summary><div class="hbody">`
+        + rows.map(([s, d]) => `<div class="hrow"><code>${hl(s)}</code><span>${hl(d)}</span></div>`).join('')
+        + (g.ex ? `<div class="hex"><div class="exhead">Example<button type="button" class="fix exbtn" data-ex="${gi}">Load into editor</button></div><pre class="cm-s-default" data-code="${gi}"></pre>${g.input ? `<div class="exin">Input: <code>${esc(g.input.replace(/\n/g, ' ⏎ '))}</code></div>` : ''}</div>` : '')
+        + '</div></details>';
+    }).join('');
+    $('gnone').hidden = shown > 0;
+    $('glist').querySelectorAll('pre[data-code]').forEach(pre => CodeMirror.runMode(data[+pre.dataset.code].ex, lang === 'c' ? 'text/x-csrc' : 'text/x-c++src', pre));
+  }
+  $('gq').addEventListener('input', () => renderGuide());
+  $('glist').addEventListener('click', e => {
+    const b = e.target.closest('[data-ex]');
+    if (!b) return;
+    const g = HEADER_GUIDE[lang][+b.dataset.ex];
+    if (cm.getValue().trim() && cm.getValue() !== g.ex && !confirm('Replace the code in the editor with this example?')) return;
+    cm.setValue(g.ex); $('stdin').value = g.input || ''; store.set('stdin.' + lang, g.input || '');
+    schedule(0);
+    document.querySelector('.main').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   /* ---------- status ---------- */
   function status(kind, text) { $('dot').className = 'dot ' + kind; $('stat').textContent = text; }
@@ -459,7 +535,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     const e = f.edits[0]; cm.focus(); cm.setCursor(P(e.l1, e.c1 + e.text.length));
     if (!$('auto').checked) runNow();
   }
-  document.addEventListener('click', e => { const b = e.target.closest('.fix'); if (b && !b.disabled) applyFix(+b.dataset.fix); });
+  document.addEventListener('click', e => { const b = e.target.closest('.fix:not(.exbtn)'); if (b && !b.disabled) applyFix(+b.dataset.fix); });
   $('out').addEventListener('click', e => { const t = e.target.closest('.ln'); if (!t) return; cm.focus(); cm.setCursor({ line: +t.dataset.line, ch: +t.dataset.col }); cm.scrollIntoView(null, 80); });
   // once the code is edited, the hints refer to old positions: hide the editor hints and disable the buttons
   cm.on('changes', () => { clearWidgets(); document.querySelectorAll('#out .fix').forEach(b => b.disabled = true); });
