@@ -13,9 +13,10 @@ Write C or C++ in the browser and see the output beside the editor. There is no 
 ## Supported
 
 - C (C89 to C23) and C++ (C++11 to C++23), `-O0` to `-O2`, warnings with `-Wall -Wextra`.
+- `#include <bits/stdc++.h>` in C++. libc++ has no such header, so `compiler.js` supplies one that includes every standard header that compiles here (all but `<csetjmp>` and `<csignal>`), guarded by `__cplusplus` for each standard.
 - Standard input from the Input box (read all at once; end-of-file after that).
 - Compile errors and warnings are listed with clickable line numbers and highlighted in the editor.
-- **Suggestions** (on by default, untick to turn off): while you type, a list offers keywords, library names (with the header they come from), names from your own code, `#include` headers and preprocessor directives (<kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it any time). Each error gets a plain-English hint under the line, and a button that applies the fix when there is an obvious one: Clang's own fix-its (missing `;`, `==` for `=`, wrong `%` code), a missing `#include`, `std::`, or a misspelt keyword such as `retrun` → `return`.
+- **Suggestions** (on by default, untick to turn off): while you type, a list offers keywords, library names (with the header they come from), names from your own code, `#include` headers and preprocessor directives (<kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it any time). Each error gets a plain-English hint under the line, and a button that applies the fix when there is an obvious one: Clang's own fix-its (missing `;`, `==` for `=`, wrong `%` code), a missing `#include`, `std::`, or a misspelled keyword such as `retrun` → `return`.
 
 ## Not supported
 

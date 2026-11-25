@@ -103,7 +103,6 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     <div>
       <p class="eyebrow">Programming · C and C++</p>
       <h1>C/C++ Playground</h1>
-      <p class="lede">Type C or C++ on the left. There is no compile button: a moment after you stop typing, the program is compiled with Clang and run in your browser, and its output appears on the right.</p>
     </div>
   </header>
 
@@ -141,6 +140,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <li>The compiler is Clang/LLVM 22 compiled to WebAssembly (the <a href="https://yowasp.org/">YoWASP</a> build). The first visit downloads about 100 MB; later visits load it from the browser cache.</li>
       <li>Your program is compiled to WebAssembly (WASI) and run by <a href="https://github.com/bjorn3/browser_wasi_shim">browser_wasi_shim</a> in a separate worker. Nothing is sent to a server.</li>
       <li>Standard input is the text in the Input box, read all at once. A program that waits for more input than you gave sees end-of-file.</li>
+      <li><code>#include &lt;bits/stdc++.h&gt;</code> works in C++: it includes every standard header (except <code>&lt;csetjmp&gt;</code> and <code>&lt;csignal&gt;</code>, which WebAssembly cannot support). It makes compiling take a second or so longer.</li>
       <li>C++ is compiled with <code>-fno-exceptions</code>: <code>throw</code> and <code>try</code> are not available. Threads, networking and files outside the program are not available either.</li>
       <li>A run is stopped after 5 seconds, so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
       <li>With <b>Suggestions</b> on, a list of keywords, library names and names from your code appears as you type (pick with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Esc</kbd>, open it any time with <kbd>Ctrl</kbd> + <kbd>Space</kbd>). Errors get a short explanation and, when there is an obvious fix, a button that applies it. Untick Suggestions to turn both off.</li>
@@ -246,7 +246,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     for (const [h, names] of Object.entries(LIB[l])) for (const n of names.split(' ')) if (!HEADER_OF[l][n]) HEADER_OF[l][n] = h;
     POOL[l] = [...KW[l].map(t => ({ text: t, tag: 'keyword' })), ...Object.entries(HEADER_OF[l]).filter(([n]) => !KW[l].includes(n)).map(([n, h]) => ({ text: n, tag: '<' + h + '>' }))];
   }
-  const HEADERS = { c: [...Object.keys(LIB.c), 'stddef.h', 'stdarg.h', 'float.h', 'errno.h'], cpp: Object.keys(LIB.cpp) };
+  const HEADERS = { c: [...Object.keys(LIB.c), 'stddef.h', 'stdarg.h', 'float.h', 'errno.h'], cpp: ['bits/stdc++.h', ...Object.keys(LIB.cpp)] };
   const DIRECTIVES = ['include', 'define', 'undef', 'ifdef', 'ifndef', 'if', 'else', 'elif', 'endif', 'pragma'];
   const suggOn = () => $('sugg').checked;
 
@@ -352,7 +352,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     const swap = (n, to) => at(n) ? { label: `Change to ${to}`, edits: [{ l1: p.line, c1: p.col, l2: p.line, c2: p.col + n.length, text: to }] } : null;
     let m;
     if ((m = msg.match(/^'([^']+)' file not found/))) {
-      if (m[1].startsWith('bits/')) return { text: '`<bits/stdc++.h>` exists only in GCC. Include the headers you use instead, such as `<iostream>`, `<vector>`, `<algorithm>` and `<string>`.', fix: L[p.line] != null ? { label: 'Use the common headers', edits: [{ l1: p.line, c1: 0, l2: p.line, c2: L[p.line].length, text: '#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <string>' }] } : null };
+      if (m[1] === 'bits/stdc++.h' && lang === 'c') return { text: '`<bits/stdc++.h>` is a C++ header, but the language is set to C. Switch the language to C++, or include C headers such as `<stdio.h>`.' };
       const c = closest(m[1], HEADERS[lang]), k = (L[p.line] || '').indexOf(m[1]);
       if (lang === 'c' && LIB.cpp[m[1]] != null) return { text: `\`<${m[1]}>\` is a C++ header, but the language is set to C. Switch to C++, or use C headers such as \`<stdio.h>\`.` };
       return { text: c ? `There is no header \`<${m[1]}>\`. Did you mean \`<${c}>\`?` : `There is no header \`<${m[1]}>\`. Check the spelling.`, fix: c && k >= 0 ? { label: `Change to <${c}>`, edits: [{ l1: p.line, c1: k, l2: p.line, c2: k + m[1].length, text: c }] } : null };
