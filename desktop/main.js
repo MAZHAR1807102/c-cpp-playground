@@ -1,4 +1,4 @@
-// C/C++ Playground desktop app (Electron main process).
+// Playground: the C/C++ playground as a desktop app (Electron main process).
 // The web page, Clang (WebAssembly) and every library are bundled in ./web and served from the private
 // app:// scheme, so the app never needs the internet. All http(s) requests are blocked.
 const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell, session } = require('electron');
@@ -7,8 +7,12 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 
 const WEB = path.join(__dirname, 'web');
-const NAME = 'C/C++ Playground';
+const NAME = 'Playground';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.tar': 'application/x-tar', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+
+// keep settings (exam mode, saved code) in a folder with a specific name: "Playground" alone could clash with
+// another program's folder, and this is also where version 1.0.0 kept them
+app.setPath('userData', path.join(app.getPath('appData'), 'C and C++ Playground'));
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -39,6 +43,7 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: !app.isPackaged, spellcheck: false }
   });
   win.once('ready-to-show', () => win.show());
+  win.on('page-title-updated', e => e.preventDefault());   // the window title is set by setTitle(), not by the page
   win.loadURL('app://playground/index.html');
   // links never navigate the app window; outside exam mode they open in the normal browser
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); if (!examOn() && /^https?:/.test(url)) shell.openExternal(url); } });

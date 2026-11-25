@@ -1,7 +1,7 @@
 {
   "name": "c-cpp-playground",
-  "productName": "C and C++ Playground",
-  "version": "1.0.0",
+  "productName": "Playground",
+  "version": "1.0.1",
   "private": true,
   "devDependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
@@ -25,7 +25,7 @@
   },
   "build": {
     "appId": "io.github.mazhar1807102.cppplayground",
-    "productName": "C and C++ Playground",
+    "productName": "Playground",
     "copyright": "Copyright © 2026 Mazharul Islam",
     "directories": {
       "output": "dist",
@@ -38,7 +38,7 @@
       "web/**/*"
     ],
     "asar": true,
-    "artifactName": "CPP-Playground-${version}-${os}-${arch}.${ext}",
+    "artifactName": "Playground-${version}-${os}-${arch}.${ext}",
     "win": {
       "target": [
         {
@@ -61,11 +61,11 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "C and C++ Playground",
-      "artifactName": "CPP-Playground-${version}-Windows-Setup.${ext}"
+      "shortcutName": "Playground",
+      "artifactName": "Playground-${version}-Windows-Setup.${ext}"
     },
     "portable": {
-      "artifactName": "CPP-Playground-${version}-Windows-Portable.${ext}"
+      "artifactName": "Playground-${version}-Windows-Portable.${ext}"
     },
     "mac": {
       "target": [
@@ -79,10 +79,10 @@
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.png",
       "identity": null,
-      "artifactName": "CPP-Playground-${version}-Mac.${ext}"
+      "artifactName": "Playground-${version}-Mac.${ext}"
     },
     "dmg": {
-      "title": "C and C++ Playground"
+      "title": "Playground"
     },
     "afterPack": "scripts/after-pack.cjs"
   }
