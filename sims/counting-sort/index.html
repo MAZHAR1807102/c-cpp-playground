@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step counting sort: counting, prefix sums and stable right-to-left placement.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Counting Sort Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Lecture 3 · Θ(n + k)</p>
+    <h1>Counting Sort, step by step</h1>
+    <p class="lede">Count each key, turn the counts into prefix sums, then place every key from right to left. Equal keys carry a letter (3<sub>a</sub>, 3<sub>b</sub>, 3<sub>c</sub>) so you can watch them keep their order.</p>
+    <nav class="sortnav" aria-label="Sorting simulations">
+      <a href="../insertion-sort/">Insertion sort</a>
+      <a href="../bubble-sort/">Bubble sort</a>
+      <a href="../counting-sort/" aria-current="page">Counting sort</a>
+      <a href="../merge-sort/">Merge sort</a>
+      <a href="../quick-sort/">Quick sort</a>
+    </nav>
+  </header>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow"><label for="inA">Array A (integers 0–20, up to 16 keys)</label><input type="text" id="inA" value="2 5 3 0 2 3 0 3"></div>
+    <div class="field"><label for="inK">k (blank = max)</label><input type="number" id="inK" min="0" max="20" placeholder="auto"></div>
+    <div class="field"><label for="inDir">Scan in loop 3</label>
+      <select id="inDir"><option value="rtl">Right to left (stable)</option><option value="ltr">Left to right (not stable)</option></select></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bRand">Random</button>
+    <button class="btn" type="button" id="bLec">Lecture example</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <ol class="phases" id="phases">
+    <li data-p="1"><b>1</b>Count</li>
+    <li data-p="2"><b>2</b>Prefix sums</li>
+    <li data-p="3"><b>3</b>Place into B</li>
+    <li data-p="4"><b>✓</b>Sorted</li>
+  </ol>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>A<span>input, positions 1..n</span></h2></div>
+        <div class="scroll"><div class="grid" id="gA"></div></div>
+      </div>
+      <div class="arr">
+        <div class="arr-head"><h2>C<span>one counter per key value 0..k</span></h2></div>
+        <div class="scroll">
+          <div class="grid" id="gC"></div>
+          <div class="snap">
+            <div class="snaplabel">C after counting</div><div class="snaprow" id="sCnt"></div>
+            <div class="snaplabel">C after prefix sums</div><div class="snaprow" id="sPre"></div>
+          </div>
+        </div>
+      </div>
+      <div class="arr">
+        <div class="arr-head"><h2>B<span>output, positions 1..n</span></h2></div>
+        <div class="scroll"><div class="grid" id="gB"></div></div>
+      </div>
+      <div class="legend">
+        <span><i style="border-color:var(--accent)"></i>current key</span>
+        <span><i style="border-color:var(--inc)"></i>count +1</span>
+        <span><i style="border-color:var(--src);border-style:dashed"></i>added from</span>
+        <span><i style="border-color:var(--read)"></i>read position</span>
+        <span><i style="border-color:var(--dec)"></i>counter −1</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card code">
+        <h2>Pseudocode</h2>
+        <ol id="code">
+          <li data-l="1">let C[0..k] be a new array of zeros</li>
+          <li data-l="2"><span class="kw">for</span> j ← 1 <span class="kw">to</span> n</li>
+          <li data-l="3">    C[A[j]] ← C[A[j]] + 1</li>
+          <li data-l="4"><span class="kw">for</span> v ← 1 <span class="kw">to</span> k</li>
+          <li data-l="5">    C[v] ← C[v] + C[v−1]</li>
+          <li data-l="6" id="line6"></li>
+          <li data-l="7">    B[C[A[j]]] ← A[j]</li>
+          <li data-l="8">    C[A[j]] ← C[A[j]] − 1</li>
+        </ol>
+      </section>
+      <section class="card vars">
+        <h2>Variables</h2>
+        <dl id="vars"></dl>
+        <div class="iter"><span id="iterTxt"></span><div class="meter"><i id="iterBar"></i></div></div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace of loop 3</h2>
+    <p>Same columns as the table in the lecture note. A row appears each time a key is placed.</p>
+    <div class="tscroll"><table>
+      <thead><tr><th>j</th><th>A[j]</th><th>C[A[j]]</th><th>place at B[·]</th><th>new C[A[j]]</th><th>B so far</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Why right to left?</h2><p>After prefix sums, <strong>C[v] is the last slot</strong> reserved for value v. Scanning from the right puts the last copy of v in the last slot, the copy before it one slot earlier, and so on. Equal keys keep their input order, so the sort is <strong>stable</strong>. Switch the scan to left to right and run again: the equal keys come out reversed.</p></div>
+    <div class="card"><h2>Cost</h2><p>Loop 1 runs <strong>n</strong> times, loop 2 runs <strong>k</strong> times, loop 3 runs <strong>n</strong> times, so time is <strong>Θ(n + k)</strong>, and C plus B need Θ(n + k) extra memory. No two keys are ever compared. It is linear only when k = O(n).</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const LECTURE = [2,5,3,0,2,3,0,3];
+  const SPEEDS = [1700,1150,750,450,240];
+  let A = LECTURE.slice(), K = 5, RTL = true, steps = [], cur = 0, timer = null, lastShown = -1;
+
+  function tags(arr){ const seen = {}; return arr.map(v => { seen[v] = seen[v] || 0; return String.fromCharCode(97 + seen[v]++); }); }
+
+  function build(){
+    const n = A.length, tg = tags(A), dup = {};
+    A.forEach(v => dup[v] = (dup[v] || 0) + 1);
+    const items = A.map((v, i) => ({ v, j: i + 1, t: dup[v] > 1 ? tg[i] : '' }));
+    const C = new Array(K + 1).fill(0), B = new Array(n).fill(null), log = [];
+    const total = 2 * n + K;
+    let cnt = null, pre = null, iter = 0;
+    const S = [];
+    const push = o => S.push(Object.assign({ C: C.slice(), B: B.slice(), log: log.slice(), cnt, pre, iter, total, hiA: [], hiC: {}, hiB: [], vars: {} }, o));
+
+    push({ phase: 1, line: 1, msg: `n = ${n}, k = ${K}. Make <code>C[0..${K}]</code> full of zeros: one counter for each possible key value.` });
+
+    for (let j = 1; j <= n; j++) {
+      const v = A[j - 1]; C[v]++; iter++;
+      push({ phase: 1, line: 3, hiA: [j], hiC: { [v]: 'inc' }, vars: { j, 'A[j]': v, 'C[A[j]]': C[v] },
+        msg: `j = ${j}: <code>A[${j}] = ${v}</code>, so <code>C[${v}]</code> goes up to <b>${C[v]}</b>.` });
+    }
+    cnt = C.slice();
+    push({ phase: 1, line: 2, msg: `Counting done. Now <code>C[v]</code> = how many keys are equal to v. For example, ${describeCounts(cnt)}.` });
+
+    for (let v = 1; v <= K; v++) {
+      const old = C[v]; C[v] += C[v - 1]; iter++;
+      push({ phase: 2, line: 5, hiC: { [v - 1]: 'src', [v]: 'dst' }, vars: { v, 'C[v−1]': C[v - 1], 'C[v]': C[v] },
+        msg: `<code>C[${v}] = ${old} + C[${v - 1}] = ${old} + ${C[v - 1]} = <b>${C[v]}</b></code>. So ${C[v]} key${C[v] === 1 ? ' is' : 's are'} ≤ ${v}.` });
+    }
+    pre = C.slice();
+    push({ phase: 2, line: 4, msg: `Prefix sums done. <code>C[v]</code> is now the <b>last position</b> for value v: ${describeRanges(cnt, pre)}.` });
+
+    const order = [];
+    for (let j = 1; j <= n; j++) order.push(j);
+    if (RTL) order.reverse();
+    for (const j of order) {
+      const it = items[j - 1], v = it.v, p = C[v];
+      B[p - 1] = it; iter++;
+      log.push({ j, v, t: it.t, p, nc: p - 1, B: B.map(x => x ? String(x.v) : '-').join(' ') });
+      push({ phase: 3, line: 7, hiA: [j], hiC: { [v]: 'read' }, hiB: [p], fly: { j, p }, vars: { j, 'A[j]': v, 'C[A[j]]': p },
+        msg: `j = ${j}: <code>A[${j}] = ${v}${it.t ? '<sub>' + it.t + '</sub>' : ''}</code>. <code>C[${v}] = ${p}</code>, so it goes to <code>B[${p}]</code>.` });
+      C[v]--;
+      push({ phase: 3, line: 8, hiA: [j], hiC: { [v]: 'dec' }, hiB: [p], vars: { j, 'A[j]': v, 'C[A[j]]': C[v] },
+        msg: `Decrease <code>C[${v}]</code> to <b>${C[v]}</b>. ` + (C[v] > (pre[v] - cnt[v]) ? `The next ${v} will go one slot to the left, at <code>B[${C[v]}]</code>.` : `All copies of ${v} are placed.`) });
+    }
+    push({ phase: 4, line: 0, msg: finalMsg(B) });
+    return S;
+  }
+
+  function describeCounts(c){
+    const parts = []; c.forEach((x, v) => { if (x) parts.push(`${x} × ${v}`); });
+    return parts.slice(0, 4).join(', ') + (parts.length > 4 ? ', …' : '');
+  }
+  function describeRanges(c, p){
+    const parts = [];
+    c.forEach((x, v) => { if (x) parts.push(x === 1 ? `${v} → B[${p[v]}]` : `${v}s → B[${p[v] - x + 1}..${p[v]}]`); });
+    return parts.join(', ');
+  }
+  function finalMsg(B){
+    const groups = {};
+    B.forEach(x => { if (x.t) (groups[x.v] = groups[x.v] || []).push(x.t); });
+    const keys = Object.keys(groups);
+    if (!keys.length) return `Sorted: <code>${B.map(x => x.v).join(' ')}</code>. No equal keys here, so stability cannot be seen. Try an input with repeats.`;
+    const v = keys.reduce((a, b) => groups[b].length > groups[a].length ? b : a);
+    const seq = groups[v].map(t => `${v}<sub>${t}</sub>`).join(' ');
+    return RTL
+      ? `Sorted: <code>${B.map(x => x.v).join(' ')}</code>. Equal keys kept their input order (${seq}), so the sort is <b>stable</b>.`
+      : `Sorted values, but equal keys came out <b>reversed</b> (${seq}). Scanning left to right is <b>not stable</b>.`;
+  }
+
+  /* ---------- rendering ---------- */
+  const cellsHTML = (labels, cells) => labels.map((l, i) => l + cells[i]).join('');  // label then cell, column by column
+
+  function render(){
+    const s = steps[cur], n = A.length;
+    $('msg').innerHTML = s.msg;
+
+    const placed = new Set(s.B.filter(Boolean).map(x => x.j));
+    const tg = tags(A), dup = {}; A.forEach(v => dup[v] = (dup[v] || 0) + 1);
+    let la = [], ca = [];
+    A.forEach((v, i) => {
+      const j = i + 1, hi = s.hiA.includes(j);
+      la.push(`<div class="idx${hi ? ' hot' : ''}" style="grid-row:1">${j}</div>`);
+      ca.push(`<div class="cell key v${v % 8}${hi ? ' hi' : ''}${placed.has(j) && !hi ? ' used' : ''}" data-a="${j}" style="grid-row:2">${v}${dup[v] > 1 ? `<sub>${tg[i]}</sub>` : ''}</div>`);
+    });
+    $('gA').innerHTML = cellsHTML(la, ca);
+
+    let lc = [], cc = [];
+    s.C.forEach((x, v) => {
+      const h = s.hiC[v] || '';
+      lc.push(`<div class="idx${h ? ' hot' : ''}" style="grid-row:1">${v}</div>`);
+      cc.push(`<div class="cell ${h}" style="grid-row:2">${x}</div>`);
+    });
+    $('gC').innerHTML = cellsHTML(lc, cc);
+    const snap = (arr, el) => { el.className = 'snaprow' + (arr ? '' : ' off'); el.innerHTML = (arr || s.C.map(() => '–')).map(x => `<span>${x}</span>`).join(''); };
+    snap(s.cnt, $('sCnt')); snap(s.pre, $('sPre'));
+
+    let lb = [], cb = [];
+    s.B.forEach((x, i) => {
+      const p = i + 1, hi = s.hiB.includes(p);
+      lb.push(`<div class="idx${hi ? ' hot' : ''}" style="grid-row:1">${p}</div>`);
+      cb.push(x ? `<div class="cell key v${x.v % 8}${hi ? ' hi' : ''}" data-b="${p}" style="grid-row:2">${x.v}${x.t ? `<sub>${x.t}</sub>` : ''}</div>`
+                : `<div class="cell empty" data-b="${p}" style="grid-row:2">·</div>`);
+    });
+    $('gB').innerHTML = cellsHTML(lb, cb);
+
+    document.querySelectorAll('#code li').forEach(li => li.classList.toggle('on', +li.dataset.l === s.line));
+    document.querySelectorAll('#phases li').forEach(li => { const p = +li.dataset.p; li.classList.toggle('on', p === s.phase); li.classList.toggle('past', p < s.phase); });
+
+    const vk = Object.keys(s.vars);
+    $('vars').innerHTML = vk.length ? vk.map(k => `<div><dt>${k}</dt><dd>${s.vars[k]}</dd></div>`).join('')
+      : `<div><dt>n</dt><dd>${n}</dd></div><div><dt>k</dt><dd>${K}</dd></div>`;
+    $('iterTxt').textContent = `Loop iterations: ${s.iter} of n + k + n = ${n} + ${K} + ${n} = ${s.total}`;
+    $('iterBar').style.width = (100 * s.iter / s.total) + '%';
+
+    $('tbody').innerHTML = s.log.length
+      ? s.log.map((r, i) => `<tr class="${i === s.log.length - 1 && s.phase === 3 ? 'last' : ''}"><td>${r.j}</td><td>${r.v}${r.t ? '<sub>' + r.t + '</sub>' : ''}</td><td>${r.p}</td><td>${r.p}</td><td>${r.nc}</td><td class="bs">${r.B}</td></tr>`).join('')
+      : `<tr class="tempty"><td colspan="6">Rows appear when loop 3 starts.</td></tr>`;
+
+    $('scrub').max = steps.length - 1; $('scrub').value = cur;
+    $('count').textContent = `Step ${cur + 1} / ${steps.length}`;
+    $('bFirst').disabled = $('bPrev').disabled = cur === 0;
+    $('bLast').disabled = $('bNext').disabled = cur === steps.length - 1;
+
+    if (s.fly && lastShown === cur - 1) fly(s.fly);
+    lastShown = cur;
+  }
+
+  function fly(f){
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const from = document.querySelector(`[data-a="${f.j}"]`), to = document.querySelector(`[data-b="${f.p}"]`);
+    if (!from || !to || !to.animate) return;
+    const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    const ghost = to.cloneNode(true);
+    ghost.classList.add('fly'); ghost.classList.remove('hi');
+    Object.assign(ghost.style, { left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' });
+    document.body.appendChild(ghost);
+    to.style.visibility = 'hidden';
+    const dur = Math.min(600, SPEEDS[$('speed').value - 1] * 0.6);
+    ghost.animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(1.08)` }, { transform: 'translate(0,0) scale(1)' }],
+      { duration: dur, easing: 'cubic-bezier(.3,.7,.2,1)' }).onfinish = () => { ghost.remove(); to.style.visibility = ''; };
+  }
+
+  /* ---------- controls ---------- */
+  function go(i){ cur = Math.max(0, Math.min(steps.length - 1, i)); render(); if (cur === steps.length - 1) stop(); }
+  function stop(){ clearTimeout(timer); timer = null; $('playIcon').innerHTML = '<path d="M7 5v14l12-7z"/>'; $('bPlay').setAttribute('aria-label', 'Play'); }
+  function tick(){ if (cur >= steps.length - 1) return stop(); go(cur + 1); if (timer) timer = setTimeout(tick, SPEEDS[$('speed').value - 1]); }
+  function play(){
+    if (timer) return stop();
+    if (cur >= steps.length - 1) go(0);
+    $('playIcon').innerHTML = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'; $('bPlay').setAttribute('aria-label', 'Pause');
+    timer = setTimeout(tick, 250);
+  }
+  $('bFirst').onclick = () => { stop(); go(0); };
+  $('bPrev').onclick = () => { stop(); go(cur - 1); };
+  $('bNext').onclick = () => { stop(); go(cur + 1); };
+  $('bLast').onclick = () => { stop(); go(steps.length - 1); };
+  $('bPlay').onclick = play;
+  $('scrub').oninput = e => { stop(); go(+e.target.value); };
+  document.addEventListener('keydown', e => {
+    if (e.target.closest('input[type=text],input[type=number],select')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); stop(); go(cur + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(cur - 1); }
+    else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); play(); }
+    else if (e.key === 'Home') { stop(); go(0); }
+    else if (e.key === 'End') { stop(); go(steps.length - 1); }
+  });
+
+  function load(){
+    $('line6').innerHTML = RTL
+      ? '<span class="kw">for</span> j ← n <span class="kw">downto</span> 1   <span class="cm">▷ stable</span>'
+      : '<span class="kw">for</span> j ← 1 <span class="kw">to</span> n   <span class="cm">▷ not stable</span>';
+    stop(); steps = build(); cur = 0; lastShown = -1; render();
+  }
+
+  $('setup').addEventListener('submit', e => {
+    e.preventDefault();
+    const raw = $('inA').value.trim(), toks = raw ? raw.split(/[\s,]+/).filter(Boolean) : [];
+    const err = m => { $('err').textContent = m; };
+    if (!toks.length) return err('Type at least one key, for example 2 5 3 0.');
+    if (toks.some(t => !/^\d+$/.test(t))) return err('Keys must be whole numbers 0 or more, separated by spaces or commas.');
+    const arr = toks.map(Number);
+    if (arr.length > 16) return err(`That is ${arr.length} keys. Use at most 16 so the arrays fit on screen.`);
+    const mx = Math.max(...arr);
+    if (mx > 20) return err('Keep keys at 20 or less so C stays small enough to show.');
+    let k = mx;
+    if ($('inK').value !== '') {
+      k = Number($('inK').value);
+      if (!Number.isInteger(k) || k < mx) return err(`k must be a whole number at least as large as the biggest key (${mx}).`);
+      if (k > 20) return err('Use k of 20 or less.');
+    }
+    err(''); A = arr; K = k; RTL = $('inDir').value === 'rtl'; load();
+  });
+  $('bRand').onclick = () => {
+    const n = 8 + Math.floor(Math.random() * 5), k = 4 + Math.floor(Math.random() * 5);
+    $('inA').value = Array.from({ length: n }, () => Math.floor(Math.random() * (k + 1))).join(' ');
+    $('inK').value = ''; $('setup').requestSubmit();
+  };
+  $('bLec').onclick = () => { $('inA').value = LECTURE.join(' '); $('inK').value = '5'; $('inDir').value = 'rtl'; $('setup').requestSubmit(); };
+  $('inDir').onchange = () => $('setup').requestSubmit();
+
+  load();
+})();
+</script>
+</body>
+</html>

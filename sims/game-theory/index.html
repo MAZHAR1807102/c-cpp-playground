@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step game theory algorithms: minimax and alpha–beta pruning on game trees, saddle points and the graphical method for mixed strategies, iterated dominance, pure Nash equilibria and Nim.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Game Theory Algorithms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+textarea{font:14px/1.5 var(--f-mono); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:min(420px,100%); resize:vertical}
+#inN{width:min(300px,100%)}
+h3.sub{font:700 .7rem/1.3 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+svg.tree{display:block; width:100%; height:auto}
+.tree line{stroke:var(--line); stroke-width:2}
+.tree line.pruned{stroke-dasharray:4 4; opacity:.45}
+.tree .nd path,.tree .nd rect{fill:var(--surface); stroke:var(--muted); stroke-width:2}
+.tree .act path{stroke:var(--accent)}
+.tree .done path,.tree .done rect{stroke:var(--ink)}
+.tree .best path{stroke:var(--inc); fill:color-mix(in oklab,var(--inc) 30%,var(--surface))}
+.tree .pruned{opacity:.35}
+.tree .pruned rect{stroke-dasharray:3 3}
+.tree .cur path,.tree .cur rect{stroke:var(--accent); stroke-width:4; fill:color-mix(in oklab,var(--accent) 20%,var(--surface))}
+.tree text{font:700 12px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.tree text.nm{font-size:10px; fill:var(--muted); font-weight:600}
+.tree text.ab{font-size:10px; fill:var(--src); font-weight:600}
+.gm{border-collapse:separate; border-spacing:3px; width:auto; min-width:0}
+.gm td{min-width:46px; height:40px; padding:0 8px; text-align:center; border:2px solid var(--line); border-radius:7px; font:700 .95rem var(--f-mono); background:var(--surface); white-space:nowrap}
+.gm th{font:600 .74rem var(--f-mono); color:var(--muted); border:0; padding:0 6px; text-transform:none; white-space:nowrap}
+.gm th.x{color:var(--read)} .gm th.hi{color:var(--inc)}
+.gm td.src{border-color:var(--accent); border-style:dashed}
+.gm td.new{border-color:var(--read); background:color-mix(in oklab,var(--read) 26%,var(--surface))}
+.gm td.win{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 18%,var(--surface))}
+.gm td.gone{border-color:var(--dec); background:color-mix(in oklab,var(--dec) 16%,var(--surface))}
+.gm td.dead{opacity:.25}
+.gm td.path{border-color:var(--src); background:color-mix(in oklab,var(--src) 28%,var(--surface))}
+.gm u{text-decoration:none; border-bottom:3px solid var(--k0)} .gm u.p2{border-bottom-color:var(--k1)}
+svg.chart{display:block; width:100%; max-width:560px; height:auto}
+.chart .ax{stroke:var(--muted); stroke-width:1}
+.chart .gl{stroke:var(--line); stroke-width:1}
+.chart .ln{stroke-width:2; fill:none}
+.chart .env{stroke:var(--ink); stroke-width:5; fill:none; opacity:.5}
+.chart .pl{stroke:var(--read); stroke-width:2; stroke-dasharray:5 4}
+.chart .pk{fill:var(--inc); stroke:var(--surface); stroke-width:2}
+.chart text{font:600 11px var(--f-mono); fill:var(--muted)}
+.heaps{display:flex; flex-direction:column; gap:8px}
+.heap{display:flex; align-items:center; gap:6px}
+.heap .nm{font:700 .8rem var(--f-mono); color:var(--muted); width:64px}
+.heap i{width:22px; height:22px; border-radius:50%; background:color-mix(in oklab,var(--k3) 55%,var(--surface)); border:2px solid var(--k3)}
+.heap i.tk{background:none; border-style:dashed; border-color:var(--dec)}
+.bin td{font:700 .95rem var(--f-mono)}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+.ptable{min-width:600px}
+.ptable td{text-align:left}
+.ptable td:first-child{font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Game theory</p>
+    <h1>Game theory algorithms, step by step</h1>
+    <p class="lede">How should a rational player choose when the outcome also depends on an opponent? For <b>game trees</b> (chess, tic-tac-toe) use minimax and its faster version alpha–beta. For <b>matrix games</b> look for saddle points, mixed strategies, dominated strategies and Nash equilibria. For <b>Nim</b> a single XOR decides who wins.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/" aria-current="page">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Algorithm">
+    <div class="pgroup"><span class="lab">Game trees</span><div class="btns" id="p_tree"></div></div>
+    <div class="pgroup"><span class="lab">Zero-sum matrix games</span><div class="btns" id="p_zero"></div></div>
+    <div class="pgroup"><span class="lab">Bimatrix games</span><div class="btns" id="p_bi"></div></div>
+    <div class="pgroup"><span class="lab">Combinatorial</span><div class="btns" id="p_comb"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow"><label for="inM" id="labM"></label><textarea id="inM" rows="4" spellcheck="false"></textarea></div>
+    <div class="field" id="fN"><label for="inN">Strategy names: rows | columns</label><input type="text" id="inN"></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bEx">Example</button>
+    <button class="btn" type="button" id="bEx2">Another example</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div id="treeBox" hidden><h3 class="sub">Game tree (▲ MAX, ▼ MIN; α / β shown under each node)</h3><svg class="tree" id="tree" role="img" aria-label="Game tree"></svg></div>
+      <div id="matBox" hidden><div class="scroll"><table class="gm" id="mat"></table></div></div>
+      <div id="chartBox" hidden><h3 class="sub">Expected payoff to the row player against each column, as a function of p</h3><svg class="chart" id="chart" viewBox="0 0 520 300" role="img" aria-label="Payoff lines"></svg></div>
+      <div id="nimBox" hidden><div class="heaps" id="heaps"></div><h3 class="sub" style="margin-top:12px">Heap sizes in binary; the nim-sum is the XOR of each column</h3><table class="gm bin" id="bin"></table></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <aside class="side">
+      <section class="card code"><h2>Pseudocode</h2><ol id="code"></ol></section>
+      <section class="card vars"><h2>Variables</h2><dl id="vars"></dl><dl class="stats" id="stats"></dl></section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <div class="tscroll"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>Concepts at a glance</h2>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Concept</th><th>Meaning</th><th>How it is found</th></tr></thead>
+      <tbody>
+        <tr><td>Minimax value</td><td>best guaranteed outcome against a perfect opponent</td><td>back up max / min from the leaves: O(b<sup>d</sup>)</td></tr>
+        <tr><td>Alpha–beta pruning</td><td>same value, fewer nodes</td><td>skip children once α ≥ β; O(b<sup>d/2</sup>) with best ordering</td></tr>
+        <tr><td>Saddle point</td><td>pure strategies are optimal</td><td>maximin (max of row minima) = minimax (min of column maxima)</td></tr>
+        <tr><td>Mixed strategy</td><td>randomise to keep the opponent from exploiting you</td><td>2 × n: highest point of the lower envelope; in general linear programming</td></tr>
+        <tr><td>Dominated strategy</td><td>another strategy is better against everything</td><td>delete it; repeat</td></tr>
+        <tr><td>Nash equilibrium</td><td>no player gains by changing strategy alone</td><td>cells that are best responses for both players</td></tr>
+        <tr><td>Nim</td><td>last object wins</td><td>first player wins iff h₁ ⊕ … ⊕ h_k ≠ 0</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.GTEngine, f = E.f;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ALL = Object.keys(E.MODES);
+  const LAB = {
+    minimax: 'Game tree as nested brackets; numbers are leaf utilities for MAX', alphabeta: 'Game tree as nested brackets; numbers are leaf utilities for MAX',
+    saddle: 'Payoff matrix to the row player (one row per line)', graph: 'Payoff matrix with exactly 2 rows (2 to 6 columns)',
+    dominance: 'Bimatrix: each cell “a,b” (payoff to row, column player); one row per line', nash: 'Bimatrix: each cell “a,b”; one row per line', nim: 'Heap sizes (2 to 5 heaps, each 1 to 15)'
+  };
+  const EX = {
+    minimax: ['[[3, 12, 8], [2, 4, 6], [14, 5, 2]]', '[[[3, 5], [6, 9]], [[1, 2], [0, -1]]]'],
+    alphabeta: ['[[3, 12, 8], [2, 4, 6], [14, 5, 2]]', '[[[3, 5], [6, 9]], [[1, 2], [0, -1]]]'],
+    saddle: ['-2 0 0 5 3\n3 2 1 2 2\n-4 -3 0 -2 6\n5 3 -4 2 -6', '3 -1\n-2 1'],
+    graph: ['1 3 11\n8 5 2', '3 -1\n-2 1'],
+    dominance: [['1,0 1,2 0,1\n0,3 0,1 2,0', 'Up Down | Left Middle Right'], ['-1,-1 -9,0\n0,-9 -6,-6', 'Silent Confess | Silent Confess']],
+    nash: [['-1,-1 -9,0\n0,-9 -6,-6', 'Silent Confess | Silent Confess'], ['2,1 0,0\n0,0 1,2', 'Opera Football | Opera Football']],
+    nim: ['3 4 5', '1 2 3']
+  };
+  let MODE = ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'alphabeta', RUN = null, NUM = {}, INPUT = null;
+
+  function picker() { ['tree', 'zero', 'bi', 'comb'].forEach(g => { $('p_' + g).innerHTML = ALL.filter(m => E.MODES[m].group === g).map(m => `<button type="button" class="chipbtn" data-m="${m}" aria-pressed="${m === MODE}">${E.MODES[m].short}</button>`).join(''); }); }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; MODE = b.dataset.m; picker(); try { history.replaceState(null, '', '#' + MODE); } catch (_) {} example(0); });
+  function example(k) {
+    const e = EX[MODE][k]; if (Array.isArray(e)) { $('inM').value = e[0]; $('inN').value = e[1]; } else $('inM').value = e;
+    apply();
+  }
+  const num = t => /^-?\d+(\.\d+)?$/.test(t);
+  function parse() {
+    const raw = $('inM').value.trim();
+    if (MODE === 'minimax' || MODE === 'alphabeta') {
+      let t; try { if (!/^[\[\]\d\s,.\-]+$/.test(raw)) throw 0; t = JSON.parse(raw); } catch (_) { return { error: 'Write the tree with brackets, e.g. [[3, 12, 8], [2, 4, 6]]: each [ … ] is a node and each number a leaf.' }; }
+      if (!Array.isArray(t)) return { error: 'The root must be a node: wrap it in [ ].' };
+      let leaves = 0, depth = 0, bad = false;
+      (function walk(x, d) { depth = Math.max(depth, d); if (Array.isArray(x)) { if (!x.length) bad = true; x.forEach(c => walk(c, d + 1)); } else { leaves++; if (typeof x !== 'number') bad = true; } })(t, 0);
+      if (bad) return { error: 'Every node needs at least one child, and leaves must be numbers.' };
+      if (leaves > 27 || depth > 4) return { error: 'Use at most 27 leaves and depth 4 so the tree fits.' };
+      return { tree: t };
+    }
+    if (MODE === 'nim') {
+      const H = raw.split(/[\s,]+/); if (H.length < 2 || H.length > 5 || H.some(x => !/^\d+$/.test(x) || +x < 1 || +x > 15)) return { error: 'Give 2 to 5 heap sizes, each a whole number from 1 to 15.' };
+      return { H: H.map(Number) };
+    }
+    const rows = raw.split(/\n|;/).map(r => r.trim()).filter(Boolean).map(r => r.split(/\s+/));
+    if (!rows.length || rows.some(r => r.length !== rows[0].length)) return { error: 'Every row must have the same number of entries.' };
+    const m = rows.length, n = rows[0].length;
+    if (MODE === 'saddle' || MODE === 'graph') {
+      if (rows.some(r => r.some(x => !num(x)))) return { error: 'Entries must be numbers.' };
+      if (MODE === 'graph' && (m !== 2 || n < 2 || n > 6)) return { error: 'The graphical method needs exactly 2 rows and 2 to 6 columns.' };
+      if (m > 6 || n > 6) return { error: 'Use at most 6 rows and 6 columns.' };
+      return { A: rows.map(r => r.map(Number)) };
+    }
+    if (rows.some(r => r.some(x => !/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(x)))) return { error: 'Each cell must be two numbers separated by a comma, like 3,1 (no spaces inside a cell).' };
+    if (m > 5 || n > 5) return { error: 'Use at most 5 rows and 5 columns.' };
+    const B = rows.map(r => r.map(x => x.split(',').map(Number)));
+    let rn = B.map((_, i) => `R${i + 1}`), cn = B[0].map((_, j) => `C${j + 1}`);
+    const nm = $('inN').value.split('|').map(s => s.trim().split(/\s+/).filter(Boolean));
+    if (nm[0] && nm[0].length === m) rn = nm[0]; if (nm[1] && nm[1].length === n) cn = nm[1];
+    return { B, rn, cn };
+  }
+  function apply() {
+    $('labM').textContent = LAB[MODE]; $('fN').hidden = !(MODE === 'dominance' || MODE === 'nash');
+    $('inM').rows = MODE === 'nim' ? 1 : 4;
+    const r = parse(); if (r.error) { $('err').textContent = r.error; return; }
+    $('err').textContent = ''; INPUT = r; load();
+  }
+
+  function renderTree(s) {
+    $('treeBox').hidden = !s.tree; if (!s.tree) return;
+    const N = s.tree, kids = N.map(() => []), pos = []; N.forEach(n => { if (n.parent >= 0) kids[n.parent].push(n.id); });
+    let leaf = 0, md = 0;
+    (function walk(id) { md = Math.max(md, N[id].depth); if (!kids[id].length) pos[id] = leaf++; else { kids[id].forEach(walk); pos[id] = (pos[kids[id][0]] + pos[kids[id][kids[id].length - 1]]) / 2; } })(0);
+    const W = 54, H = 86, X = id => 20 + pos[id] * W + W / 2, Y = id => 34 + N[id].depth * H;
+    let out = '';
+    N.forEach(n => { if (n.parent >= 0) out += `<line class="${n.s === 'pruned' ? 'pruned' : ''}" x1="${X(n.parent)}" y1="${Y(n.parent) + 16}" x2="${X(n.id)}" y2="${Y(n.id) - 16}"/>`; });
+    N.forEach(n => {
+      const x = X(n.id), y = Y(n.id), cls = `nd ${n.s || ''} ${n.id === s.cur ? 'cur' : ''}`;
+      const shape = n.leaf ? `<rect x="${x - 17}" y="${y - 14}" width="34" height="28" rx="5"/>` : n.max ? `<path d="M${x} ${y - 19}L${x + 21} ${y + 15}L${x - 21} ${y + 15}Z"/>` : `<path d="M${x} ${y + 19}L${x + 21} ${y - 15}L${x - 21} ${y - 15}Z"/>`;
+      const val = n.leaf ? f(n.u) : n.v == null ? '' : f(n.v);
+      out += `<g class="${cls}">${shape}<text x="${x}" y="${n.leaf ? y : n.max ? y + 4 : y - 4}">${val}</text>`;
+      if (!n.leaf) out += `<text class="nm" x="${x + 26}" y="${y - 14}">${n.name}</text>`;
+      if (MODE === 'alphabeta' && !n.leaf && n.a !== undefined) out += `<text class="ab" x="${x}" y="${y + 30}">α=${f(n.a)} β=${f(n.b)}</text>`;
+      out += '</g>';
+    });
+    const w = leaf * W + 50, h = (md + 1) * H + 20;
+    $('tree').setAttribute('viewBox', `0 0 ${w} ${h}`); $('tree').style.maxWidth = Math.min(w * 1.3, 1000) + 'px'; $('tree').innerHTML = out;
+  }
+  function renderMatrix(s) {
+    const show = !!(s.matrix || s.bi); $('matBox').hidden = !show; if (!show) return;
+    if (s.matrix) {
+      const M = s.matrix, rx = M.rowX || [], cx = M.colX || [];
+      $('mat').innerHTML = `<thead><tr><th></th>${M.v[0].map((_, j) => `<th class="${M.colHi === j ? 'hi' : ''}">C${j + 1}</th>`).join('')}${MODE === 'saddle' ? '<th class="x">row min</th>' : ''}</tr></thead><tbody>` +
+        M.v.map((r, i) => `<tr><th class="${M.rowHi === i ? 'hi' : ''}">R${i + 1}</th>${r.map((v, j) => `<td class="${M.cls[`${i},${j}`] || ''}">${f(v)}</td>`).join('')}${MODE === 'saddle' ? `<th class="x ${M.rowHi === i ? 'hi' : ''}">${rx[i] != null ? f(rx[i]) : ''}</th>` : ''}</tr>`).join('') +
+        (MODE === 'saddle' ? `<tr><th class="x">col max</th>${M.v[0].map((_, j) => `<th class="x ${M.colHi === j ? 'hi' : ''}">${cx[j] != null ? f(cx[j]) : ''}</th>`).join('')}<th></th></tr>` : '') + '</tbody>';
+      return;
+    }
+    const B = s.bi, rs = new Set(B.rows), cs = new Set(B.cols);
+    $('mat').innerHTML = `<thead><tr><th></th>${B.cn.map((c, j) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>` +
+      B.B.map((r, i) => `<tr><th>${esc(B.rn[i])}</th>${r.map((c, j) => {
+        const dead = !rs.has(i) || !cs.has(j), k = `${i},${j}`;
+        const a = B.br1 && B.br1.has(k) ? `<u>${f(c[0])}</u>` : f(c[0]), b = B.br2 && B.br2.has(k) ? `<u class="p2">${f(c[1])}</u>` : f(c[1]);
+        return `<td class="${dead ? 'dead' : ''} ${B.cls[k] || ''}">${a}, ${b}</td>`;
+      }).join('')}</tr>`).join('') + '</tbody>';
+  }
+  function renderChart(s) {
+    $('chartBox').hidden = !s.chart; if (!s.chart) return;
+    const C = s.chart, L = C.lines, vals = L.flatMap(l => [l.a, l.b]), lo = Math.min(0, ...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.08 || 1;
+    const X = p => 50 + p * 440, Y = v => 270 - (v - lo + pad) / (hi - lo + 2 * pad) * 250;
+    let out = `<line class="ax" x1="50" y1="${Y(lo - pad)}" x2="50" y2="${Y(hi + pad)}"/><line class="ax" x1="490" y1="${Y(lo - pad)}" x2="490" y2="${Y(hi + pad)}"/>`;
+    if (lo < 0) out += `<line class="gl" x1="50" y1="${Y(0)}" x2="490" y2="${Y(0)}"/>`;
+    out += `<text x="50" y="292" text-anchor="middle">p = 0</text><text x="490" y="292" text-anchor="middle">p = 1</text><text x="44" y="${Y(hi)}" text-anchor="end">${f(hi)}</text><text x="44" y="${Y(lo)}" text-anchor="end">${f(lo)}</text>`;
+    const cols = ['var(--k0)', 'var(--k1)', 'var(--k2)', 'var(--k4)', 'var(--k5)', 'var(--k6)'];
+    L.forEach(l => { if (!C.show.includes(l.j)) return; out += `<line class="ln" style="stroke:${cols[l.j]}" x1="${X(0)}" y1="${Y(l.b)}" x2="${X(1)}" y2="${Y(l.a)}"/><text x="${X(1) + 4}" y="${Y(l.a)}" style="fill:${cols[l.j]}">C${l.j + 1}</text>`; });
+    if (C.env) { let d = ''; for (let k = 0; k <= 200; k++) { const p = k / 200, v = Math.min(...L.map(l => l.b + (l.a - l.b) * p)); d += `${k ? 'L' : 'M'}${X(p)} ${Y(v)}`; } out += `<path class="env" d="${d}"/>`; }
+    if (C.p != null) { const v = Math.min(...L.map(l => l.b + (l.a - l.b) * C.p)); out += `<line class="pl" x1="${X(C.p)}" y1="${Y(lo - pad)}" x2="${X(C.p)}" y2="${Y(hi + pad)}"/>`; }
+    if (C.best != null) { const v = Math.min(...L.map(l => l.b + (l.a - l.b) * C.best)); out += `<circle class="pk" cx="${X(C.best)}" cy="${Y(v)}" r="7"/><text x="${X(C.best)}" y="${Y(v) - 14}" text-anchor="middle" style="fill:var(--ink)">p=${f(C.best)}, v=${f(v)}</text>`; }
+    $('chart').innerHTML = out;
+  }
+  function renderNim(s) {
+    $('nimBox').hidden = !s.heaps; if (!s.heaps) return;
+    $('heaps').innerHTML = s.heaps.map((h, i) => `<div class="heap"><span class="nm">heap ${i + 1}</span>${Array.from({ length: h }, (_, k) => `<i class="${s.pick === i && k >= h - s.take ? 'tk' : ''}"></i>`).join('')}<span class="nm" style="width:auto">&nbsp;${h}</span></div>`).join('');
+    const b = s.bin, bits = b.bits, row = x => x.toString(2).padStart(bits, '0').split('');
+    $('bin').innerHTML = `<thead><tr><th></th>${Array.from({ length: bits }, (_, k) => `<th>${1 << (bits - 1 - k)}</th>`).join('')}<th></th></tr></thead><tbody>` +
+      b.heaps.map((h, i) => `<tr><th>heap ${i + 1}</th>${row(h).map(c => `<td>${c}</td>`).join('')}<th>${h}</th></tr>`).join('') +
+      `<tr><th>⊕ nim-sum</th>${row(b.s).map(c => `<td class="${b.s ? 'new' : 'win'}">${c}</td>`).join('')}<th>${b.s}</th></tr></tbody>`;
+  }
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    renderTree(s); renderMatrix(s); renderChart(s); renderNim(s);
+    $('vars').innerHTML = Object.keys(s.vars).map(k => `<div><dt>${esc(k)}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('');
+    $('stats').innerHTML = `<div><dt>${MODE === 'minimax' || MODE === 'alphabeta' ? 'leaves evaluated' : 'operations'}</dt><dd>${s.ops}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div><div><dt>of</dt><dd>${RUN.steps.length}</dd></div>`;
+    $('thead').innerHTML = RUN.header.map(h => `<th>${esc(h)}</th>`).join('');
+    $('tbody').innerHTML = s.rows.length ? s.rows.map((r, i) => `<tr class="${i === s.rows.length - 1 ? 'last' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${RUN.header.length}">Rows appear as the algorithm runs.</td></tr>`;
+  }
+  function legend() {
+    const sw = (st, t) => `<span><i style="${st}"></i>${t}</span>`; let h = '';
+    if (MODE === 'minimax' || MODE === 'alphabeta') h = sw('border-color:var(--accent);background:color-mix(in oklab,var(--accent) 20%,var(--surface))', 'current node') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 30%,var(--surface))', 'best move for MAX') + (MODE === 'alphabeta' ? sw('border-color:var(--muted);border-style:dashed;opacity:.5', 'pruned (never evaluated)') : '');
+    else if (MODE === 'saddle' || MODE === 'graph') h = sw('border-color:var(--accent);border-style:dashed', 'entries compared') + sw('border-color:var(--read);background:color-mix(in oklab,var(--read) 26%,var(--surface))', 'row min / column max') + sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 28%,var(--surface))', MODE === 'saddle' ? 'saddle point' : 'columns the opponent mixes');
+    else if (MODE === 'dominance') h = sw('border-color:var(--dec);background:color-mix(in oklab,var(--dec) 16%,var(--surface))', 'dominated (deleted)') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 18%,var(--surface))', 'dominating strategy') + sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 28%,var(--surface))', 'surviving outcome');
+    else if (MODE === 'nash') h = sw('border-color:var(--k0);background:var(--k0)', 'best response of player 1 (underlined)') + sw('border-color:var(--k1);background:var(--k1)', 'best response of player 2') + sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 28%,var(--surface))', 'Nash equilibrium');
+    else h = sw('border-color:var(--dec);border-style:dashed', 'objects being taken');
+    $('legend').innerHTML = h;
+  }
+  function codeHTML(lines) { let n = 0; NUM = {}; return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join(''); }
+  const player = Sim.start(render);
+  function load() {
+    RUN = E.run(MODE, INPUT);
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.MODES[MODE].name}</b>. ` + RUN.steps[0].msg;
+    legend(); player.load(RUN.steps);
+  }
+  $('setup').addEventListener('submit', e => { e.preventDefault(); apply(); });
+  $('bEx').onclick = () => example(0); $('bEx2').onclick = () => example(1);
+  picker(); example(0);
+  const jump = +new URLSearchParams(location.search).get('step');
+  for (let i = 1; i < jump; i++) document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+})();
+</script>
+</body>
+</html>

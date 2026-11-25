@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step bubble sort with early exit: compare neighbours, swap, and watch the largest key bubble to the end.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Bubble Sort Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Lecture 3 · Θ(n²) worst, Θ(n) best</p>
+    <h1>Bubble Sort, step by step</h1>
+    <p class="lede">Scan left to right, compare each pair of neighbours and swap them if they are out of order. After each pass the largest remaining key has bubbled to the end. A pass with no swap means the array is sorted, so we stop early.</p>
+    <nav class="sortnav" aria-label="Sorting simulations">
+      <a href="../insertion-sort/">Insertion sort</a>
+      <a href="../bubble-sort/" aria-current="page">Bubble sort</a>
+      <a href="../counting-sort/">Counting sort</a>
+      <a href="../merge-sort/">Merge sort</a>
+      <a href="../quick-sort/">Quick sort</a>
+    </nav>
+  </header>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow"><label for="inA">Array A (integers −99 to 99, up to 12 keys)</label><input type="text" id="inA" value="5 2 4 6 1 3"></div>
+    <div class="field"><label for="inCond">Swap test</label>
+      <select id="inCond"><option value="gt">A[i] &gt; A[i+1] (stable)</option><option value="ge">A[i] ≥ A[i+1] (not stable)</option></select></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bRand">Random</button>
+    <button class="btn" type="button" id="bLec">Lecture example</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>A<span>positions 1..n, sorted in place</span></h2></div>
+        <div class="scroll"><div class="grid" id="gA"></div></div>
+      </div>
+      <div class="legend">
+        <span><i style="border-color:var(--read)"></i>pair being compared</span>
+        <span><i style="border-color:var(--accent)"></i>just swapped</span>
+        <span><i style="border-color:var(--inc)"></i>final position</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card code">
+        <h2>Pseudocode</h2>
+        <ol id="code">
+          <li data-l="1"><span class="kw">for</span> pass ← 1 <span class="kw">to</span> n − 1</li>
+          <li data-l="2">    swapped ← <span class="kw">false</span></li>
+          <li data-l="3">    <span class="kw">for</span> i ← 1 <span class="kw">to</span> n − pass</li>
+          <li data-l="4" id="line4"></li>
+          <li data-l="5">            swap A[i] and A[i+1]</li>
+          <li data-l="6">            swapped ← <span class="kw">true</span></li>
+          <li data-l="7">        <span class="kw">end if</span></li>
+          <li data-l="8">    <span class="kw">end for</span></li>
+          <li data-l="9">    <span class="kw">if not</span> swapped</li>
+          <li data-l="10">        <span class="kw">break</span>   <span class="cm">▷ already sorted</span></li>
+          <li data-l="11">    <span class="kw">end if</span></li>
+          <li data-l="12"><span class="kw">end for</span></li>
+        </ol>
+      </section>
+      <section class="card vars">
+        <h2>Variables</h2>
+        <dl id="vars"></dl>
+        <dl class="stats" id="stats"></dl>
+        <p class="stat-note">Each swap of neighbours removes exactly one inversion, so at the end swaps = inversions.</p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <p>Same tables as the lecture note: the comparisons of the current pass, then the array after every pass.</p>
+    <h3 id="passTitle">Current pass</h3>
+    <div class="tscroll"><table><thead id="thead1"></thead><tbody id="tbody1"></tbody></table></div>
+    <h3>All passes</h3>
+    <div class="tscroll"><table><thead id="thead2"></thead><tbody id="tbody2"></tbody></table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Why it is correct</h2><p>After pass p, the last p positions hold the p largest keys in sorted order: during the pass the largest key of A[1..n−p+1] is carried along by every comparison. If a pass makes no swap, every neighbouring pair is in order, so the whole array is sorted and the early exit is safe.</p></div>
+    <div class="card"><h2>Cost</h2><p>Pass p makes n − p comparisons, n(n−1)/2 in total without the early exit. Sorted input with the flag: one pass, <strong>Θ(n)</strong>. Reversed: <strong>Θ(n²)</strong> comparisons and swaps. Same number of swaps as insertion sort makes shifts, but far more comparisons, so it is the slowest of the three in practice. In-place and <strong>stable</strong> with the strict &gt; test.</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), fmt = Sim.fmt;
+  const LECTURE = [5, 2, 4, 6, 1, 3];
+  let A = LECTURE.slice(), GE = false;
+
+  function build() {
+    const n = A.length, tg = Sim.tags(A), inv = Sim.inversions(A);
+    const arr = A.map((v, i) => ({ v, id: 'e' + i, t: tg[i] }));
+    const rows = [], S = [];
+    let passRows = [], fin = 0, cmp = 0, sw = 0, pass = 0, passes = 0;
+    const push = o => S.push(Object.assign({ arr: arr.slice(), fin, cmp, sw, inv, pass, passRows: passRows.slice(), rows: rows.slice(), i: 0, hi: {}, vars: {} }, o));
+
+    rows.push({ label: 'start', vals: arr.slice(), fin: 0, swaps: '' });
+    push({ line: 0, msg: `n = ${n}. Up to ${n - 1} passes; pass p compares the first ${n} − p pairs of neighbours.` });
+
+    for (pass = 1; pass <= n - 1; pass++) {
+      let swapped = false, passSw = 0; passRows = []; passes = pass;
+      push({ line: [1, 2], vars: { pass, swapped: 'false' }, msg: `Pass ${pass}: set <code>swapped ← false</code>. Compare A[i] with A[i+1] for i = 1..${n - pass}.` });
+      for (let i = 1; i <= n - pass; i++) {
+        const a = arr[i - 1], b = arr[i]; cmp++;
+        const doSw = GE ? a.v >= b.v : a.v > b.v;
+        const rel = a.v > b.v ? '>' : a.v < b.v ? '<' : '=';
+        passRows.push({ label: `A[${i}],A[${i + 1}]`, vals: arr.slice(), pair: i, fin, action: `${a.v} ${rel} ${b.v}: ${doSw ? 'swap' : 'keep'}` });
+        push({ line: [3, 4], i, hi: { [i]: 'cmp', [i + 1]: 'cmp' }, vars: { pass, i, 'A[i]': a.v, 'A[i+1]': b.v },
+          msg: `Compare <code>A[${i}] = ${fmt(a)}</code> and <code>A[${i + 1}] = ${fmt(b)}</code>: ${a.v} ${rel} ${b.v}, so ${doSw ? 'swap them' : 'keep them'}.` });
+        if (doSw) {
+          arr[i - 1] = b; arr[i] = a; sw++; passSw++; swapped = true;
+          push({ line: [5, 6], i, hi: { [i]: 'moved', [i + 1]: 'moved' }, vars: { pass, i, swapped: 'true' },
+            msg: `Swapped: ${fmt(a)} moves right and ${fmt(b)} moves left. <code>swapped ← true</code>.` });
+        }
+      }
+      if (!swapped) {
+        fin = n;
+        passRows.push({ label: 'end of pass', vals: arr.slice(), pair: 0, fin, action: 'no swap: stop' });
+        rows.push({ label: `pass ${pass}`, vals: arr.slice(), fin, swaps: '0 (stop)' });
+        push({ line: [9, 10], vars: { pass, swapped: 'false' }, msg: `No swap in pass ${pass}: every neighbouring pair is in order, so the array is sorted. <code>break</code>.` });
+        break;
+      }
+      fin = pass === n - 1 ? n : pass;
+      const last = arr[n - pass];
+      passRows.push({ label: 'end of pass', vals: arr.slice(), pair: 0, fin, action: `${last.v} is in its final place` });
+      rows.push({ label: `pass ${pass}`, vals: arr.slice(), fin, swaps: passSw });
+      push({ line: 9, vars: { pass, swapped: 'true' },
+        msg: `End of pass ${pass}: ${fmt(last)} is in its final place. ${passSw} swap${passSw > 1 ? 's' : ''} this pass, so keep going.` +
+             (pass === n - 1 ? ' That was the last pass, so A[1] is final too.' : '') });
+    }
+    const st = Sim.stability(arr);
+    let msg = `Sorted in ${passes} pass${passes > 1 ? 'es' : ''} with ${cmp} comparisons and ${sw} swaps. Swaps = inversions of the input = ${inv}.`;
+    if (st) msg += st.kept ? ` Equal keys kept their order (${st.seq}), so the sort is <b>stable</b>.`
+                           : ` Equal keys did not keep their order (${st.seq}): the ≥ test swaps equal neighbours, so the sort is <b>not stable</b>.`;
+    push({ line: 0, pass: passes, msg });
+    return S;
+  }
+
+  const cellsTD = (r, pairCls) => r.vals.map((x, p) => {
+    const pos = p + 1, n = r.vals.length;
+    const cls = pairCls && r.pair && (pos === r.pair || pos === r.pair + 1) ? 'k' : pos > n - r.fin ? 's' : '';
+    return `<td class="${cls}">${fmt(x)}</td>`;
+  }).join('');
+
+  function render(s) {
+    const n = A.length;
+    $('msg').innerHTML = s.msg;
+    const ptr = s.i ? { [s.i]: 'i', [s.i + 1]: 'i+1' } : null;
+    $('gA').innerHTML = Sim.rowHTML(s.arr.map((item, p) => {
+      const pos = p + 1, h = s.hi[pos];
+      return { item, hot: !!h, cls: h || (pos > n - s.fin ? 'sorted' : '') };
+    }), ptr || {}, true);
+    const vk = Object.keys(s.vars);
+    $('vars').innerHTML = vk.length ? vk.map(k => `<div><dt>${k}</dt><dd>${s.vars[k]}</dd></div>`).join('')
+      : `<div><dt>n</dt><dd>${n}</dd></div><div><dt>passes</dt><dd>${s.pass}</dd></div>`;
+    $('stats').innerHTML = `<div><dt>comparisons</dt><dd>${s.cmp}</dd></div><div><dt>swaps</dt><dd>${s.sw}</dd></div><div><dt>inversions</dt><dd>${s.inv}</dd></div>`;
+    const heads = A.map((_, p) => `<th>${p + 1}</th>`).join('');
+    $('passTitle').textContent = s.pass ? `Pass ${s.pass} in detail` : 'Current pass';
+    $('thead1').innerHTML = `<tr><th>Compare</th>${heads}<th>Action</th></tr>`;
+    $('tbody1').innerHTML = s.passRows.length
+      ? s.passRows.map((r, ri) => `<tr class="${ri === s.passRows.length - 1 ? 'last' : ''}"><td>${r.label}</td>${cellsTD(r, true)}<td class="what">${r.action}</td></tr>`).join('')
+      : `<tr class="tempty"><td colspan="${n + 2}">Rows appear when the first pass starts.</td></tr>`;
+    $('thead2').innerHTML = `<tr><th>After</th>${heads}<th>Swaps</th></tr>`;
+    $('tbody2').innerHTML = s.rows.map((r, ri) => `<tr class="${ri === s.rows.length - 1 && ri > 0 ? 'last' : ''}"><td>${r.label}</td>${cellsTD(r, false)}<td>${r.swaps}</td></tr>`).join('');
+  }
+
+  const player = Sim.start(render);
+  function load() {
+    $('line4').innerHTML = `        <span class="kw">if</span> A[i] ${GE ? '≥' : '>'} A[i+1]`;
+    player.load(build());
+  }
+  $('setup').addEventListener('submit', e => {
+    e.preventDefault();
+    const r = Sim.parse($('inA').value, 12, -99, 99);
+    $('err').textContent = r.error || '';
+    if (r.error) return;
+    A = r.arr; GE = $('inCond').value === 'ge'; load();
+  });
+  $('bRand').onclick = () => {
+    const n = 6 + Math.floor(Math.random() * 4);
+    $('inA').value = Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join(' ');
+    $('setup').requestSubmit();
+  };
+  $('bLec').onclick = () => { $('inA').value = LECTURE.join(' '); $('inCond').value = 'gt'; $('setup').requestSubmit(); };
+  $('inCond').onchange = () => $('setup').requestSubmit();
+  load();
+})();
+</script>
+</body>
+</html>

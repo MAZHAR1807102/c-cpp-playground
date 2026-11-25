@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step prefix sums and suffix sums: range queries, difference arrays, 2-D prefix sums, equilibrium index, product except self, subarray sum equals k, maximum subarray and trapping rain water.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Prefix and Suffix Sums</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.pgroup.app .chipbtn[aria-pressed="true"]{background:var(--src); border-color:var(--src); color:var(--surface)}
+#inA{width:min(360px,100%)} #inQ{width:min(260px,100%)} #inK{width:80px}
+textarea{font:14px/1.5 var(--f-mono); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:220px; resize:vertical}
+:root{--pc:44px}
+@media (max-width:560px){ :root{--pc:36px} }
+.arow{display:grid; grid-template-columns:64px auto; align-items:center; gap:4px 8px; margin-bottom:6px}
+.arow .nm{font:700 .85rem var(--f-mono); color:var(--muted); text-align:right}
+.strip{display:grid; grid-auto-columns:var(--pc); grid-auto-flow:column; gap:3px; width:max-content}
+.strip .ix{font:600 .66rem var(--f-mono); color:var(--muted); text-align:center}
+.strip .c{height:var(--pc); display:grid; place-items:center; border:2px solid var(--line); border-radius:7px; background:var(--surface); font:700 .95rem var(--f-mono); font-variant-numeric:tabular-nums; transition:background .2s, border-color .2s}
+.strip .c.empty{border-style:dashed; color:var(--muted); font-weight:400}
+.c.add{border-color:var(--read); background:color-mix(in oklab,var(--read) 22%,var(--surface))}
+.c.src{border-color:var(--accent); border-style:dashed}
+.c.new{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 30%,var(--surface))}
+.c.sub{border-color:var(--dec); background:color-mix(in oklab,var(--dec) 18%,var(--surface))}
+.c.range{border-color:var(--src); background:color-mix(in oklab,var(--src) 18%,var(--surface))}
+.c.hit{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 40%,var(--surface)); box-shadow:0 0 0 3px color-mix(in oklab,var(--inc) 30%,transparent)}
+.c.left{background:color-mix(in oklab,var(--k0) 18%,var(--surface)); border-color:color-mix(in oklab,var(--k0) 60%,var(--surface))}
+.c.right{background:color-mix(in oklab,var(--k1) 18%,var(--surface)); border-color:color-mix(in oklab,var(--k1) 60%,var(--surface))}
+.grid2{border-collapse:separate; border-spacing:3px; width:auto; min-width:0}
+.grid2 td{width:var(--pc); height:var(--pc); padding:0; text-align:center; border:2px solid var(--line); border-radius:7px; font:700 .95rem var(--f-mono); background:var(--surface)}
+.grid2 td.empty{border-style:dashed; color:var(--muted); font-weight:400}
+.grid2 th{font:600 .66rem var(--f-mono); color:var(--muted); border:0; padding:0 2px; text-transform:none}
+.mats{display:flex; flex-wrap:wrap; gap:14px 28px}
+h3.sub{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+svg.bars{display:block; width:100%; max-width:640px; height:auto}
+.bar{fill:color-mix(in oklab,var(--muted) 45%,var(--surface)); stroke:var(--muted)}
+.bar.add{fill:color-mix(in oklab,var(--read) 60%,var(--surface)); stroke:var(--read)}
+.wat{fill:color-mix(in oklab,var(--k0) 45%,transparent)}
+.blab{font:600 11px var(--f-mono); fill:var(--muted); text-anchor:middle}
+.hmap{display:flex; flex-wrap:wrap; gap:5px; list-style:none; margin:0; padding:0}
+.hmap li{font:700 .85rem var(--f-mono); padding:3px 9px; border-radius:6px; border:2px solid var(--line); background:var(--surface)}
+.hmap li.on{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 24%,var(--surface))}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+td.l{text-align:left}
+.ptable{min-width:640px}
+.ptable td:first-child{text-align:left; font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Arrays · Prefix and suffix sums</p>
+    <h1>Prefix and suffix sums, step by step</h1>
+    <p class="lede">Spend Θ(n) once to store running totals, then answer “what is the sum of this range?” in O(1). A <b>prefix sum</b> P[i] totals everything before i; a <b>suffix sum</b> S[i] totals everything from i to the end. The same idea, with max or product in place of +, solves many array problems in one or two passes.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/" aria-current="page">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Technique">
+    <div class="pgroup"><span class="lab">Building blocks</span><div class="btns" id="pBase"></div></div>
+    <div class="pgroup app"><span class="lab">Applications</span><div class="btns" id="pApp"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow" id="fA"><label for="inA">Array A (integers −99 to 99, up to 14)</label><input type="text" id="inA"></div>
+    <div class="field" id="fQ"><label for="inQ" id="qLab">Queries “l r”, separated by ;</label><input type="text" id="inQ"></div>
+    <div class="field" id="fK"><label for="inK">k</label><input type="number" id="inK" value="3"></div>
+    <div class="field" id="fM"><label for="inM">Matrix (rows on separate lines, up to 6 × 6)</label><textarea id="inM" rows="4" spellcheck="false"></textarea></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bEx">Example</button>
+    <button class="btn" type="button" id="bRand">Random</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div id="barsBox" hidden><svg class="bars" id="bars" role="img" aria-label="Bars and trapped water"></svg></div>
+      <div class="scroll" id="arrays"></div>
+      <div id="mapBox" hidden><h3 class="sub">Hash map cnt: prefix sum → how many times seen</h3><ul class="hmap" id="hmap"></ul></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <aside class="side">
+      <section class="card code"><h2>Pseudocode</h2><ol id="code"></ol></section>
+      <section class="card vars"><h2>Variables</h2><dl id="vars"></dl><dl class="stats" id="stats"></dl><p class="stat-note" id="statNote"></p></section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <div class="tscroll"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>Summary of the techniques</h2>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Technique</th><th>Key formula</th><th>Preprocessing</th><th>Per query / answer</th></tr></thead>
+      <tbody>
+        <tr><td>Prefix sum</td><td>P[i] = P[i−1] + A[i−1];  sum(l..r) = P[r+1] − P[l]</td><td>Θ(n)</td><td>O(1)</td></tr>
+        <tr><td>Suffix sum</td><td>S[i] = S[i+1] + A[i];  sum(l..r) = S[l] − S[r+1]</td><td>Θ(n)</td><td>O(1)</td></tr>
+        <tr><td>Difference array</td><td>D[l] += x, D[r+1] −= x;  A[i] += D[0] + … + D[i]</td><td>O(1) per update</td><td>Θ(n) to rebuild</td></tr>
+        <tr><td>2-D prefix sum</td><td>P[i][j] = A + P[i−1][j] + P[i][j−1] − P[i−1][j−1]</td><td>Θ(R·C)</td><td>O(1) per rectangle</td></tr>
+        <tr><td>Equilibrium index</td><td>prefix(i) = total − prefix(i) − A[i]</td><td>Θ(n)</td><td>one pass</td></tr>
+        <tr><td>Product except self</td><td>out[i] = (prefix product) · (suffix product)</td><td>Θ(n)</td><td>no division</td></tr>
+        <tr><td>Subarray sum = k</td><td>count earlier prefix sums equal to P[i+1] − k</td><td>—</td><td>O(n) expected (hash map)</td></tr>
+        <tr><td>Maximum subarray</td><td>max over i of P[i+1] − min{P[0..i]}</td><td>—</td><td>O(n) (Kadane)</td></tr>
+        <tr><td>Trapping rain water</td><td>min(prefix max, suffix max) − h[i]</td><td>Θ(n)</td><td>O(n)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.PSEngine, f = E.f;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const BASE = ['prefix', 'suffix', 'diff', 'p2d'], APP = ['equi', 'prod', 'subk', 'maxsub', 'rain'];
+  const EX = {
+    prefix: { A: '3 -1 4 1 -5 9 2 -6', Q: '1 4; 0 7; 5 5' }, suffix: { A: '3 -1 4 1 -5 9 2 -6', Q: '1 4; 3 6' },
+    diff: { A: '0 0 0 0 0 0', Q: '1 3 2; 2 5 3; 0 1 -1' }, p2d: { M: '3 0 1 4\n5 6 3 2\n1 2 0 1\n4 1 0 1', Q: '1 1 2 2; 0 0 3 3; 2 1 3 3' },
+    equi: { A: '-7 1 5 2 -4 3 0' }, prod: { A: '1 2 3 4 5' }, subk: { A: '1 2 3 -2 2 1', K: 3 }, maxsub: { A: '-2 1 -3 4 -1 2 1 -5 4' }, rain: { A: '0 1 0 2 1 0 1 3 2 1 2 1' }
+  };
+  let MODE = [...BASE, ...APP].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'prefix', RUN = null, NUM = {}, INPUT = null;
+
+  function picker() {
+    const b = m => `<button type="button" class="chipbtn" data-m="${m}" aria-pressed="${m === MODE}">${E.MODES[m].short}</button>`;
+    $('pBase').innerHTML = BASE.map(b).join(''); $('pApp').innerHTML = APP.map(b).join('');
+  }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; MODE = b.dataset.m; picker(); try { history.replaceState(null, '', '#' + MODE); } catch (_) {} example(); });
+
+  function fields() {
+    $('fA').hidden = MODE === 'p2d'; $('fM').hidden = MODE !== 'p2d'; $('fK').hidden = MODE !== 'subk';
+    $('fQ').hidden = !['prefix', 'suffix', 'diff', 'p2d'].includes(MODE);
+    $('qLab').textContent = MODE === 'diff' ? 'Updates “l r x” (add x to A[l..r]), separated by ;' : MODE === 'p2d' ? 'Rectangles “r1 c1 r2 c2”, separated by ;' : 'Queries “l r” (0-based), separated by ;';
+  }
+  function example() { const e = EX[MODE]; if (e.A) $('inA').value = e.A; if (e.Q) $('inQ').value = e.Q; if (e.M) $('inM').value = e.M; if (e.K != null) $('inK').value = e.K; apply(); }
+
+  const nums = s => s.trim() ? s.trim().split(/[\s,]+/) : [];
+  function parse() {
+    const isInt = t => /^-?\d+$/.test(t);
+    if (MODE === 'p2d') {
+      const rows = $('inM').value.trim().split(/\n|;/).map(r => nums(r)).filter(r => r.length);
+      if (!rows.length) return { error: 'Type a matrix, one row per line.' };
+      if (rows.some(r => r.length !== rows[0].length)) return { error: 'Every row must have the same number of entries.' };
+      if (rows.length > 6 || rows[0].length > 6) return { error: 'Use at most 6 rows and 6 columns.' };
+      if (rows.some(r => r.some(t => !isInt(t) || Math.abs(t) > 99))) return { error: 'Matrix entries must be whole numbers from −99 to 99.' };
+      const M = rows.map(r => r.map(Number)), R = M.length, C = M[0].length;
+      const rects = [];
+      for (const q of $('inQ').value.split(';').map(s => s.trim()).filter(Boolean)) {
+        const t = nums(q); if (t.length !== 4 || t.some(x => !isInt(x))) return { error: `“${q}” should be four numbers: r1 c1 r2 c2.` };
+        const [a, b, c, d] = t.map(Number);
+        if (!(0 <= a && a <= c && c < R && 0 <= b && b <= d && d < C)) return { error: `Rectangle “${q}” must have 0 ≤ r1 ≤ r2 < ${R} and 0 ≤ c1 ≤ c2 < ${C}.` };
+        rects.push([a, b, c, d]);
+      }
+      if (rects.length > 5) return { error: 'Use at most 5 rectangles.' };
+      return { M, rects };
+    }
+    const t = nums($('inA').value);
+    if (t.length < 2) return { error: 'Type at least two numbers.' };
+    if (t.some(x => !isInt(x))) return { error: 'The array must contain whole numbers only.' };
+    if (t.length > 14) return { error: `That is ${t.length} numbers. Use at most 14.` };
+    const A = t.map(Number);
+    if (A.some(x => Math.abs(x) > 99)) return { error: 'Keep every number between −99 and 99.' };
+    if (MODE === 'rain' && A.some(x => x < 0)) return { error: 'Bar heights cannot be negative.' };
+    if (MODE === 'prod' && A.some(x => Math.abs(x) > 12)) return { error: 'For products, keep the numbers between −12 and 12 so the results stay readable.' };
+    const n = A.length, inp = { A };
+    if (MODE === 'prefix' || MODE === 'suffix') {
+      inp.queries = [];
+      for (const q of $('inQ').value.split(';').map(s => s.trim()).filter(Boolean)) {
+        const v = nums(q); if (v.length !== 2 || v.some(x => !isInt(x))) return { error: `“${q}” should be two numbers: l r.` };
+        const [l, r] = v.map(Number); if (!(0 <= l && l <= r && r < n)) return { error: `Query “${q}” needs 0 ≤ l ≤ r ≤ ${n - 1}.` };
+        inp.queries.push([l, r]);
+      }
+      if (inp.queries.length > 6) return { error: 'Use at most 6 queries.' };
+    }
+    if (MODE === 'diff') {
+      inp.updates = [];
+      for (const q of $('inQ').value.split(';').map(s => s.trim()).filter(Boolean)) {
+        const v = nums(q); if (v.length !== 3 || v.some(x => !isInt(x))) return { error: `“${q}” should be three numbers: l r x.` };
+        const [l, r, x] = v.map(Number); if (!(0 <= l && l <= r && r < n)) return { error: `Update “${q}” needs 0 ≤ l ≤ r ≤ ${n - 1}.` };
+        inp.updates.push([l, r, x]);
+      }
+      if (!inp.updates.length) return { error: 'Type at least one update, for example 1 3 2.' };
+      if (inp.updates.length > 6) return { error: 'Use at most 6 updates.' };
+    }
+    if (MODE === 'subk') { const k = Number($('inK').value); if (!Number.isInteger(k)) return { error: 'k must be a whole number.' }; inp.k = k; }
+    return inp;
+  }
+  function apply() {
+    fields();
+    const r = parse(); if (r.error) { $('err').textContent = r.error; return; }
+    $('err').textContent = ''; INPUT = r; load();
+  }
+
+  function renderArrays(s) {
+    let html = '';
+    const grids = s.arrays.filter(a => a.grid);
+    if (grids.length) {
+      html = `<div class="mats">` + grids.map(a => {
+        const g = a.grid, off = a.name === 'P' ? 0 : 0;
+        return `<div><h3 class="sub">${a.name === 'P' ? 'P (one extra row and column of 0s)' : 'A'}</h3><table class="grid2"><thead><tr><th></th>${g[0].map((_, j) => `<th>${j}</th>`).join('')}</tr></thead><tbody>` +
+          g.map((row, i) => `<tr><th>${i}</th>${row.map((v, j) => `<td class="${v == null ? 'empty' : ''} c ${a.gcls[`${i},${j}`] || ''}">${v == null ? '·' : f(v)}</td>`).join('')}</tr>`).join('') + `</tbody></table></div>`;
+      }).join('') + `</div>`;
+    } else {
+      html = s.arrays.filter(a => !(s.bars && a.name === 'h' && false)).map(a => {
+        let cells = '';
+        a.vals.forEach((v, i) => { cells += `<div class="ix" style="grid-row:1;grid-column:${i + 1}">${i}</div><div class="c ${v == null ? 'empty' : ''} ${a.cls[i] || ''}" style="grid-row:2;grid-column:${i + 1}">${v == null ? '·' : f(v)}</div>`; });
+        return `<div class="arow"><span class="nm">${esc(a.name)}</span><div class="strip">${cells}</div></div>`;
+      }).join('');
+    }
+    $('arrays').innerHTML = html;
+    // rain bars
+    $('barsBox').hidden = !s.bars;
+    if (s.bars) {
+      const h = s.arrays[0].vals, W = s.W || [], n = h.length, mx = Math.max(1, ...h.map((x, i) => x + (W[i] || 0))), bw = 40, H = 30 * mx + 30;
+      let out = '';
+      h.forEach((x, i) => {
+        const X = 10 + i * bw, top = H - 20 - x * 30;
+        if (W[i]) out += `<rect class="wat" x="${X + 2}" y="${top - W[i] * 30}" width="${bw - 4}" height="${W[i] * 30}"/>`;
+        if (x) out += `<rect class="bar ${s.arrays[0].cls[i] === 'add' ? 'add' : ''}" x="${X + 2}" y="${top}" width="${bw - 4}" height="${x * 30}"/>`;
+        out += `<text class="blab" x="${X + bw / 2}" y="${H - 6}">${i}</text>`;
+      });
+      $('bars').setAttribute('viewBox', `0 0 ${20 + n * bw} ${H}`); $('bars').innerHTML = out;
+    }
+    $('mapBox').hidden = !s.cnt;
+    if (s.cnt) $('hmap').innerHTML = s.cnt.map(([k, v]) => `<li class="${k === s.hl ? 'on' : ''}">${f(k)} → ${v}</li>`).join('');
+  }
+
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    renderArrays(s);
+    $('vars').innerHTML = Object.keys(s.vars).map(k => `<div><dt>${k}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('') || `<div><dt>n</dt><dd>${INPUT.A ? INPUT.A.length : INPUT.M.length + '×' + INPUT.M[0].length}</dd></div>`;
+    $('stats').innerHTML = `<div><dt>operations</dt><dd>${s.ops}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div><div><dt>of</dt><dd>${RUN.steps.length}</dd></div>`;
+    $('statNote').textContent = 'Each addition, subtraction, comparison or multiplication counts as one operation.';
+    $('thead').innerHTML = RUN.header.map(h => `<th>${esc(h)}</th>`).join('');
+    $('tbody').innerHTML = s.rows.length ? s.rows.map((r, i) => `<tr class="${i === s.rows.length - 1 ? 'last' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${RUN.header.length}">Rows appear as the algorithm runs.</td></tr>`;
+  }
+  function legend() {
+    const sw = (st, t) => `<span><i style="${st}"></i>${t}</span>`;
+    let h = sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 30%,var(--surface))', 'value just computed') + sw('border-color:var(--accent);border-style:dashed', 'value it is built from') + sw('border-color:var(--read);background:color-mix(in oklab,var(--read) 22%,var(--surface))', 'element being added');
+    if (['prefix', 'suffix', 'diff', 'p2d', 'subk', 'maxsub'].includes(MODE)) h += sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 18%,var(--surface))', MODE === 'diff' ? 'range being updated' : 'range / subarray') + sw('border-color:var(--dec);background:color-mix(in oklab,var(--dec) 18%,var(--surface))', 'subtracted');
+    if (MODE === 'equi') h += sw('border-color:var(--k0);background:color-mix(in oklab,var(--k0) 18%,var(--surface))', 'left part') + sw('border-color:var(--k1);background:color-mix(in oklab,var(--k1) 18%,var(--surface))', 'right part');
+    if (MODE === 'rain') h += sw('border-color:var(--k0);background:color-mix(in oklab,var(--k0) 45%,transparent)', 'trapped water');
+    $('legend').innerHTML = h;
+  }
+  function codeHTML(lines) { let n = 0; NUM = {}; return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join(''); }
+  const player = Sim.start(render);
+  function load() {
+    RUN = E.run(MODE, INPUT);
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.MODES[MODE].name}</b>. ` + RUN.steps[0].msg;
+    legend(); player.load(RUN.steps);
+  }
+  $('setup').addEventListener('submit', e => { e.preventDefault(); apply(); });
+  $('bEx').onclick = example;
+  $('bRand').onclick = () => {
+    const n = 6 + Math.floor(Math.random() * 5), rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+    if (MODE === 'p2d') { $('inM').value = Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => rnd(0, 9)).join(' ')).join('\n'); $('inQ').value = '1 1 2 2; 0 1 3 2'; }
+    else if (MODE === 'rain') $('inA').value = Array.from({ length: n + 2 }, () => rnd(0, 5)).join(' ');
+    else if (MODE === 'prod') $('inA').value = Array.from({ length: 5 }, () => rnd(-4, 5)).join(' ');
+    else {
+      $('inA').value = Array.from({ length: n }, () => rnd(-9, 9)).join(' ');
+      if (MODE === 'prefix' || MODE === 'suffix') { const l = rnd(0, n - 2); $('inQ').value = `${l} ${rnd(l, n - 1)}; 0 ${n - 1}`; }
+      if (MODE === 'diff') $('inQ').value = `0 ${rnd(1, n - 1)} ${rnd(1, 5)}; ${rnd(0, 2)} ${n - 1} ${rnd(-5, -1)}`;
+    }
+    apply();
+  };
+  picker(); example();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Playground Algorithms</title>
+<meta name="description" content="Animated, step-by-step algorithm simulations (sorting, graph search, shortest paths, spanning trees, string matching, dynamic programming, N-Queens, TSP, game theory) with the code in C, C++, Java and Python.">
+<script>
+  try { const t = localStorage.getItem('ccp.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg); color:var(--ink); font:15px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif; padding:0 16px}
+.wrap{height:100vh; height:100dvh; padding:10px 0 12px; display:flex; flex-direction:column; gap:10px}
+header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 20px}
+.hright{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
+h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
+.modes{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.modes a{font:700 .88rem "Atkinson Hyperlegible",sans-serif; color:var(--ink); background:var(--surface); padding:7px 14px; text-decoration:none}
+.modes a[aria-current="page"]{background:var(--accent); color:var(--accent-ink)}
+label.f{display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted)}
+select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px}
+.btn{font:700 .85rem "Atkinson Hyperlegible",sans-serif; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:5px 11px; cursor:pointer; white-space:nowrap; text-decoration:none; display:inline-block}
+.btn:hover{border-color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.main{flex:1; min-height:0; display:grid; grid-template-columns:230px minmax(0,1fr); gap:12px}
+nav.toc{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 8px; overflow:auto}
+nav.toc h3{font:700 .7rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:10px 8px 4px}
+nav.toc h3:first-child{margin-top:2px}
+nav.toc a{display:block; padding:5px 8px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:.93rem; line-height:1.3}
+nav.toc a:hover{background:var(--bg)}
+nav.toc a[aria-current="true"]{background:color-mix(in oklab,var(--accent) 15%,transparent); color:var(--accent); font-weight:700}
+nav.toc a small{display:block; color:var(--muted); font-size:.75rem; font-weight:400}
+.viewer{display:flex; flex-direction:column; min-width:0; min-height:0; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.vhead{display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; padding:8px 12px; border-bottom:1px solid var(--line)}
+.vhead h2{font:800 1.15rem "Bricolage Grotesque",system-ui,sans-serif; margin:0 auto 0 0}
+.code{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:7px 12px; border-bottom:1px solid var(--line); background:var(--bg); font-size:.88rem}
+.code[hidden]{display:none}
+.code .prog{display:inline-flex; align-items:center; gap:5px}
+.code .prog b{font-weight:700; margin-right:2px}
+.code .lab{color:var(--muted)}
+.code .btn{padding:3px 9px; font-size:.8rem}
+iframe{flex:1; width:100%; border:0; background:#fff}
+.examMsg{color:var(--muted); padding:20px}
+@media (max-width:860px){ .wrap{height:auto} .main{grid-template-columns:minmax(0,1fr)} nav.toc{max-height:none} iframe{height:85vh; flex:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Playground</h1>
+      <p class="byline">by MAZHAR</p>
+    </div>
+    <div class="hright">
+      <nav class="modes" aria-label="Mode"><a href="index.html" id="toEditor">Code editor</a><a href="algorithms.html" aria-current="page">Algorithms</a><a href="stl.html" id="toStl">C++ STL</a><a href="notebook.html" id="toNotebook">Notebook</a></nav>
+      <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    </div>
+  </header>
+  <div class="main">
+    <nav class="toc" id="toc" aria-label="Simulations"></nav>
+    <section class="viewer" aria-labelledby="simTitle">
+      <div class="vhead"><h2 id="simTitle"></h2><a class="btn" id="newTab" target="_blank" rel="noopener" title="Open this simulation on its own">Open in a new tab</a></div>
+      <div class="code" id="code"></div>
+      <iframe id="frame" title="Algorithm simulation"></iframe>
+    </section>
+  </div>
+</div>
+<script src="examples-c.js"></script>
+<script src="examples-cpp.js"></script>
+<script src="examples-java.js"></script>
+<script src="examples-python.js"></script>
+<script src="examples-algo.js"></script>
+<script src="algorithms.js"></script>
+</body>
+</html>

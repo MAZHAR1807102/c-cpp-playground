@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step N-Queens: backtracking for the first solution and for all solutions, the state-space tree, O(1) safety checks with column and diagonal arrays, and min-conflicts local search.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>N-Queens Problem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+#inN,#inS{width:90px}
+.vizrow{display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-start}
+.board{display:grid; gap:0; border:2px solid var(--muted); border-radius:6px; overflow:hidden; width:max-content}
+.sq{width:var(--sq); height:var(--sq); display:grid; place-items:center; position:relative; font:700 calc(var(--sq) * .55)/1 var(--f-body); background:var(--light)}
+.sq.dk{background:var(--dark)}
+.sq.att::after{content:""; position:absolute; inset:0; background:color-mix(in oklab,var(--dec) 16%,transparent)}
+.sq .q{position:relative; z-index:1; color:var(--ink)}
+.sq.try{box-shadow:inset 0 0 0 4px var(--accent)}
+.sq.bad{box-shadow:inset 0 0 0 4px var(--dec)}
+.sq.bad .x{color:var(--dec); font-size:calc(var(--sq) * .5); position:relative; z-index:1}
+.sq.atk{background:color-mix(in oklab,var(--dec) 45%,var(--surface))}
+.sq.sol .q{color:var(--inc)}
+.sq .cnt{font:700 calc(var(--sq) * .3) var(--f-mono); color:var(--read); position:absolute; right:3px; bottom:2px; z-index:2}
+.sq .cnt.min{color:var(--inc)}
+.rl,.cl{font:600 .68rem var(--f-mono); color:var(--muted); display:grid; place-items:center}
+.bwrap{display:grid; grid-template-columns:18px auto; grid-template-rows:auto 16px; gap:2px}
+.cls{display:grid; grid-column:2}
+.rls{display:grid}
+:root{--sq:46px; --light:#f3efe4; --dark:#c9bfa6}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --light:#3b4652; --dark:#26303a }}
+:root[data-theme="dark"]{ --light:#3b4652; --dark:#26303a }
+@media (max-width:560px){ :root{--sq:34px} }
+.flags{display:flex; flex-direction:column; gap:8px}
+.frow{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.frow .nm{font:700 .72rem var(--f-mono); color:var(--muted); width:62px}
+.frow span.f{width:26px; height:26px; display:grid; place-items:center; border:2px solid var(--line); border-radius:5px; font:600 .66rem var(--f-mono); color:var(--muted)}
+.frow span.f.on{border-color:var(--src); background:color-mix(in oklab,var(--src) 26%,var(--surface)); color:var(--ink)}
+.frow span.f.hit{border-color:var(--dec); background:color-mix(in oklab,var(--dec) 30%,var(--surface))}
+h3.sub{font:700 .7rem/1.3 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+svg.tree{display:block; width:100%; height:auto}
+.tree line{stroke:var(--line); stroke-width:2}
+.tree line.ghost{stroke-dasharray:3 4; opacity:.5}
+.tree circle{fill:var(--surface); stroke:var(--muted); stroke-width:2}
+.tree .ghost circle{fill:none; stroke:var(--line); stroke-dasharray:3 3}
+.tree .live circle{stroke:var(--accent); fill:color-mix(in oklab,var(--accent) 18%,var(--surface))}
+.tree .done circle{stroke:var(--muted); fill:var(--bg)}
+.tree .dead circle{stroke:var(--dec); fill:color-mix(in oklab,var(--dec) 18%,var(--surface))}
+.tree .sol circle{stroke:var(--inc); fill:color-mix(in oklab,var(--inc) 35%,var(--surface))}
+.tree .cur circle{stroke-width:4; stroke:var(--accent)}
+.tree text{font:700 11px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.tree .ghost text{display:none}
+.tree text.rowlab{fill:var(--muted); font-weight:600; text-anchor:start}
+.sols{display:flex; flex-wrap:wrap; gap:6px; list-style:none; margin:0; padding:0}
+.sols li{font:700 .8rem var(--f-mono); padding:3px 9px; border-radius:6px; border:2px solid var(--inc); background:color-mix(in oklab,var(--inc) 16%,var(--surface))}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+.ptable{min-width:520px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Backtracking · N-Queens</p>
+    <h1>The N-Queens problem, step by step</h1>
+    <p class="lede">Place n queens on an n × n chessboard so that no two attack each other: no shared row, column or diagonal. <b>Backtracking</b> places one queen per row, tests each square, and undoes the last choice as soon as a row has no safe square left, so it never explores a branch that is already hopeless. <b>Min-conflicts</b> instead starts from a full board and repairs it.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/" aria-current="page">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Algorithm">
+    <div class="pgroup"><span class="lab">Algorithm</span><div class="btns" id="pAlg"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field"><label for="inN" id="labN">n (1 to 10)</label><input type="number" id="inN" value="4"></div>
+    <div class="field" id="fS"><label for="inS">Random seed</label><input type="number" id="inS" value="2"></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bEx">Example</button>
+    <button class="btn" type="button" id="bRand" hidden>New random start</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="vizrow">
+        <div class="bwrap"><div class="rls" id="rls"></div><div class="board" id="board" role="img" aria-label="Chessboard"></div><div class="cls" id="cls"></div></div>
+        <div class="flags" id="flags" hidden></div>
+      </div>
+      <div id="treeBox" hidden><h3 class="sub">State-space tree (node = column chosen in that row; red = unsafe square, pruned)</h3><svg class="tree" id="tree" role="img" aria-label="State-space tree"></svg></div>
+      <div id="solBox" hidden><h3 class="sub" id="solTitle">Solutions found</h3><ul class="sols" id="sols"></ul></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <aside class="side">
+      <section class="card code"><h2>Pseudocode</h2><ol id="code"></ol></section>
+      <section class="card vars"><h2>Variables</h2><dl id="vars"></dl><dl class="stats" id="stats"></dl><p class="stat-note" id="statNote"></p></section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <div class="tscroll"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>Number of solutions</h2>
+    <p>Distinct solutions for each board size. For n = 2 and n = 3 there are none; for every n ≥ 4 there is at least one.</p>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>n</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead>
+      <tbody><tr><td>solutions</td><td>1</td><td>0</td><td>0</td><td>2</td><td>10</td><td>4</td><td>40</td><td>92</td><td>352</td><td>724</td></tr>
+      <tr><td>unique up to symmetry</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td><td>1</td><td>6</td><td>12</td><td>46</td><td>92</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.NQEngine;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ALL = Object.keys(E.MODES), MAXN = { first: 10, all: 8, sets: 10, minconf: 12 }, EX = { first: 4, all: 4, sets: 6, minconf: 8 };
+  let MODE = ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'first', RUN = null, NUM = {}, N = 4, LAY = null;
+
+  function picker() { $('pAlg').innerHTML = ALL.map(m => `<button type="button" class="chipbtn" data-m="${m}" aria-pressed="${m === MODE}">${E.MODES[m].short}</button>`).join(''); }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; MODE = b.dataset.m; picker(); try { history.replaceState(null, '', '#' + MODE); } catch (_) {} example(); });
+  function example() { $('inN').value = EX[MODE]; $('inS').value = 2; apply(); }
+  function apply() {
+    $('labN').textContent = `n (1 to ${MAXN[MODE]})`; $('fS').hidden = $('bRand').hidden = MODE !== 'minconf';
+    const n = Number($('inN').value), seed = Number($('inS').value);
+    if (!Number.isInteger(n) || n < 1 || n > MAXN[MODE]) { $('err').textContent = `n must be a whole number from 1 to ${MAXN[MODE]}${MODE === 'all' ? ' (all solutions grows fast)' : ''}.`; return; }
+    if (MODE === 'minconf' && (!Number.isInteger(seed) || seed < 1 || seed > 99999)) { $('err').textContent = 'The seed must be a whole number from 1 to 99999.'; return; }
+    if (MODE === 'minconf' && n < 4) { $('err').textContent = 'Min-conflicts needs n ≥ 4 (there is no solution for n = 2 or 3).'; return; }
+    $('err').textContent = ''; N = n; load({ n, seed });
+  }
+
+  function renderBoard(s) {
+    const x = s.x, att = new Set();
+    x.forEach((c, r) => { if (c < 0) return; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (i !== r && (j === c || Math.abs(j - c) === Math.abs(i - r)) && MODE !== 'minconf') att.add(i * N + j); });
+    const done = s.final && RUN.sols.length && MODE !== 'all';
+    let h = '';
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const cls = ['sq']; if ((i + j) % 2) cls.push('dk');
+      if (att.has(i * N + j) && x[i] !== j) cls.push('att');
+      const isTry = s.tryAt && s.tryAt[0] === i && s.tryAt[1] === j, bad = isTry && s.att;
+      if (bad) cls.push('bad'); else if (isTry) cls.push('try');
+      if (s.att && s.att[0] === i && s.att[1] === j) cls.push('atk');
+      if (done) cls.push('sol');
+      let inner = x[i] === j ? '<span class="q">♛</span>' : bad ? '<span class="x">✕</span>' : '';
+      if (s.counts && s.counts.r === i) { const mn = Math.min(...s.counts.v); inner += `<span class="cnt ${s.counts.v[j] === mn ? 'min' : ''}">${s.counts.v[j]}</span>`; }
+      h += `<div class="${cls.join(' ')}">${inner}</div>`;
+    }
+    $('board').style.gridTemplateColumns = `repeat(${N}, var(--sq))`; $('board').innerHTML = h;
+    $('rls').style.gridTemplateRows = `repeat(${N}, var(--sq))`; $('rls').innerHTML = Array.from({ length: N }, (_, i) => `<span class="rl">${i + 1}</span>`).join('');
+    $('cls').style.gridTemplateColumns = `repeat(${N}, var(--sq))`; $('cls').innerHTML = Array.from({ length: N }, (_, i) => `<span class="cl">${i + 1}</span>`).join('');
+  }
+  function renderFlags(s) {
+    $('flags').hidden = !s.flags; if (!s.flags) return;
+    const t = s.tryAt, hit = t ? { col: t[1], d1: t[0] + t[1], d2: t[0] - t[1] + N - 1 } : {};
+    const row = (nm, arr, key, lab) => `<div class="frow"><span class="nm">${nm}</span>${arr.map((v, i) => `<span class="f ${v ? 'on' : ''} ${s.att && hit[key] === i && v ? 'hit' : ''}" title="${lab(i)}">${lab(i)}</span>`).join('')}</div>`;
+    $('flags').innerHTML = `<h3 class="sub">Occupied columns and diagonals</h3>` + row('col[c]', s.flags.col, 'col', i => i + 1) + row('d1[r+c]', s.flags.d1, 'd1', i => i + 2) + row('d2[r−c+n]', s.flags.d2, 'd2', i => i + 1) + `<p class="stat-note" style="padding:0">d1 is constant along ↙ diagonals (r + c), d2 along ↘ diagonals (r − c).</p>`;
+  }
+  function layout(nodes) {
+    const kids = nodes.map(() => []), pos = []; nodes.forEach(n => { if (n.parent >= 0) kids[n.parent].push(n.id); });
+    let leaf = 0;
+    (function walk(id) { if (!kids[id].length) pos[id] = leaf++; else { kids[id].forEach(walk); pos[id] = (pos[kids[id][0]] + pos[kids[id][kids[id].length - 1]]) / 2; } })(0);
+    return { pos, leaves: leaf };
+  }
+  function renderTree(s) {
+    $('treeBox').hidden = !RUN.tree; if (!RUN.tree) return;
+    const T = RUN.tree, W = 30, H = 46, w = LAY.leaves * W + 60, h = (N + 1) * H + 10;
+    const X = id => 50 + LAY.pos[id] * W + W / 2, Y = id => 22 + T[id].depth * H;
+    let out = '';
+    for (let d = 1; d <= N; d++) out += `<text class="rowlab" x="2" y="${22 + d * H}">row ${d}</text>`;
+    T.forEach(t => { if (t.parent >= 0) out += `<line class="${t.id < s.treeLen ? '' : 'ghost'}" x1="${X(t.parent)}" y1="${Y(t.parent)}" x2="${X(t.id)}" y2="${Y(t.id)}"/>`; });
+    T.forEach(t => {
+      const seen = t.id < s.treeLen;
+      const st = !seen ? 'ghost' : s.final ? t.st : (t.st === 'dead' ? 'dead' : t.st === 'sol' && stepSawSolution(t, s) ? 'sol' : onPath(t.id, s) ? 'live' : 'done');
+      out += `<g class="${st} ${t.id === s.cur ? 'cur' : ''}"><circle cx="${X(t.id)}" cy="${Y(t.id)}" r="${t.id ? 12 : 16}"/><text x="${X(t.id)}" y="${Y(t.id)}">${t.id ? t.label : '·'}</text></g>`;
+    });
+    $('tree').setAttribute('viewBox', `0 0 ${w} ${h}`); $('tree').style.maxWidth = Math.min(w * 1.2, 1100) + 'px'; $('tree').innerHTML = out;
+  }
+  // a node is on the current path if its column is the queen of its row and all its ancestors are too
+  function onPath(id, s) { const T = RUN.tree; let t = T[id]; if (!t.depth) return true; while (t && t.depth) { if (s.x[t.depth - 1] !== +t.label - 1) return false; t = T[t.parent]; } return true; }
+  function stepSawSolution(t, s) { return t.id < s.treeLen; }
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    renderBoard(s); renderFlags(s); renderTree(s);
+    const list = s.solList || [];
+    $('solBox').hidden = !s.sols; $('solTitle').textContent = MODE === 'all' && s.sols > 8 ? `Solutions found: ${s.sols} (last 8 shown)` : 'Solutions found';
+    $('sols').innerHTML = list.map(x => `<li>(${x.map(c => c + 1).join(', ')})</li>`).join('');
+    $('vars').innerHTML = Object.keys(s.vars).map(k => `<div><dt>${esc(k)}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('');
+    const st = s.stats;
+    $('stats').innerHTML = MODE === 'minconf'
+      ? `<div><dt>moves</dt><dd>${st.tries}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div><div><dt>of</dt><dd>${RUN.steps.length}</dd></div>`
+      : `<div><dt>squares tested</dt><dd>${st.tries}</dd></div><div><dt>placements</dt><dd>${st.placed}</dd></div><div><dt>backtracks</dt><dd>${st.back}</dd></div><div><dt>solutions</dt><dd>${st.sols}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div><div><dt>of</dt><dd>${RUN.steps.length}</dd></div>`;
+    $('statNote').textContent = MODE === 'minconf' ? 'A move reassigns one queen to the least-conflicted column of its row.' : 'Squares tested = calls to PLACE; placements = nodes of the state-space tree below the root.';
+    $('thead').innerHTML = RUN.header.map(h => `<th>${esc(h)}</th>`).join('');
+    const rows = s.rows.slice(-60);
+    $('tbody').innerHTML = rows.length ? rows.map((r, i) => `<tr class="${i === rows.length - 1 ? 'last' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${RUN.header.length}">Rows appear as the search runs${s.rows.length > 60 ? '' : ''}.</td></tr>`;
+  }
+  function legend() {
+    const sw = (st, t) => `<span><i style="${st}"></i>${t}</span>`;
+    let h = sw('border-color:var(--accent)', 'square being tried') + sw('border-color:var(--dec)', 'unsafe square') + sw('border-color:var(--dec);background:color-mix(in oklab,var(--dec) 45%,var(--surface))', 'the queen that attacks it');
+    if (MODE === 'minconf') h = sw('border-color:var(--accent)', 'queen being moved') + '<span>small numbers: conflicts if the queen moved to that column (green = fewest)</span>';
+    else h += sw('border-color:transparent;background:color-mix(in oklab,var(--dec) 16%,var(--surface))', 'attacked by a placed queen');
+    $('legend').innerHTML = h;
+  }
+  function codeHTML(lines) { let n = 0; NUM = {}; return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join(''); }
+  const player = Sim.start(render);
+  function load(input) {
+    RUN = E.run(MODE, input);
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.MODES[MODE].name}</b>. ` + RUN.steps[0].msg;
+    LAY = RUN.tree ? layout(RUN.tree) : null;
+    legend(); player.load(RUN.steps);
+  }
+  $('setup').addEventListener('submit', e => { e.preventDefault(); apply(); });
+  $('bEx').onclick = example;
+  $('bRand').onclick = () => { $('inS').value = 1 + Math.floor(Math.random() * 9999); apply(); };
+  picker(); example();
+  const jump = +new URLSearchParams(location.search).get('step');
+  for (let i = 1; i < jump; i++) document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+})();
+</script>
+</body>
+</html>

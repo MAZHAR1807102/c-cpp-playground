@@ -123,11 +123,26 @@ details.hdr summary::before{content:"▸"; color:var(--muted); flex:none} detail
 .gnone{color:var(--muted); margin:6px 0 0}
 mark{background:color-mix(in oklab,var(--warn) 30%,transparent); color:inherit; border-radius:2px}
 label.f[hidden]{display:none}
+#animBtn[hidden]{display:none}
+/* the animation panel: on the right, over the output, so the code stays visible and editable */
+.simpanel{position:fixed; top:0; right:0; z-index:40; width:min(860px,60vw); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
+.simpanel[hidden]{display:none}
+.simhead{display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line)}
+.simhead b{margin-right:auto; font:800 1.05rem "Bricolage Grotesque",system-ui,sans-serif}
+.simhead .btn{text-decoration:none; padding:5px 11px}
+.simpanel iframe{flex:1; border:0; width:100%; background:#fff}
+/* with the panel open, the editor and the output share the space to its left, one above the other */
+body.simopen .wrap{margin-right:min(860px,60vw)}
+body.simopen .main{grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1.25fr) minmax(0,1fr)}
+body.simopen .right{grid-template-rows:minmax(0,1fr) auto}
+body.simopen textarea.stdin{min-height:54px}
+body.simopen header .hright label.f{display:none}
+@media (max-width:900px){ .simpanel{width:100vw} body.simopen .wrap{margin-right:0} }
 .files{display:inline-flex; gap:6px}
 .files[hidden]{display:none}
 .exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
 .exambadge[hidden]{display:none}
-.exam #guide, .exam #exlabel, .exam .weblink, .exam #toStl{display:none}
+.exam #guide, .exam #exlabel, .exam .weblink, .exam #toStl, .exam #toAlgo, .exam #animBtn, .exam #simPanel{display:none!important}
 .exam label.f:has(#sugg){opacity:.5}
 dialog{border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); padding:20px 22px; width:min(420px,calc(100vw - 32px))}
 dialog::backdrop{background:rgba(0,0,0,.5)}
@@ -163,7 +178,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <p class="byline">by MAZHAR</p>
     </div>
     <div class="hright">
-      <nav class="modes" aria-label="Mode"><a href="index.html" aria-current="page">Code editor</a><a href="stl.html" id="toStl" title="C++ STL guide with runnable examples">C++ STL</a><a href="notebook.html" id="toNotebook" title="Python notebook for data science and machine learning">Notebook</a></nav>
+      <nav class="modes" aria-label="Mode"><a href="index.html" aria-current="page">Code editor</a><a href="algorithms.html" id="toAlgo" title="Animated algorithm simulations, with the code in every language">Algorithms</a><a href="stl.html" id="toStl" title="C++ STL guide with runnable examples">C++ STL</a><a href="notebook.html" id="toNotebook" title="Python notebook for data science and machine learning">Notebook</a></nav>
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button class="btn" type="button" id="menuBtn" aria-haspopup="dialog" title="Header and library guide, how it works">Guide &amp; help</button>
     </div>
@@ -175,6 +190,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     <label class="f" id="stdlabel">Standard <select id="std"></select></label>
     <label class="f" id="optlabel">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
     <label class="f" id="exlabel">Example <select id="ex"></select></label>
+    <button class="btn" type="button" id="animBtn" hidden title="Watch this algorithm animated, step by step, beside your code">▶ Animation</button>
     <label class="f"><input type="checkbox" id="auto" checked> Run as I type</label>
     <label class="f" title="Keyword suggestions while you type, and hints with fixes for errors"><input type="checkbox" id="sugg" checked> Suggestions</label>
     <span class="spacer"></span>
@@ -198,6 +214,11 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     </div>
   </div>
 </div>
+
+<aside class="simpanel" id="simPanel" hidden aria-label="Algorithm animation">
+  <div class="simhead"><b id="simName">Animation</b><a class="btn" id="simFull" href="algorithms.html">All simulations</a><button class="btn" type="button" id="simClose" title="Close (Esc)">Close</button></div>
+  <iframe id="simFrame" title="Algorithm animation"></iframe>
+</aside>
 
 <dialog id="drawer" class="drawer" aria-label="Guide and help">
   <div class="dhead"><b>Guide &amp; help</b><button class="btn" type="button" id="drawerClose" title="Close (Esc)">Close</button></div>
@@ -258,6 +279,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="examples-cpp.js"></script>
 <script src="examples-java.js"></script>
 <script src="examples-python.js"></script>
+<script src="examples-algo.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -503,12 +525,16 @@ print("best:", best[0])
   let lang = LANGS[store.get('lang')] ? store.get('lang') : 'cpp';
 
   /* ---------- theme ---------- */
+  // the simulations use the same Light / Dark / System setting as the playground
+  const themeFrame = f => { try { const t = document.documentElement.dataset.theme, r = f.contentDocument.documentElement; if (t) r.dataset.theme = t; else delete r.dataset.theme; } catch (_) {} };
   $('theme').value = store.get('theme') || 'system';
   $('theme').onchange = () => {
     const t = $('theme').value;
     store.set('theme', t);
     if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+    themeFrame($('simFrame'));
   };
+  $('simFrame').addEventListener('load', () => themeFrame($('simFrame')));
   const cm = CodeMirror($('editor'), { lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: true, mode: 'text/x-c++src', extraKeys: { 'Ctrl-Enter': () => runNow(), 'Cmd-Enter': () => runNow(), Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') } });
 
   function setLang(l, keepText) {
@@ -525,8 +551,34 @@ print("best:", best[0])
       `<optgroup label="${g}">` + names.map(k => `<option value="${k.replace(/"/g, '&quot;')}">${k}</option>`).join('') + '</optgroup>').join('');
     renderGuide();
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[1]); }
+    if (!keepText) setExample(store.get('example.' + l) || '');   // each language remembers its own example
   }
-  function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); schedule(0); }
+  function loadExample(name) { const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); setExample(name); schedule(0); }
+  /* ---------- the animated simulation that goes with the loaded example (sims/, see examples-algo.js) ---------- */
+  let curExample = '';
+  const SIMS = window.EXAMPLE_SIMS || {};
+  function setExample(name) {
+    curExample = name || '';
+    store.set('example.' + lang, curExample);
+    const sim = SIMS[curExample];
+    $('animBtn').hidden = !sim;
+    if (!sim) closeSim(); else if (!$('simPanel').hidden) openSim();
+  }
+  function openSim() {
+    const sim = SIMS[curExample];
+    if (!sim) return;
+    $('simName').textContent = curExample + ' — animation';
+    const url = 'sims/' + sim + '/index.html';
+    if ($('simFrame').getAttribute('src') !== url) $('simFrame').setAttribute('src', url);
+    $('simFull').href = 'algorithms.html#' + sim;
+    $('simPanel').hidden = false;
+    document.body.classList.add('simopen');
+    cm.refresh();
+  }
+  function closeSim() { $('simPanel').hidden = true; document.body.classList.remove('simopen'); cm.refresh(); }
+  $('animBtn').onclick = () => { if ($('simPanel').hidden) openSim(); else closeSim(); };
+  $('simClose').onclick = closeSim;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('simPanel').hidden && !document.querySelector('dialog[open]')) closeSim(); });
   document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (!b || b.dataset.lang === lang) return; setLang(b.dataset.lang, keepTextOnToggle()); schedule(0); });
   let keepTextOnToggle = () => false;   // the desktop app keeps an open file's text when the language changes
   $('ex').onchange = () => { if ($('ex').value) loadExample($('ex').value); $('ex').value = ''; };
@@ -1300,6 +1352,7 @@ print("best:", best[0])
   try { handoff = JSON.parse(sessionStorage.getItem('ccp.handoff') || 'null'); sessionStorage.removeItem('ccp.handoff'); } catch (_) {}
   if (handoff && LANGS[handoff.lang] && typeof handoff.code === 'string') {
     lang = handoff.lang;
+    store.set('example.' + lang, handoff.example || '');
     store.set('code.' + lang, handoff.code);
     store.set('stdin.' + lang, handoff.input || '');
   }
@@ -1314,6 +1367,8 @@ print("best:", best[0])
     $('filebtns').hidden = false;
     $('toNotebook').onclick = e => { e.preventDefault(); D.go('notebook'); };
     $('toStl').onclick = e => { e.preventDefault(); D.go('stl'); };
+    $('toAlgo').onclick = e => { e.preventDefault(); D.go('algorithms'); };
+    $('simFull').onclick = e => { e.preventDefault(); D.go('algorithms'); };
     let path = null, saved = cm.getValue();
     const base = f => f.split(/[\\/]/).pop();
     const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;
@@ -1332,6 +1387,7 @@ print("best:", best[0])
       const l = langOf(r.path);
       if (l !== lang) setLang(l, true);
       path = r.path; saved = r.content;
+      setExample('');
       cm.setValue(r.content); cm.clearHistory(); update(); schedule(0);
     }
     async function doSave(saveAs) {
@@ -1346,6 +1402,7 @@ print("best:", best[0])
     }
     async function doNew() {
       if (!(await D.discardOk())) return;
+      setExample('');
       path = null;
       cm.setValue(EXAMPLES[lang]['Hello, world'][0]); cm.clearHistory();
       saved = cm.getValue(); $('stdin').value = ''; store.set('stdin.' + lang, '');

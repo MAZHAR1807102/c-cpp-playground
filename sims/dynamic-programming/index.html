@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step dynamic programming: Fibonacci by recursion, memoization and tabulation, rod cutting, coin change, longest increasing subsequence, 0/1 knapsack, longest common subsequence, edit distance and matrix-chain multiplication.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Dynamic Programming</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+#inA,#inB{width:min(300px,100%)} #inN{width:90px}
+:root{--pc:44px}
+@media (max-width:560px){ :root{--pc:36px} }
+.dpt{border-collapse:separate; border-spacing:3px; width:auto; min-width:0}
+.dpt td{min-width:var(--pc); height:var(--pc); padding:0 4px; text-align:center; border:2px solid var(--line); border-radius:7px; font:700 .95rem var(--f-mono); background:var(--surface); position:relative; transition:background .2s, border-color .2s}
+.dpt td.off{border:0; background:none}
+.dpt td.empty{border-style:dashed; color:var(--muted); font-weight:400}
+.dpt td sup{font-size:.72rem; color:var(--muted); margin-left:2px}
+.dpt th{font:600 .7rem var(--f-mono); color:var(--muted); border:0; padding:0 4px; text-transform:none; white-space:nowrap; text-align:right}
+.dpt thead th{text-align:center}
+.dpt td.new{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 30%,var(--surface))}
+.dpt td.src{border-color:var(--accent); border-style:dashed}
+.dpt td.win{border-color:var(--read); background:color-mix(in oklab,var(--read) 26%,var(--surface))}
+.dpt td.cur{border-color:var(--inc); border-style:dashed}
+.dpt td.path{border-color:var(--src); background:color-mix(in oklab,var(--src) 24%,var(--surface))}
+.tabs{display:flex; flex-direction:column; gap:16px}
+h3.sub{font:700 .7rem/1.3 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+svg.tree{display:block; width:100%; height:auto}
+.tree line{stroke:var(--line); stroke-width:2}
+.tree .nd rect{fill:var(--surface); stroke:var(--line); stroke-width:2}
+.tree .nd text{font:700 12px var(--f-mono); fill:var(--ink); text-anchor:middle}
+.tree .nd text.v{font-weight:400; fill:var(--muted); font-size:11px}
+.tree .ghost rect{fill:none; stroke:var(--line); stroke-dasharray:3 4}
+.tree line.ghost{stroke-dasharray:3 4; opacity:.6}
+.tree .act rect{stroke:var(--accent); stroke-dasharray:4 3}
+.tree .done rect{stroke:var(--inc); fill:color-mix(in oklab,var(--inc) 16%,var(--surface))}
+.tree .base rect{stroke:var(--muted); fill:var(--bg)}
+.tree .memo rect{stroke:var(--read); fill:color-mix(in oklab,var(--read) 22%,var(--surface))}
+.tree .cur rect{stroke:var(--accent); stroke-width:3; stroke-dasharray:none; fill:color-mix(in oklab,var(--accent) 22%,var(--surface))}
+.stack{display:flex; flex-wrap:wrap; gap:5px; list-style:none; margin:0; padding:0}
+.stack li{font:700 .82rem var(--f-mono); padding:3px 9px; border-radius:6px; border:2px solid var(--line); background:var(--surface)}
+.stack li:last-child{border-color:var(--accent)}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+.ptable{min-width:640px}
+.ptable td{text-align:left}
+.ptable td:first-child{font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Design techniques · Dynamic programming</p>
+    <h1>Dynamic programming, step by step</h1>
+    <p class="lede">Dynamic programming solves a problem by combining answers to <b>overlapping subproblems</b>, computing each one only once and storing it in a table. It applies when an optimal solution is built from optimal solutions of smaller subproblems (<b>optimal substructure</b>). Watch each table fill in, see which earlier cells every entry is built from, then follow the stored choices back to the solution.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/" aria-current="page">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Problem">
+    <div class="pgroup"><span class="lab">Fibonacci: three approaches</span><div class="btns" id="pFib"></div></div>
+    <div class="pgroup"><span class="lab">1-D tables</span><div class="btns" id="pOne"></div></div>
+    <div class="pgroup"><span class="lab">2-D tables</span><div class="btns" id="pTwo"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow" id="fA"><label for="inA" id="labA"></label><input type="text" id="inA" spellcheck="false"></div>
+    <div class="field grow" id="fB"><label for="inB" id="labB"></label><input type="text" id="inB" spellcheck="false"></div>
+    <div class="field" id="fN"><label for="inN" id="labN"></label><input type="number" id="inN"></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bEx">Example</button>
+    <button class="btn" type="button" id="bRand">Random</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div id="treeBox" hidden><h3 class="sub">Recursion tree</h3><svg class="tree" id="tree" role="img" aria-label="Recursion tree"></svg></div>
+      <div id="stackBox" hidden><h3 class="sub">Call stack (top on the right)</h3><ul class="stack" id="stack"></ul></div>
+      <div class="tabs" id="tables"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <aside class="side">
+      <section class="card code"><h2>Pseudocode</h2><ol id="code"></ol></section>
+      <section class="card vars"><h2>Variables</h2><dl id="vars"></dl><dl class="stats" id="stats"></dl><p class="stat-note" id="statNote"></p></section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <div class="tscroll"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>The problems at a glance</h2>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Problem</th><th>Subproblem</th><th>Recurrence</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td>Fibonacci</td><td>F(i)</td><td>F(i) = F(i−1) + F(i−2)</td><td>Θ(φⁿ) plain, Θ(n) with DP</td></tr>
+        <tr><td>Rod cutting</td><td>r[j]: best revenue for length j</td><td>r[j] = max over i of p[i] + r[j−i]</td><td>Θ(n²)</td></tr>
+        <tr><td>Coin change</td><td>dp[a]: fewest coins for amount a</td><td>dp[a] = 1 + min over coins c ≤ a of dp[a−c]</td><td>Θ(A·k)</td></tr>
+        <tr><td>LIS</td><td>L[i]: longest increasing ending at i</td><td>L[i] = 1 + max{L[j] : j &lt; i, A[j] &lt; A[i]}</td><td>Θ(n²)</td></tr>
+        <tr><td>0/1 knapsack</td><td>K[i][c]: items 1..i, capacity c</td><td>K[i][c] = max(K[i−1][c], v_i + K[i−1][c−w_i])</td><td>Θ(nW)</td></tr>
+        <tr><td>LCS</td><td>c[i][j]: prefixes X_i, Y_j</td><td>c[i−1][j−1] + 1 if x_i = y_j, else max(c[i−1][j], c[i][j−1])</td><td>Θ(mn)</td></tr>
+        <tr><td>Edit distance</td><td>D[i][j]: turn X_i into Y_j</td><td>min(D[i−1][j] + 1, D[i][j−1] + 1, D[i−1][j−1] + [x_i ≠ y_j])</td><td>Θ(mn)</td></tr>
+        <tr><td>Matrix chain</td><td>m[i][j]: cost of A_i … A_j</td><td>min over i ≤ k &lt; j of m[i][k] + m[k+1][j] + p_{i−1} p_k p_j</td><td>Θ(n³)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.DPEngine, f = E.f;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const GROUPS = { fib: 'pFib', one: 'pOne', two: 'pTwo' };
+  // which inputs each problem uses: [label A, label B, label N]
+  const FIELDS = {
+    fibrec: [null, null, 'n (0 to 7)'], fibmemo: [null, null, 'n (0 to 12)'], fibtab: [null, null, 'n (0 to 40)'],
+    rod: ['Prices p[1], p[2], … (up to 10)', null, null], coin: ['Coin values (up to 5)', null, 'Amount (1 to 25)'],
+    lis: ['Sequence (up to 12 numbers)', null, null], knap: ['Weights (up to 6 items)', 'Values', 'Capacity W (1 to 15)'],
+    lcs: ['String X (up to 10 letters)', 'String Y (up to 10 letters)', null], edit: ['From X (up to 9 letters)', 'To Y (up to 9 letters)', null],
+    mcm: ['Dimensions p0 p1 … pn (2 to 7 matrices)', null, null]
+  };
+  const EX = {
+    fibrec: { N: 5 }, fibmemo: { N: 6 }, fibtab: { N: 10 }, rod: { A: '1 5 8 9 10 17 17 20' }, coin: { A: '1 3 4', N: 6 },
+    lis: { A: '10 9 2 5 3 7 101 18' }, knap: { A: '1 3 4 5', B: '1 4 5 7', N: 7 }, lcs: { A: 'ABCBDAB', B: 'BDCABA' },
+    edit: { A: 'kitten', B: 'sitting' }, mcm: { A: '30 35 15 5 10 20 25' }
+  };
+  const ALL = Object.keys(E.MODES);
+  let MODE = ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'lcs', RUN = null, NUM = {}, LAYOUT = null, FULL = [];
+
+  function picker() {
+    Object.entries(GROUPS).forEach(([g, id]) => {
+      $(id).innerHTML = ALL.filter(m => E.MODES[m].group === g).map(m => `<button type="button" class="chipbtn" data-m="${m}" aria-pressed="${m === MODE}">${E.MODES[m].short}</button>`).join('');
+    });
+  }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; MODE = b.dataset.m; picker(); try { history.replaceState(null, '', '#' + MODE); } catch (_) {} example(); });
+
+  function fields() {
+    const [a, b, n] = FIELDS[MODE];
+    $('fA').hidden = !a; $('fB').hidden = !b; $('fN').hidden = !n;
+    $('labA').textContent = a || ''; $('labB').textContent = b || ''; $('labN').textContent = n || '';
+  }
+  function example() { const e = EX[MODE]; if (e.A != null) $('inA').value = e.A; if (e.B != null) $('inB').value = e.B; if (e.N != null) $('inN').value = e.N; apply(); }
+
+  const nums = s => s.trim() ? s.trim().split(/[\s,]+/) : [];
+  function ints(s, what, min, max, lo, hi) {
+    const t = nums(s);
+    if (t.length < min) return { error: `${what}: type at least ${min} number${min === 1 ? '' : 's'}.` };
+    if (t.length > max) return { error: `${what}: use at most ${max} numbers.` };
+    if (t.some(x => !/^-?\d+$/.test(x))) return { error: `${what}: whole numbers only.` };
+    const a = t.map(Number); if (a.some(x => x < lo || x > hi)) return { error: `${what}: keep every number between ${lo} and ${hi}.` };
+    return { a };
+  }
+  function parse() {
+    const N = Number($('inN').value);
+    if (MODE.startsWith('fib')) {
+      const hi = { fibrec: 7, fibmemo: 12, fibtab: 40 }[MODE];
+      if (!Number.isInteger(N) || N < 0 || N > hi) return { error: `n must be a whole number from 0 to ${hi}.` };
+      return { n: N };
+    }
+    if (MODE === 'rod') { const r = ints($('inA').value, 'Prices', 1, 10, 0, 99); return r.error ? r : { p: r.a }; }
+    if (MODE === 'coin') {
+      const r = ints($('inA').value, 'Coins', 1, 5, 1, 25); if (r.error) return r;
+      if (new Set(r.a).size !== r.a.length) return { error: 'Each coin value should appear once.' };
+      if (!Number.isInteger(N) || N < 1 || N > 25) return { error: 'The amount must be a whole number from 1 to 25.' };
+      return { coins: r.a, A: N };
+    }
+    if (MODE === 'lis') { const r = ints($('inA').value, 'Sequence', 2, 12, -99, 999); return r.error ? r : { A: r.a }; }
+    if (MODE === 'knap') {
+      const w = ints($('inA').value, 'Weights', 1, 6, 1, 15); if (w.error) return w;
+      const v = ints($('inB').value, 'Values', 1, 6, 0, 99); if (v.error) return v;
+      if (w.a.length !== v.a.length) return { error: `There are ${w.a.length} weights but ${v.a.length} values; give one value per item.` };
+      if (!Number.isInteger(N) || N < 1 || N > 15) return { error: 'Capacity W must be a whole number from 1 to 15.' };
+      return { w: w.a, v: v.a, W: N };
+    }
+    if (MODE === 'lcs' || MODE === 'edit') {
+      const X = $('inA').value.trim(), Y = $('inB').value.trim(), mx = MODE === 'lcs' ? 10 : 9;
+      if (!X || !Y) return { error: 'Type both strings.' };
+      if (/\s/.test(X + Y)) return { error: 'Strings cannot contain spaces.' };
+      if (X.length > mx || Y.length > mx) return { error: `Use at most ${mx} characters per string.` };
+      return { X, Y };
+    }
+    const r = ints($('inA').value, 'Dimensions', 3, 8, 1, 99); return r.error ? r : { p: r.a };
+  }
+  function apply() {
+    fields();
+    const r = parse(); if (r.error) { $('err').textContent = r.error; return; }
+    $('err').textContent = ''; load(r);
+  }
+
+  // tree layout from the full (last-step) tree, so nodes do not jump while it grows
+  function layout(nodes) {
+    const kids = nodes.map(() => []), pos = [];
+    nodes.forEach(n => { if (n.parent >= 0) kids[n.parent].push(n.id); });
+    let leaf = 0, maxD = 0;
+    (function walk(id, d) {
+      maxD = Math.max(maxD, d);
+      if (!kids[id].length) pos[id] = { x: leaf++, d };
+      else { kids[id].forEach(k => walk(k, d + 1)); pos[id] = { x: (pos[kids[id][0]].x + pos[kids[id][kids[id].length - 1]].x) / 2, d }; }
+    })(0, 0);
+    return { pos, leaves: leaf, depth: maxD };
+  }
+  function renderTree(s) {
+    $('treeBox').hidden = !s.tree; $('stackBox').hidden = !s.stack;
+    if (!s.tree) return;
+    const L = LAYOUT, W = 58, H = 56, w = Math.max(1, L.leaves) * W + 10, h = (L.depth + 1) * H + 10;
+    const X = id => 5 + L.pos[id].x * W + W / 2, Y = id => 8 + L.pos[id].d * H + 20;
+    let out = '';
+    const have = new Set(s.tree.map(n => n.id));
+    FULL.forEach(n => { if (have.has(n.id)) return; if (n.parent >= 0) out += `<line class="ghost" x1="${X(n.parent)}" y1="${Y(n.parent) + 18}" x2="${X(n.id)}" y2="${Y(n.id) - 18}"/>`; out += `<g class="nd ghost"><rect x="${X(n.id) - 25}" y="${Y(n.id) - 18}" width="50" height="36" rx="7"/></g>`; });
+    s.tree.forEach(n => { if (n.parent >= 0) out += `<line x1="${X(n.parent)}" y1="${Y(n.parent) + 18}" x2="${X(n.id)}" y2="${Y(n.id) - 18}"/>`; });
+    s.tree.forEach(n => {
+      out += `<g class="nd ${n.st} ${n.id === s.cur ? 'cur' : ''}"><rect x="${X(n.id) - 25}" y="${Y(n.id) - 18}" width="50" height="36" rx="7"/><text x="${X(n.id)}" y="${Y(n.id) - 2}">${n.label}</text><text class="v" x="${X(n.id)}" y="${Y(n.id) + 12}">${n.val == null ? '…' : (n.st === 'memo' ? 'memo ' : '= ') + n.val}</text></g>`;
+    });
+    $('tree').setAttribute('viewBox', `0 0 ${w} ${h}`); $('tree').style.maxWidth = Math.min(w * 1.1, 1000) + 'px'; $('tree').innerHTML = out;
+    $('stack').innerHTML = s.stack.length ? s.stack.map(x => `<li>${x}</li>`).join('') : '<li>empty</li>';
+  }
+  function renderTables(s) {
+    $('tables').innerHTML = s.tables.map(t => {
+      const head = `<thead><tr><th></th>${t.ch.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>`;
+      const body = t.v.map((row, i) => `<tr><th>${esc(t.rh[i])}</th>${row.map((v, j) => {
+        const c = t.cls[`${i},${j}`] || '', ar = t.arrow && t.arrow[i][j] ? `<sup>${t.arrow[i][j]}</sup>` : '';
+        if (v === '') return '<td class="off"></td>';
+        return `<td class="${v == null ? 'empty' : ''} ${c}">${v == null ? '·' : esc(f(v))}${ar}</td>`;
+      }).join('')}</tr>`).join('');
+      return `<div><h3 class="sub">${esc(t.title)}</h3><div class="scroll"><table class="dpt">${head}<tbody>${body}</tbody></table></div></div>`;
+    }).join('');
+  }
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    renderTree(s); renderTables(s);
+    $('vars').innerHTML = Object.keys(s.vars).map(k => `<div><dt>${esc(k)}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('');
+    $('stats').innerHTML = `<div><dt>${MODE.startsWith('fib') ? 'additions' : 'cells / candidates'}</dt><dd>${s.ops}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div><div><dt>of</dt><dd>${RUN.steps.length}</dd></div>`;
+    $('statNote').textContent = MODE.startsWith('fib') ? 'Each F(a) + F(b) counts as one addition.' : 'Each candidate value examined in the recurrence counts as one.';
+    $('thead').innerHTML = RUN.header.map(h => `<th>${esc(h)}</th>`).join('');
+    $('tbody').innerHTML = s.rows.length ? s.rows.map((r, i) => `<tr class="${i === s.rows.length - 1 ? 'last' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${RUN.header.length}">Rows appear as the table fills in.</td></tr>`;
+  }
+  function legend() {
+    const sw = (st, t) => `<span><i style="${st}"></i>${t}</span>`;
+    let h = '';
+    if (MODE === 'fibrec' || MODE === 'fibmemo') {
+      h = sw('border-color:var(--accent);background:color-mix(in oklab,var(--accent) 22%,var(--surface))', 'current call') + sw('border-color:var(--accent);border-style:dashed', 'waiting for its children') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 16%,var(--surface))', 'computed') + sw('border-color:var(--muted);background:var(--bg)', 'base case');
+      if (MODE === 'fibmemo') h += sw('border-color:var(--read);background:color-mix(in oklab,var(--read) 22%,var(--surface))', 'memo hit');
+    }
+    if (MODE !== 'fibrec') h += sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 30%,var(--surface))', 'entry just computed') + sw('border-color:var(--accent);border-style:dashed', 'entries it is built from') + sw('border-color:var(--read);background:color-mix(in oklab,var(--read) 26%,var(--surface))', 'the choice that won') + sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 24%,var(--surface))', 'traceback / answer');
+    $('legend').innerHTML = h;
+  }
+  function codeHTML(lines) { let n = 0; NUM = {}; return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join(''); }
+  const player = Sim.start(render);
+  function load(input) {
+    RUN = E.run(MODE, input);
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.MODES[MODE].name}</b>. ` + RUN.steps[0].msg;
+    const lt = RUN.steps[RUN.steps.length - 1].tree; LAYOUT = lt && lt.length ? layout(lt) : null; FULL = lt || [];
+    legend(); player.load(RUN.steps);
+  }
+  $('setup').addEventListener('submit', e => { e.preventDefault(); apply(); });
+  $('bEx').onclick = example;
+  $('bRand').onclick = () => {
+    const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1)), arr = (n, a, b) => Array.from({ length: n }, () => rnd(a, b));
+    const word = n => Array.from({ length: n }, () => 'ABCD'[rnd(0, 3)]).join('');
+    if (MODE === 'fibrec') $('inN').value = rnd(3, 6); else if (MODE === 'fibmemo') $('inN').value = rnd(4, 9); else if (MODE === 'fibtab') $('inN').value = rnd(6, 20);
+    else if (MODE === 'rod') { let p = 0; $('inA').value = arr(rnd(5, 8), 1, 4).map(x => p += x).join(' '); }
+    else if (MODE === 'coin') { $('inA').value = [...new Set([1, ...arr(2, 2, 7)])].join(' '); $('inN').value = rnd(7, 15); }
+    else if (MODE === 'lis') $('inA').value = arr(rnd(7, 10), 1, 30).join(' ');
+    else if (MODE === 'knap') { const n = rnd(3, 5); $('inA').value = arr(n, 1, 6).join(' '); $('inB').value = arr(n, 1, 12).join(' '); $('inN').value = rnd(6, 10); }
+    else if (MODE === 'lcs' || MODE === 'edit') { $('inA').value = word(rnd(5, 7)); $('inB').value = word(rnd(5, 7)); }
+    else $('inA').value = arr(rnd(5, 7), 2, 30).join(' ');
+    apply();
+  };
+  picker(); example();
+  const jump = +new URLSearchParams(location.search).get('step');
+  for (let i = 1; i < jump; i++) document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+})();
+</script>
+</body>
+</html>

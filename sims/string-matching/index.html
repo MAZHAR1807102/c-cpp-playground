@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step string matching: naive, Rabin–Karp, finite automaton, Knuth–Morris–Pratt, Boyer–Moore–Horspool and the Z algorithm.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>String Matching Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:6px; padding:14px 16px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+#inT{width:min(420px,100%)} #inP{width:160px} #inQ{width:80px}
+:root{--sc:34px}
+@media (max-width:560px){ :root{--sc:28px} }
+.strip{display:grid; grid-auto-columns:var(--sc); grid-auto-flow:column; gap:3px; width:max-content}
+.strip .ix{font:600 .66rem var(--f-mono); color:var(--muted); text-align:center}
+.strip .c{height:var(--sc); display:grid; place-items:center; border:2px solid var(--line); border-radius:6px; background:var(--surface); font:700 1rem var(--f-mono); transition:background .2s, border-color .2s}
+.strip .c.occ{border-bottom:5px solid var(--inc)}
+.strip .c.cur{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 30%,transparent)}
+.strip .c.win{background:color-mix(in oklab,var(--accent) 10%,var(--surface))}
+.strip .c.ok{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 24%,var(--surface))}
+.strip .c.bad{border-color:var(--dec); background:color-mix(in oklab,var(--dec) 22%,var(--surface))}
+.strip .c.pat{border-color:var(--src)}
+.strip .c.zbox{background:color-mix(in oklab,var(--src) 16%,var(--surface))}
+.strip .c.sep{color:var(--muted)}
+.strip .zv{font:700 .8rem var(--f-mono); text-align:center; color:var(--accent)}
+.strip .zv.m{color:var(--inc)}
+.rowlab{font:700 .7rem var(--f-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:6px 0 4px}
+.two{display:grid; grid-template-columns:minmax(0,1fr); gap:12px}
+h3.sub{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+.xt{min-width:0; width:auto; font-size:13px}
+.xt td,.xt th{padding:4px 8px; text-transform:none; letter-spacing:0}
+.xt th{font-size:.78rem}
+.xt td.on, .xt th.on{background:color-mix(in oklab,var(--accent) 20%,var(--surface)); font-weight:700}
+.xt td.hit{background:color-mix(in oklab,var(--inc) 30%,var(--surface)); font-weight:700}
+.kv{display:flex; flex-wrap:wrap; gap:8px}
+.kv div{background:var(--bg); border-radius:6px; padding:6px 10px; font:700 1rem var(--f-mono)}
+.kv div small{display:block; font:600 .7rem var(--f-mono); color:var(--muted)}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+tr.cmp-row{cursor:pointer}
+tr.cmp-row:hover td{background:color-mix(in oklab,var(--accent) 6%,var(--surface))}
+tr.cmp-row.sel td{background:color-mix(in oklab,var(--accent) 14%,var(--surface)); font-weight:700}
+td.l{text-align:left}
+.ptable{min-width:640px}
+.ptable td:first-child{text-align:left; font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Strings · Pattern matching</p>
+    <h1>String matching, step by step</h1>
+    <p class="lede">Find every place where a pattern P of length m occurs in a text T of length n. The naive method tries every shift and can make about n·m comparisons. The others use what they already know about P to skip shifts that cannot match: a hash (Rabin–Karp), an automaton, the prefix function (KMP), a bad-character table (Boyer–Moore) or Z-boxes.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/" aria-current="page">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Algorithm" id="picker"></section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field"><label for="inPre">Example</label>
+      <select id="inPre">
+        <option value="t1">Textbook: abaa in abcabaabcabac</option>
+        <option value="t2">Pattern ababaca, with a match</option>
+        <option value="t3">KMP fall-backs (no match)</option>
+        <option value="t4">Digits: 31415 (Rabin–Karp, q = 13)</option>
+        <option value="t5">Overlapping matches</option>
+        <option value="t6">Worst case for naive: aaaa…</option>
+        <option value="t7">DNA sequence</option>
+        <option value="custom" hidden>Custom</option>
+      </select></div>
+    <div class="field grow"><label for="inT">Text T (up to 40 characters)</label><input type="text" id="inT" spellcheck="false"></div>
+    <div class="field"><label for="inP">Pattern P (up to 12)</label><input type="text" id="inP" spellcheck="false"></div>
+    <div class="field" id="fQ"><label for="inQ">Prime q</label><input type="number" id="inQ" min="2" max="997" value="13"></div>
+    <button class="btn primary" type="submit">Load</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div>
+        <div class="rowlab" id="rowS" hidden>S = P $ T, with Z values</div>
+        <div class="scroll" id="zWrap" hidden><div class="strip" id="zStrip"></div></div>
+        <div class="rowlab">Text T <span id="shiftLab" style="text-transform:none;letter-spacing:0;color:var(--accent)"></span></div>
+        <div class="scroll"><div class="strip" id="tStrip"></div></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="two">
+        <div><h3 class="sub" id="xName"></h3><div class="tscroll" id="xBox"></div></div>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="card code"><h2>Pseudocode</h2><ol id="code"></ol></section>
+      <section class="card vars"><h2>Variables</h2><dl id="vars"></dl><dl class="stats" id="stats"></dl><p class="stat-note" id="statNote"></p></section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <p id="traceNote"></p>
+    <div class="tscroll"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>All six algorithms on this input</h2>
+    <p>Every algorithm finds the same shifts; they differ in how many character comparisons they need. Click a row to step through it.</p>
+    <div class="tscroll"><table><thead><tr><th>Algorithm</th><th>Shifts found</th><th>Comparisons</th><th>Preprocessing</th><th>Matching (worst case)</th></tr></thead><tbody id="cmpBody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>Properties</h2>
+    <p>n = text length, m = pattern length, Σ = alphabet.</p>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Algorithm</th><th>Idea</th><th>Preprocessing</th><th>Matching</th></tr></thead>
+      <tbody>
+        <tr><td>Naive</td><td>Try every shift, compare left to right</td><td>none</td><td>O((n − m + 1) m)</td></tr>
+        <tr><td>Rabin–Karp</td><td>Compare hash values mod q; check characters only on a hit</td><td>Θ(m)</td><td>O((n − m + 1) m) worst, O(n + m) expected</td></tr>
+        <tr><td>Finite automaton</td><td>One state transition per text character</td><td>O(m |Σ|)</td><td>Θ(n)</td></tr>
+        <tr><td>KMP</td><td>Prefix function π: fall back without moving back in T</td><td>Θ(m)</td><td>Θ(n)</td></tr>
+        <tr><td>Boyer–Moore–Horspool</td><td>Compare right to left; jump by the bad-character table</td><td>O(m + |Σ|)</td><td>O(nm) worst, often sublinear (about n/m)</td></tr>
+        <tr><td>Z algorithm</td><td>Z-array of P $ T; Z[i] = m marks a match</td><td>—</td><td>Θ(n + m)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Why KMP never moves back</h2><p>When q characters have matched and the next one fails, we already know the last q text characters: they are P[0..q−1]. The longest proper prefix of P that is also a suffix of them, π[q − 1], tells us the next shift that could possibly work, and that its first π[q − 1] characters already match. So the text pointer i only moves forward: at most 2n comparisons.</p></div>
+    <div class="card"><h2>Spurious hits</h2><p>Rabin–Karp compares numbers mod q. Different windows can have the same value mod q, so every hit must be checked character by character. Try the <strong>Digits</strong> example: 67399 ≡ 7 ≡ 31415 (mod 13) is a spurious hit. A large prime q makes them rare; the expected time is O(n + m).</p></div>
+    <div class="card"><h2>Why Boyer–Moore is fast</h2><p>It compares from the <strong>right</strong> end of the pattern. If the text character there does not occur in P at all, the pattern can jump m places at once. On ordinary text with a large alphabet it usually inspects only a fraction of the characters; this is why text editors use it.</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.SMEngine;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const vis = c => c === ' ' ? '␣' : esc(c);
+  const PRESETS = {
+    t1: ['abcabaabcabac', 'abaa'], t2: ['abababacaba', 'ababaca'], t3: ['bacbababaabcbab', 'ababaca'], t4: ['2359023141526739921', '31415'],
+    t5: ['abababab', 'abab'], t6: ['aaaaaaaaaaaaaaaa', 'aaab'], t7: ['GCATCGCAGAGAGTATACAGTACG', 'GCAGAGAG']
+  };
+  const ORDER = ['naive', 'rk', 'fa', 'kmp', 'bm', 'z'];
+  const COST = { naive: ['none', 'O((n−m+1)m)'], rk: ['Θ(m)', 'O((n−m+1)m)'], fa: ['O(m|Σ|)', 'Θ(n)'], kmp: ['Θ(m)', 'Θ(n)'], bm: ['O(m+|Σ|)', 'O(nm)'], z: ['—', 'Θ(n+m)'] };
+  let ALG = ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'kmp';
+  let T = '', P = '', RUN = null, NUM = {};
+
+  function picker() { $('picker').innerHTML = ORDER.map(a => `<button type="button" class="chipbtn" data-alg="${a}" aria-pressed="${a === ALG}">${E.ALGS[a].short}</button>`).join(''); }
+  $('picker').addEventListener('click', e => { const b = e.target.closest('[data-alg]'); if (b) setAlg(b.dataset.alg); });
+  function setAlg(a) { ALG = a; picker(); try { history.replaceState(null, '', '#' + a); } catch (_) {} load(); }
+
+  function strips(s) {
+    const n = T.length, m = P.length, occ = new Set();
+    s.found.forEach(f => { for (let k = 0; k < m; k++) occ.add(f + k); });
+    let html = '';
+    for (let i = 0; i < n; i++) html += `<div class="ix" style="grid-row:1;grid-column:${i + 1}">${i}</div>`;
+    for (let i = 0; i < n; i++) {
+      const c = ['c'];
+      if (occ.has(i)) c.push('occ');
+      if (s.cur === i) c.push('cur');
+      if (s.s != null && i >= s.s && i < s.s + m) c.push('win');
+      html += `<div class="${c.join(' ')}" style="grid-row:2;grid-column:${i + 1}">${vis(T[i])}</div>`;
+    }
+    if (s.s != null && s.s >= 0 && ALG !== 'z') {
+      for (let j = 0; j < m; j++) {
+        const st = s.pcells[j] || '';
+        html += `<div class="c pat ${st}" style="grid-row:3;grid-column:${s.s + j + 1}">${vis(P[j])}</div>`;
+      }
+    }
+    $('tStrip').innerHTML = html;
+    $('shiftLab').textContent = s.s != null && ALG !== 'z' ? ` · pattern P at shift s = ${s.s}` : '';
+    // Z strip
+    $('zWrap').hidden = $('rowS').hidden = ALG !== 'z';
+    if (ALG === 'z' && s.extra.S) {
+      const S = s.extra.S, Z = s.extra.Z, x = s.extra;
+      let z = '';
+      for (let i = 0; i < S.length; i++) z += `<div class="ix" style="grid-row:1;grid-column:${i + 1}">${i}</div>`;
+      for (let i = 0; i < S.length; i++) {
+        const c = ['c'];
+        if (i < m) c.push('pat');
+        if (S[i] === '$' && i === m) c.push('sep');
+        if (x.i != null && i >= x.l && i < x.r && x.r > x.l) c.push('zbox');
+        if (x.i === i) c.push('cur');
+        z += `<div class="${c.join(' ')}" style="grid-row:2;grid-column:${i + 1}">${vis(S[i])}</div>`;
+        z += `<div class="zv ${Z[i] === m && i > m ? 'm' : ''}" style="grid-row:3;grid-column:${i + 1}">${Z[i] == null ? '' : i === 0 ? '–' : Z[i]}</div>`;
+      }
+      $('zStrip').innerHTML = z;
+    }
+  }
+
+  function extras(s) {
+    const x = s.extra, m = P.length;
+    if (ALG === 'kmp') {
+      $('xName').textContent = 'Prefix function π';
+      $('xBox').innerHTML = `<table class="xt"><tbody><tr><th>q</th>${[...P].map((_, q) => `<td class="${x.pq === q ? 'on' : ''}">${q}</td>`).join('')}</tr>` +
+        `<tr><th>P[q]</th>${[...P].map((c, q) => `<td class="${x.pq === q ? 'on' : ''}">${vis(c)}</td>`).join('')}</tr>` +
+        `<tr><th>π[q]</th>${x.pi.map((v, q) => `<td class="${x.pq === q ? 'hit' : ''}">${v == null ? '' : v}</td>`).join('')}</tr></tbody></table>`;
+    } else if (ALG === 'fa') {
+      $('xName').textContent = 'Transition function δ(q, a)';
+      if (!x.delta) { $('xBox').innerHTML = ''; return; }
+      const col = x.i != null ? T[x.i] : null;
+      $('xBox').innerHTML = `<table class="xt"><thead><tr><th>q</th>${x.Sigma.map(a => `<th class="${a === col ? 'on' : ''}">${vis(a)}</th>`).join('')}</tr></thead><tbody>` +
+        x.delta.map((row, q) => `<tr><th class="${x.i != null && q === x.prev ? 'on' : ''}">${q}${q === m ? ' ✓' : ''}</th>${x.Sigma.map(a => `<td class="${x.i != null && q === x.prev && a === col ? 'hit' : ''}">${row[a]}</td>`).join('')}</tr>`).join('') + `</tbody></table>`;
+    } else if (ALG === 'rk') {
+      $('xName').textContent = 'Hash values';
+      $('xBox').innerHTML = x.q ? `<div class="kv"><div><small>base d</small>${x.d}</div><div><small>modulus q</small>${x.q}</div><div><small>h = d^(m−1) mod q</small>${x.h}</div><div><small>p (pattern)</small>${x.p}</div><div><small>t (window)</small>${s.vars.t != null ? s.vars.t : x.t}</div><div><small>hits / spurious</small>${x.hits} / ${x.spurious}</div></div>` : '';
+    } else if (ALG === 'bm') {
+      $('xName').textContent = 'Bad-character shift table';
+      $('xBox').innerHTML = x.shift ? `<table class="xt"><tbody><tr><th>c</th>${x.Sigma.map(c => `<td class="${s.vars['T[s+m−1]'] === vis(c) ? 'on' : ''}">${vis(c)}</td>`).join('')}</tr><tr><th>shift[c]</th>${x.Sigma.map(c => `<td class="${s.vars['T[s+m−1]'] === vis(c) ? 'hit' : ''}">${x.shift[c]}</td>`).join('')}</tr></tbody></table>` : '';
+    } else if (ALG === 'z') {
+      $('xName').textContent = 'Z-box';
+      $('xBox').innerHTML = x.i != null ? `<div class="kv"><div><small>i</small>${x.i}</div><div><small>l</small>${x.l}</div><div><small>r (exclusive)</small>${x.r}</div><div><small>Z[i]</small>${x.Z[x.i]}</div></div>` : '<p class="hint">The Z-box [l, r) is the rightmost window found so far that equals a prefix of S.</p>';
+    } else { $('xName').textContent = ''; $('xBox').innerHTML = ''; }
+  }
+
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    strips(s); extras(s);
+    $('vars').innerHTML = Object.keys(s.vars).map(k => `<div><dt>${k}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('') + `<div><dt>n, m</dt><dd>${T.length}, ${P.length}</dd></div>`;
+    $('stats').innerHTML = `<div><dt>${ALG === 'fa' ? 'lookups' : 'comparisons'}</dt><dd>${s.cmp}</dd></div><div><dt>matches</dt><dd>${s.found.length}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div>`;
+    $('statNote').textContent = `Naive worst case: (n − m + 1)·m = ${(T.length - P.length + 1) * P.length} comparisons.`;
+    $('thead').innerHTML = RUN.header.map(h => `<th>${esc(h)}</th>`).join('');
+    $('tbody').innerHTML = s.rows.length ? s.rows.map((r, i) => `<tr class="${i === s.rows.length - 1 ? 'last' : ''}">${r.map((c, j) => `<td class="${j > 0 ? 'l' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${RUN.header.length}">Rows appear as the algorithm runs.</td></tr>`;
+  }
+
+  function legend() {
+    const sw = (st, t) => `<span><i style="${st}"></i>${t}</span>`;
+    $('legend').innerHTML = sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 24%,var(--surface))', 'characters match') +
+      sw('border-color:var(--dec);background:color-mix(in oklab,var(--dec) 22%,var(--surface))', 'mismatch') +
+      sw('border-color:var(--accent)', ALG === 'z' ? 'position i' : 'text character being read') +
+      (ALG === 'z' ? sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 16%,var(--surface))', 'Z-box [l, r)') : '') +
+      sw('border-color:var(--inc);border-bottom-width:4px', 'occurrence found');
+  }
+
+  function compare() {
+    $('cmpBody').innerHTML = ORDER.map(a => {
+      const r = E.run(a, T, P, { q: Number($('inQ').value) || 13 }).result;
+      return `<tr class="cmp-row ${a === ALG ? 'sel' : ''}" data-alg="${a}" tabindex="0"><td class="l">${E.ALGS[a].name}</td><td>${r.found.join(', ') || 'none'}</td><td>${r.cmp}${a === 'fa' ? ' lookups' : ''}</td><td>${COST[a][0]}</td><td>${COST[a][1]}</td></tr>`;
+    }).join('');
+  }
+  $('cmpBody').addEventListener('click', e => { const r = e.target.closest('[data-alg]'); if (r) setAlg(r.dataset.alg); });
+  $('cmpBody').addEventListener('keydown', e => { const r = e.target.closest('[data-alg]'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setAlg(r.dataset.alg); } });
+
+  function codeHTML(lines) { let n = 0; NUM = {}; return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join(''); }
+  const player = Sim.start(render);
+  function load() {
+    $('fQ').hidden = ALG !== 'rk';
+    $('traceNote').textContent = ALG === 'fa' || ALG === 'kmp' ? 'One row per text character.' : ALG === 'z' ? 'One row per position of S = P $ T.' : 'One row per shift tried.';
+    RUN = E.run(ALG, T, P, { q: Number($('inQ').value) || 13 });
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.ALGS[ALG].name}</b>. ` + RUN.steps[0].msg;
+    legend(); compare(); player.load(RUN.steps);
+  }
+  function apply() {
+    const t = $('inT').value, p = $('inP').value, q = Number($('inQ').value), err = m => { $('err').textContent = m; return false; };
+    if (!t.length || !p.length) return err('Type a text and a pattern.');
+    if (t.length > 40) return err(`The text has ${t.length} characters. Use at most 40.`);
+    if (p.length > 12) return err(`The pattern has ${p.length} characters. Use at most 12.`);
+    if (p.length > t.length) return err('The pattern must not be longer than the text.');
+    if ((t + p).includes('$')) return err('‘$’ is reserved as the separator of the Z algorithm. Use other characters.');
+    if (!(Number.isInteger(q) && q >= 2 && q <= 997)) return err('q must be a whole number from 2 to 997 (ideally a prime).');
+    $('err').textContent = ''; T = t; P = p; load(); return true;
+  }
+  function usePreset(k) { $('inPre').value = k; $('inT').value = PRESETS[k][0]; $('inP').value = PRESETS[k][1]; if (k === 't4') $('inQ').value = 13; apply(); }
+  $('inPre').onchange = () => { if (PRESETS[$('inPre').value]) usePreset($('inPre').value); };
+  $('setup').addEventListener('submit', e => { e.preventDefault(); const k = $('inPre').value; if (!PRESETS[k] || PRESETS[k][0] !== $('inT').value || PRESETS[k][1] !== $('inP').value) $('inPre').value = 'custom'; apply(); });
+  $('inQ').onchange = () => apply();
+  picker(); usePreset(ALG === 'rk' ? 't4' : ALG === 'kmp' || ALG === 'fa' ? 't2' : 't1');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step search algorithms: blind search (BFS, DFS, uniform-cost, depth-limited, iterative deepening, bidirectional) and heuristic search (greedy best-first, A*, hill climbing) on a weighted graph.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Search Algorithms Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+/* algorithm picker */
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.pgroup.heur .chipbtn[aria-pressed="true"]{background:var(--src); border-color:var(--src); color:var(--surface)}
+#inLim{width:72px}
+details.edit{flex-basis:100%; border-top:1px solid var(--line); padding-top:10px}
+details.edit summary{cursor:pointer; font:700 .85rem var(--f-body); color:var(--accent)}
+.editgrid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:10px}
+@media (max-width:700px){ .editgrid{grid-template-columns:minmax(0,1fr)} }
+textarea{font:14px/1.5 var(--f-mono); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:100%; resize:vertical}
+.hint{font-size:.82rem; color:var(--muted); margin:4px 0 0}
+.check{display:flex; align-items:center; gap:8px; font-size:.9rem; color:var(--ink)}
+
+/* graph */
+.gwrap{border:1px solid var(--line); border-radius:8px; background:var(--bg)}
+svg.g{display:block; width:100%; height:auto}
+.ed line{stroke:var(--line); stroke-width:2.2; transition:stroke .25s}
+.ed.tr line{stroke:var(--accent); stroke-width:3.2}
+.ed.trb line{stroke:var(--src); stroke-width:3.2}
+.ed.ev line{stroke:var(--read); stroke-width:2.6; stroke-dasharray:6 4}
+.ed.pth line{stroke:var(--inc); stroke-width:5.5}
+.ed rect{fill:var(--bg)}
+.ed text{font:600 12px var(--f-mono); fill:var(--muted); text-anchor:middle; dominant-baseline:central}
+.ed.pth text{fill:var(--inc)}
+.arrowhead{fill:var(--muted)}
+.nd circle.c{fill:var(--surface); stroke:var(--muted); stroke-width:2; transition:fill .25s, stroke .25s}
+.nd text.n{font:700 13px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.nd text.hv{font:600 11px var(--f-mono); fill:var(--muted); text-anchor:middle}
+.nd text.tag{font:700 10px var(--f-mono); letter-spacing:.06em; fill:var(--accent); text-anchor:middle}
+.nd circle.ring{fill:none; stroke:var(--inc); stroke-width:2}
+.nd.front circle.c{fill:color-mix(in oklab,var(--read) 30%,var(--surface)); stroke:var(--read)}
+.nd.frontB circle.c{fill:color-mix(in oklab,var(--src) 26%,var(--surface)); stroke:var(--src)}
+.nd.closed circle.c{fill:color-mix(in oklab,var(--muted) 26%,var(--surface)); stroke:var(--muted)}
+.nd.closedB circle.c{fill:color-mix(in oklab,var(--src) 14%,var(--surface)); stroke:var(--src); stroke-dasharray:4 3}
+.nd.eval circle.c{fill:color-mix(in oklab,var(--read) 18%,var(--surface)); stroke:var(--read); stroke-dasharray:4 3}
+.nd.cur circle.c{fill:var(--accent); stroke:var(--accent)}
+.nd.cur text.n{fill:var(--accent-ink)}
+.nd.path circle.c{fill:color-mix(in oklab,var(--inc) 32%,var(--surface)); stroke:var(--inc); stroke-width:3}
+.nd.cut circle.c{stroke:var(--dec); stroke-dasharray:4 3}
+.nd.fail circle.c{stroke:var(--dec)}
+.nd.gone{opacity:.32}
+
+/* lists */
+.lists{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px 18px}
+@media (max-width:640px){ .lists{grid-template-columns:minmax(0,1fr)} }
+.lists h3{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+.chips{display:flex; flex-wrap:wrap; gap:5px; list-style:none; margin:0; padding:0; min-height:30px}
+.chips li{font:700 .85rem var(--f-mono); padding:3px 9px; border-radius:6px; border:2px solid var(--line); background:var(--surface); display:flex; align-items:baseline; gap:5px}
+.chips li small{font:600 .7rem var(--f-mono); color:var(--muted)}
+.chips.fr li{border-color:var(--read); background:color-mix(in oklab,var(--read) 16%,var(--surface))}
+.chips.fr li.b{border-color:var(--src); background:color-mix(in oklab,var(--src) 14%,var(--surface))}
+.chips.fr li.next{box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 35%,transparent); border-color:var(--accent)}
+.chips.cl li{border-color:var(--line); background:color-mix(in oklab,var(--muted) 14%,var(--surface))}
+.chips .none{font:400 .88rem var(--f-body); color:var(--muted); border:0; background:none; padding:3px 0}
+
+/* search tree */
+svg.t{display:block}
+.tn circle{fill:var(--surface); stroke:var(--muted); stroke-width:2}
+.tn text.n{font:700 12px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.tn text.v{font:600 10px var(--f-mono); fill:var(--muted); text-anchor:middle}
+.tn.front circle{fill:color-mix(in oklab,var(--read) 30%,var(--surface)); stroke:var(--read)}
+.tn.b.front circle{fill:color-mix(in oklab,var(--src) 26%,var(--surface)); stroke:var(--src)}
+.tn.closed circle{fill:color-mix(in oklab,var(--muted) 26%,var(--surface))}
+.tn.cur circle{fill:var(--accent); stroke:var(--accent)} .tn.cur text.n{fill:var(--accent-ink)}
+.tn.path circle{fill:color-mix(in oklab,var(--inc) 32%,var(--surface)); stroke:var(--inc); stroke-width:3}
+.tn.cut circle{stroke:var(--dec); stroke-dasharray:3 3}
+.tn.fail circle{stroke:var(--dec)}
+.tn.eval circle{fill:color-mix(in oklab,var(--read) 18%,var(--surface)); stroke:var(--read); stroke-dasharray:3 3}
+.tn.gone{opacity:.32}
+.te{stroke:var(--line); stroke-width:2}
+.te.path{stroke:var(--inc); stroke-width:3.5}
+.tempty-msg{color:var(--muted); font-size:.9rem; margin:0}
+
+/* side */
+.hcheck{padding:14px 16px}
+.hcheck h2{padding:0 0 8px}
+.hcheck p{margin:4px 0; font-size:.9rem}
+.ok{color:var(--inc); font-weight:700} .bad{color:var(--dec); font-weight:700}
+.htab{min-width:0; font-size:12.5px; margin-top:8px}
+.htab td,.htab th{padding:3px 4px}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal}
+.code .proc::before{content:none}
+
+/* compare */
+tr.cmp-row{cursor:pointer}
+tr.cmp-row:hover td{background:color-mix(in oklab,var(--accent) 6%,var(--surface))}
+tr.cmp-row.sel td{background:color-mix(in oklab,var(--accent) 14%,var(--surface)); font-weight:700}
+td.l{text-align:left}
+.yes{color:var(--inc); font-weight:700} .no{color:var(--dec); font-weight:700}
+.kind{font:700 .66rem var(--f-mono); letter-spacing:.06em; text-transform:uppercase; padding:2px 6px; border-radius:4px; border:1px solid var(--line)}
+.kind.blind{color:var(--accent)} .kind.heur{color:var(--src)}
+.ptable{min-width:620px}
+.ptable td:first-child{text-align:left; font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Search · Blind and heuristic</p>
+    <h1>Search algorithms, step by step</h1>
+    <p class="lede">Find a path from a start node to a goal node. <b>Blind</b> (uninformed) search uses only the graph: the order it expands nodes in is its whole strategy. <b>Heuristic</b> (informed) search also uses h(n), an estimate of the distance left to the goal. Watch the frontier, the explored set and the search tree grow one step at a time.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/" aria-current="page">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Algorithm">
+    <div class="pgroup blind"><span class="lab">Blind (uninformed)</span><div class="btns" id="pBlind"></div></div>
+    <div class="pgroup heur"><span class="lab">Heuristic (informed)</span><div class="btns" id="pHeur"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field"><label for="inPre">Graph</label>
+      <select id="inPre">
+        <option value="lec">Lecture graph (S to G)</option>
+        <option value="trap">Greedy trap</option>
+        <option value="rom">Romania (Arad to Bucharest)</option>
+        <option value="custom" hidden>Custom (edited)</option>
+      </select></div>
+    <div class="field"><label for="inS">Start</label><select id="inS"></select></div>
+    <div class="field"><label for="inG">Goal</label><select id="inG"></select></div>
+    <div class="field" id="fLim"><label for="inLim">Depth limit ℓ</label><input type="number" id="inLim" min="0" max="15" value="2"></div>
+    <div class="field" id="fEarly"><label for="inEarly">Goal test</label>
+      <select id="inEarly"><option value="0">When taken out (lecture)</option><option value="1">When generated</option></select></div>
+    <label class="check"><input type="checkbox" id="inDir"> One-way edges (A B means A → B)</label>
+    <details class="edit" id="edit">
+      <summary>Edit the graph and the heuristic</summary>
+      <div class="editgrid">
+        <div class="field"><label for="inE">Edges: one per line, “from to cost”</label><textarea id="inE" rows="7" spellcheck="false"></textarea>
+          <p class="hint">Up to 16 nodes and 30 edges. Names are 1–4 letters or digits. Children are always tried in alphabetical order.</p></div>
+        <div class="field"><label for="inH">Heuristic h(n): NAME=value</label><textarea id="inH" rows="4" spellcheck="false"></textarea>
+          <p class="hint">Only the heuristic algorithms use h. A node with no value gets h = 0. The panel on the right says whether h is admissible and consistent.</p>
+          <div style="margin-top:10px"><button class="btn primary" type="submit">Apply</button></div></div>
+      </div>
+    </details>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>Graph<span id="gNote">edge labels are step costs</span></h2></div>
+        <div class="gwrap"><svg class="g" id="gSvg" role="img" aria-label="Search graph"></svg></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="lists">
+        <div><h3 id="frName">Frontier</h3><ul class="chips fr" id="front"></ul></div>
+        <div><h3 id="clName">Explored</h3><ul class="chips cl" id="closed"></ul></div>
+      </div>
+      <div class="arr">
+        <div class="arr-head"><h2>Search tree<span id="tNote">every node generated, with its parent</span></h2></div>
+        <div class="scroll" id="tScroll"><svg class="t" id="tSvg" role="img" aria-label="Search tree"></svg></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card code">
+        <h2>Pseudocode</h2>
+        <ol id="code"></ol>
+      </section>
+      <section class="card vars">
+        <h2>Variables</h2>
+        <dl id="vars"></dl>
+        <dl class="stats" id="stats"></dl>
+        <p class="stat-note" id="statNote"></p>
+      </section>
+      <section class="card hcheck" id="hcheck">
+        <h2>Is h a good heuristic?</h2>
+        <div id="hBody"></div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <p id="traceNote">One row per expansion, in the same form as the lecture tables.</p>
+    <div class="tscroll"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>All nine algorithms on this graph</h2>
+    <p>Same graph, start and goal. Click a row to step through that algorithm.</p>
+    <div class="tscroll"><table>
+      <thead><tr><th>Algorithm</th><th>Type</th><th>Path found</th><th>Cost</th><th>Expanded</th><th>Generated</th><th>Cheapest?</th></tr></thead>
+      <tbody id="cmpBody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>Properties</h2>
+    <p>b = branching factor, d = depth of the shallowest goal, m = maximum depth, ℓ = depth limit, C* = optimal cost, ε = smallest step cost.</p>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Algorithm</th><th>Frontier</th><th>Complete?</th><th>Optimal?</th><th>Time</th><th>Space</th></tr></thead>
+      <tbody>
+        <tr><td>BFS</td><td>FIFO queue</td><td>Yes (finite b)</td><td>If all steps cost the same</td><td>O(b<sup>d</sup>)</td><td>O(b<sup>d</sup>)</td></tr>
+        <tr><td>DFS</td><td>LIFO stack</td><td>No (yes in finite graphs with a visited set)</td><td>No</td><td>O(b<sup>m</sup>)</td><td>O(bm)</td></tr>
+        <tr><td>Uniform-cost</td><td>Priority queue on g</td><td>Yes (steps ≥ ε &gt; 0)</td><td>Yes</td><td>O(b<sup>1+⌊C*/ε⌋</sup>)</td><td>O(b<sup>1+⌊C*/ε⌋</sup>)</td></tr>
+        <tr><td>Depth-limited</td><td>Stack + limit ℓ</td><td>No (fails if ℓ &lt; d)</td><td>No</td><td>O(b<sup>ℓ</sup>)</td><td>O(bℓ)</td></tr>
+        <tr><td>Iterative deepening</td><td>Repeated DLS</td><td>Yes (finite b)</td><td>If all steps cost the same</td><td>O(b<sup>d</sup>)</td><td>O(bd)</td></tr>
+        <tr><td>Bidirectional</td><td>Two queues</td><td>Yes (BFS both ways)</td><td>If all steps cost the same</td><td>O(b<sup>d/2</sup>)</td><td>O(b<sup>d/2</sup>)</td></tr>
+        <tr><td>Greedy best-first</td><td>Priority queue on h</td><td>No (yes in finite graphs)</td><td>No</td><td>O(b<sup>m</sup>)</td><td>O(b<sup>m</sup>)</td></tr>
+        <tr><td>A*</td><td>Priority queue on g + h</td><td>Yes</td><td>Yes, if h is admissible (consistent for graph search)</td><td>Exponential in the error of h</td><td>Keeps every node</td></tr>
+        <tr><td>Hill climbing</td><td>None: current node only</td><td>No (local minima, plateaus, ridges)</td><td>No</td><td>Depends on the landscape</td><td>O(1)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Blind or heuristic?</h2><p>All of these are the same loop: take a node off the frontier, test it, add its children. <strong>Only the choice of which node to take next changes.</strong> BFS takes the oldest, DFS the newest, UCS the cheapest so far (g), greedy the one that looks nearest the goal (h), and A* the best estimate of the whole path (g + h).</p></div>
+    <div class="card"><h2>Admissible and consistent</h2><p>h is <strong>admissible</strong> if it never overestimates: h(n) ≤ h*(n), the true cost to the goal. Then A* tree search is optimal. h is <strong>consistent</strong> if h(n) ≤ c(n, n′) + h(n′) on every edge. Then f never decreases along a path, and A* graph search is optimal too. Every consistent h is admissible.</p></div>
+    <div class="card"><h2>Why test the goal on selection?</h2><p>UCS and A* stop when the goal is <strong>taken off</strong> the queue, not when it is first generated. A cheaper path may still be waiting. In the Romania graph, Bucharest is first reached by the 450 route through Fagaras; it is only selected after the cheaper 418 route through Pitesti is found.</p></div>
+    <div class="card"><h2>Try this</h2><p>Open the <strong>Greedy trap</strong>. Greedy and BFS return S–A–D–G (cost 11), while UCS and A* find S–B–C–G (cost 7). Hill climbing stops at A because no neighbour has a lower h. Then set C=10 in the heuristic (its true cost to G is 3): h is no longer admissible, and A* also returns the cost-11 path.</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.SearchEngine;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // presets: edges, heuristic, start, goal, positions (x right, y up)
+  const PRESETS = {
+    lec: { e: 'S A 1\nS B 4\nA C 2\nA D 5\nB E 2\nB F 3\nD G 3\nF G 2\nE H 1', h: 'S=7 A=6 B=4 C=7 D=2 E=5 F=1 G=0 H=6', s: 'S', g: 'G',
+      pos: { S: [0, 0], A: [-3, -1.6], B: [3, -1.6], C: [-4.6, -3.2], D: [-1.5, -3.2], F: [1.5, -3.2], E: [4.6, -3.2], G: [0, -4.9], H: [4.6, -4.9] } },
+    trap: { e: 'S A 3\nS B 2\nA D 6\nB C 2\nC G 3\nD G 2', h: 'S=5 A=2 B=5 C=3 D=2 G=0', s: 'S', g: 'G',
+      pos: { S: [0, 0], A: [-2.6, -1.5], B: [2.6, -1.5], D: [-2.6, -3.3], C: [2.6, -3.3], G: [0, -4.8] } },
+    rom: { e: 'Ara Zer 75\nAra Sib 140\nAra Tim 118\nZer Ora 71\nOra Sib 151\nTim Lug 111\nLug Meh 70\nMeh Dro 75\nDro Cra 120\nCra Rim 146\nCra Pit 138\nSib Fag 99\nSib Rim 80\nRim Pit 97\nFag Buc 211\nPit Buc 101',
+      h: 'Ara=366 Buc=0 Cra=160 Dro=242 Fag=176 Lug=244 Meh=241 Ora=380 Pit=100 Rim=193 Sib=253 Tim=329 Zer=374', s: 'Ara', g: 'Buc',
+      pos: { Ara: [91, 492], Buc: [400, 327], Cra: [253, 288], Dro: [165, 299], Fag: [305, 449], Lug: [165, 379], Meh: [168, 339], Ora: [131, 571], Pit: [320, 368], Rim: [233, 410], Sib: [207, 457], Tim: [94, 410], Zer: [108, 531] } }
+  };
+  const ORDER = ['bfs', 'dfs', 'ucs', 'dls', 'ids', 'bid', 'gbf', 'ast', 'hc'];
+
+  let ALG = ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'bfs';
+  let PRE = 'lec', G = null, POS = {}, OPT = {}, RUN = null, NUM = {};
+
+  // ---------- picker ----------
+  function picker() {
+    const btn = a => `<button type="button" class="chipbtn" data-alg="${a}" aria-pressed="${a === ALG}">${E.ALGS[a].short}</button>`;
+    $('pBlind').innerHTML = ORDER.filter(a => E.ALGS[a].kind === 'blind').map(btn).join('');
+    $('pHeur').innerHTML = ORDER.filter(a => E.ALGS[a].kind === 'heur').map(btn).join('');
+  }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-alg]'); if (b) setAlg(b.dataset.alg); });
+  function setAlg(a) {
+    ALG = a; picker();
+    try { history.replaceState(null, '', '#' + a); } catch (_) {}
+    load();
+  }
+
+  // ---------- layout ----------
+  function layout() {
+    const pre = PRESETS[PRE], P = {};
+    if (pre && G.nodes.every(n => pre.pos[n])) { G.nodes.forEach(n => P[n] = [pre.pos[n][0], -pre.pos[n][1]]); return P; }
+    // layered layout: breadth-first depth from the start, ignoring direction
+    const start = $('inS').value || G.nodes[0], depth = {}, q = [start]; depth[start] = 0;
+    const und = n => G.adj[n].map(x => x.v).concat(G.radj[n].map(x => x.v));
+    while (q.length) { const u = q.shift(); und(u).forEach(v => { if (!(v in depth)) { depth[v] = depth[u] + 1; q.push(v); } }); }
+    let maxD = Math.max(0, ...Object.values(depth));
+    G.nodes.forEach(n => { if (!(n in depth)) depth[n] = ++maxD; });
+    const layers = {};
+    G.nodes.forEach(n => (layers[depth[n]] = layers[depth[n]] || []).push(n));
+    Object.keys(layers).forEach(d => { const L = layers[d].sort(); L.forEach((n, i) => P[n] = [(i - (L.length - 1) / 2) * 2.4, d * 1.7]); });
+    return P;
+  }
+  function fit(P) {
+    const xs = Object.values(P).map(p => p[0]), ys = Object.values(P).map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = 680, pad = 44, dx = Math.max(maxX - minX, 1e-6), dy = Math.max(maxY - minY, 1e-6);
+    const sc = Math.min((W - 2 * pad) / dx, 380 / dy);
+    const H = Math.round(dy * sc + 2 * pad + 10), offX = (W - dx * sc) / 2;
+    const out = {};
+    Object.keys(P).forEach(n => out[n] = [offX + (P[n][0] - minX) * sc, pad + 6 + (P[n][1] - minY) * sc]);
+    return { pos: out, W, H };
+  }
+
+  // ---------- rendering ----------
+  const heur = () => E.ALGS[ALG].kind === 'heur';
+  const ekey = (a, b) => G.directed ? `${a}>${b}` : [a, b].sort().join('|');
+
+  function nodeClass(s, n) {
+    if (s.path && s.path.includes(n)) return 'path';
+    if (s.cur === n) return 'cur';
+    const f = s.front.find(x => x.s === n);
+    if (f) return f.st === 'eval' ? 'eval' : f.side === 'b' ? 'frontB' : 'front';
+    if (s.closed.includes(n)) return 'closed';
+    if (s.closedB.includes(n)) return 'closedB';
+    const t = s.tree.filter(x => x.s === n);
+    if (t.some(x => x.st === 'cut')) return 'cut';
+    return '';
+  }
+
+  function renderGraph(s) {
+    const { pos, W, H } = POS, R = 19, ecls = {};
+    s.tree.forEach(x => {
+      if (x.p === null || x.st === 'gone') return;
+      const p = s.tree[x.p], k = ekey(p.s, x.s);
+      ecls[k] = x.st === 'eval' ? 'ev' : x.side === 'b' ? 'trb' : 'tr';
+    });
+    if (s.path) for (let i = 1; i < s.path.length; i++) ecls[ekey(s.path[i - 1], s.path[i])] = 'pth';
+    let out = `<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0 0L10 5L0 10z"/></marker></defs>`;
+    G.edges.forEach(({ a, b, c }) => {
+      const [x1, y1] = pos[a], [x2, y2] = pos[b], L = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+      const sx = x1 + ux * R, sy = y1 + uy * R, tx = x2 - ux * (R + (G.directed ? 3 : 0)), ty = y2 - uy * (R + (G.directed ? 3 : 0));
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, w = String(c).length * 7.4 + 8;
+      out += `<g class="ed ${ecls[ekey(a, b)] || ''}"><line x1="${sx}" y1="${sy}" x2="${tx}" y2="${ty}"${G.directed ? ' marker-end="url(#ah)"' : ''}/>` +
+        `<rect x="${mx - w / 2}" y="${my - 8}" width="${w}" height="16" rx="4"/><text x="${mx}" y="${my}">${c}</text></g>`;
+    });
+    const S = $('inS').value, T = $('inG').value;
+    G.nodes.forEach(n => {
+      const [x, y] = pos[n];
+      out += `<g class="nd ${nodeClass(s, n)}">` + (n === T ? `<circle class="ring" cx="${x}" cy="${y}" r="${R + 4.5}"/>` : '') +
+        `<circle class="c" cx="${x}" cy="${y}" r="${R}"/><text class="n" x="${x}" y="${y}">${esc(n)}</text>` +
+        (n === S ? `<text class="tag" x="${x}" y="${y - R - 7}">START</text>` : n === T ? `<text class="tag" x="${x}" y="${y - R - 9}" style="fill:var(--inc)">GOAL</text>` : '') +
+        (heur() ? `<text class="hv" x="${x}" y="${y + R + 14}">h=${G.h[n] || 0}</text>` : '') + `</g>`;
+    });
+    $('gSvg').setAttribute('viewBox', `0 0 ${W} ${H}`);
+    $('gSvg').innerHTML = out;
+  }
+
+  const chipVal = x => {
+    if (ALG === 'ucs') return `g=${x.g}`;
+    if (ALG === 'gbf' || ALG === 'hc') return `h=${x.h}`;
+    if (ALG === 'ast') return `${x.g}+${x.h}=${x.f}`;
+    if (ALG === 'bid') return x.side === 'b' ? '←' : '→';
+    return `d=${x.d}`;
+  };
+  function renderLists(s) {
+    $('frName').textContent = s.frontName;
+    const next = ['bfs', 'dfs', 'ucs', 'gbf', 'ast'].includes(ALG) && !s.final;
+    $('front').innerHTML = s.front.length
+      ? s.front.map((x, i) => `<li class="${x.side === 'b' ? 'b' : ''} ${next && i === 0 ? 'next' : ''}">${esc(x.s)}<small>${chipVal(x)}</small></li>`).join('')
+      : `<li class="none">empty</li>`;
+    const cl = ALG === 'bid' ? s.closed.map(n => `${n} →`).concat(s.closedB.map(n => `${n} ←`)) : s.closed;
+    $('clName').textContent = ALG === 'dfs' ? 'Visited' : ALG === 'gbf' || ALG === 'ast' ? 'CLOSED' : ALG === 'dls' || ALG === 'ids' ? 'Visited in this iteration' : ALG === 'hc' ? 'Path taken' : 'Explored';
+    const shown = ALG === 'hc' ? s.tree.filter(x => x.st === 'closed' || x.st === 'cur' || x.st === 'path').map(x => x.s) : cl;
+    $('closed').innerHTML = shown.length ? shown.map(n => `<li>${esc(n)}</li>`).join('') : `<li class="none">none yet</li>`;
+  }
+
+  function renderTree(s) {
+    const T = s.tree;
+    if (!T.length) { $('tSvg').innerHTML = ''; $('tSvg').setAttribute('width', 0); $('tSvg').setAttribute('height', 0); return; }
+    const kids = {}, roots = [];
+    T.forEach(x => { if (x.p === null) roots.push(x); else (kids[x.p] = kids[x.p] || []).push(x); });
+    const X = {}, gap = 44, lev = 62;
+    let leaf = 0, maxD = 0;
+    const place = x => {
+      maxD = Math.max(maxD, x.d);
+      const ch = kids[x.id] || [];
+      if (!ch.length) { X[x.id] = leaf++ * gap; return; }
+      ch.forEach(place);
+      X[x.id] = (X[ch[0].id] + X[ch[ch.length - 1].id]) / 2;
+    };
+    roots.forEach((r, i) => { if (i) leaf += 0.6; place(r); });
+    const W = Math.max(1, leaf) * gap + 20, H = (maxD + 1) * lev + 16;
+    const px = x => X[x.id] + 32, py = x => x.d * lev + 26;
+    let out = '';
+    T.forEach(x => { if (x.p !== null) { const p = T[x.p]; out += `<line class="te ${x.st === 'path' && p.st === 'path' ? 'path' : ''}" x1="${px(p)}" y1="${py(p) + 15}" x2="${px(x)}" y2="${py(x) - 15}" style="${x.st === 'gone' ? 'opacity:.32' : ''}"/>`; } });
+    const val = x => ALG === 'ucs' ? `g=${x.g}` : ALG === 'ast' ? `f=${x.f}` : ALG === 'gbf' || ALG === 'hc' ? `h=${x.h}` : ALG === 'bid' ? (x.side === 'b' ? '←' : '→') : `d=${x.d}`;
+    T.forEach(x => {
+      out += `<g class="tn ${x.st} ${x.side === 'b' ? 'b' : ''}"><circle cx="${px(x)}" cy="${py(x)}" r="15"/><text class="n" x="${px(x)}" y="${py(x)}">${esc(x.s)}</text><text class="v" x="${px(x)}" y="${py(x) + 27}">${val(x)}</text></g>`;
+    });
+    const svg = $('tSvg');
+    svg.setAttribute('width', W + 24); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W + 24} ${H}`);
+    svg.innerHTML = out;
+  }
+
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    renderGraph(s); renderLists(s); renderTree(s);
+    const vk = Object.keys(s.vars);
+    $('vars').innerHTML = (vk.length ? vk.map(k => `<div><dt>${k}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('') : '') +
+      `<div><dt>start → goal</dt><dd>${esc($('inS').value)} → ${esc($('inG').value)}</dd></div>` +
+      (ALG === 'dls' ? `<div><dt>limit ℓ</dt><dd>${$('inLim').value}</dd></div>` : '');
+    $('stats').innerHTML = `<div><dt>expanded</dt><dd>${s.st.exp}</dd></div><div><dt>generated</dt><dd>${s.st.gen}</dd></div><div><dt>max frontier</dt><dd>${s.st.maxF}</dd></div>`;
+    const H = RUN.header;
+    $('thead').innerHTML = H.map(h => `<th>${h}</th>`).join('');
+    $('tbody').innerHTML = s.rows.length
+      ? s.rows.map((r, i) => `<tr class="${i === s.rows.length - 1 ? 'last' : ''}">${r.map((c, j) => `<td class="${j > 0 ? 'l' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${H.length}">Rows appear as the search runs.</td></tr>`;
+  }
+
+  function legend() {
+    const sw = (style, t) => `<span><i style="${style}"></i>${t}</span>`;
+    const front = ALG === 'dls' || ALG === 'ids' ? 'on the current path' : ALG === 'hc' ? 'neighbour being compared' : ALG === 'bid' ? 'forward frontier' : 'on the frontier';
+    let h = sw('border-color:var(--accent);background:var(--accent)', 'current node') +
+      sw('border-color:var(--read);background:color-mix(in oklab,var(--read) 30%,var(--surface))', front);
+    if (ALG === 'bid') h += sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 26%,var(--surface))', 'backward frontier');
+    if (ALG !== 'hc') h += sw('border-color:var(--muted);background:color-mix(in oklab,var(--muted) 26%,var(--surface))', ALG === 'bid' ? 'expanded forward' : 'expanded');
+    if (ALG === 'dls' || ALG === 'ids') h += sw('border-color:var(--dec);border-style:dashed', 'cut off at the limit');
+    h += sw('border-color:var(--accent)', 'parent link') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 32%,var(--surface))', 'solution path');
+    $('legend').innerHTML = h;
+  }
+
+  function hcheck() {
+    const show = heur();
+    $('hcheck').hidden = !show;
+    if (!show) return;
+    const goal = $('inG').value, c = E.checkH(G, goal);
+    const fmt = v => v === Infinity ? '∞' : v;
+    let html = `<p>Admissible (h ≤ h*): ${c.admissible ? '<span class="ok">yes</span>' : '<span class="bad">no</span>'}${c.over.length ? ` — overestimates at ${c.over.map(o => `${o.n} (h ${o.h} > h* ${o.hs})`).join(', ')}` : ''}</p>` +
+      `<p>Consistent (h(n) ≤ c + h(n′)): ${c.consistent ? '<span class="ok">yes</span>' : '<span class="bad">no</span>'}${c.incons.length ? ` — fails on ${c.incons.slice(0, 3).map(o => `${o.u}→${o.v}`).join(', ')}${c.incons.length > 3 ? '…' : ''}` : ''}</p>` +
+      (c.goalZero ? '' : `<p class="bad">h(${esc(goal)}) should be 0 at the goal.</p>`) +
+      (G.hMissing.length ? `<p>No value given for ${G.hMissing.map(esc).join(', ')}: using h = 0.</p>` : '');
+    html += `<div class="tscroll"><table class="htab"><thead><tr><th>n</th>${G.nodes.map(n => `<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>` +
+      `<tr><td>h</td>${G.nodes.map(n => `<td>${G.h[n] || 0}</td>`).join('')}</tr>` +
+      `<tr><td>h*</td>${G.nodes.map(n => `<td class="${(G.h[n] || 0) > c.hStar[n] ? 'bad' : ''}">${fmt(c.hStar[n])}</td>`).join('')}</tr></tbody></table></div>` +
+      `<p class="hint">h* is the true cheapest cost from each node to the goal.</p>`;
+    $('hBody').innerHTML = html;
+  }
+
+  function compare() {
+    const o = opts(), opt = E.optimal(G, o.start, o.goal);
+    $('cmpBody').innerHTML = ORDER.map(a => {
+      const r = E.run(a, G, o).result, A = E.ALGS[a];
+      const found = r.status === 'found';
+      const best = found && opt && Math.abs(r.cost - opt.cost) < 1e-9;
+      const what = found ? esc(r.path.join('–')) : r.status === 'stuck' ? 'stuck (no better neighbour)' : r.status === 'cutoff' ? `cutoff at ℓ = ${o.limit}` : r.status === 'too-many' ? 'too many steps' : 'no path';
+      return `<tr class="cmp-row ${a === ALG ? 'sel' : ''}" data-alg="${a}" tabindex="0"><td class="l">${A.name}${a === 'dls' ? ` (ℓ = ${o.limit})` : ''}</td><td><span class="kind ${A.kind}">${A.kind === 'heur' ? 'heuristic' : 'blind'}</span></td>` +
+        `<td class="l">${what}</td><td>${found ? r.cost : '—'}</td><td>${r.exp}</td><td>${r.gen}</td><td>${found ? (best ? '<span class="yes">yes</span>' : '<span class="no">no</span>') : '—'}</td></tr>`;
+    }).join('');
+  }
+  $('cmpBody').addEventListener('click', e => { const r = e.target.closest('[data-alg]'); if (r) setAlg(r.dataset.alg); });
+  $('cmpBody').addEventListener('keydown', e => { const r = e.target.closest('[data-alg]'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setAlg(r.dataset.alg); } });
+
+  function codeHTML(lines) {
+    let n = 0; NUM = {};
+    return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join('');
+  }
+
+  const opts = () => ({ start: $('inS').value, goal: $('inG').value, limit: Math.max(0, Math.min(15, Math.floor(Number($('inLim').value) || 0))), early: $('inEarly').value === '1' });
+
+  const player = Sim.start(render);
+  function load() {
+    $('fLim').hidden = ALG !== 'dls';
+    $('fEarly').hidden = ALG !== 'bfs';
+    $('gNote').textContent = heur() ? 'edge labels are step costs; h(n) under each node' : 'edge labels are step costs';
+    $('tNote').textContent = ALG === 'dls' || ALG === 'ids' ? 'rebuilt from scratch in every iteration; no explored set, only the current path is checked'
+      : ALG === 'hc' ? 'only the current node and its neighbours: nothing is kept for backtracking'
+      : ALG === 'bid' ? 'two trees: forward from the start, backward from the goal' : 'every node generated, with its parent; faded nodes were replaced or skipped';
+    $('traceNote').textContent = ALG === 'dls' || ALG === 'ids' ? 'One row per depth limit, as in the lecture IDS table.' : ALG === 'hc' ? 'One row per move.' : 'One row per expansion, in the same form as the lecture tables.';
+    const o = opts();
+    RUN = E.run(ALG, G, o);
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.ALGS[ALG].name}</b> from ${esc(o.start)} to ${esc(o.goal)}. ` + RUN.steps[0].msg;
+    legend(); hcheck(); compare();
+    player.load(RUN.steps);
+  }
+
+  // ---------- setup ----------
+  function fillEnds(s, g) {
+    const opt = G.nodes.slice().sort().map(n => `<option>${esc(n)}</option>`).join('');
+    $('inS').innerHTML = opt; $('inG').innerHTML = opt;
+    $('inS').value = G.nodes.includes(s) ? s : G.nodes[0];
+    $('inG').value = G.nodes.includes(g) ? g : G.nodes[G.nodes.length - 1];
+  }
+  function parseAndLoad(keepEnds) {
+    const r = E.parseGraph($('inE').value, $('inH').value, $('inDir').checked);
+    if (r.error) { $('err').textContent = r.error; return false; }
+    $('err').textContent = '';
+    const s = keepEnds ? $('inS').value : (PRESETS[PRE] || {}).s, g = keepEnds ? $('inG').value : (PRESETS[PRE] || {}).g;
+    G = r; fillEnds(s, g); POS = fit(layout());
+    load(); return true;
+  }
+  function usePreset(p) {
+    PRE = p; const P = PRESETS[p];
+    $('inPre').value = p; $('inE').value = P.e; $('inH').value = P.h; $('inDir').checked = false;
+    parseAndLoad(false);
+  }
+  $('inPre').onchange = () => { if (PRESETS[$('inPre').value]) usePreset($('inPre').value); };
+  $('setup').addEventListener('submit', e => {
+    e.preventDefault();
+    const P = PRESETS[PRE];
+    const edited = !P || $('inE').value.trim() !== P.e || $('inH').value.trim() !== P.h;
+    if (edited) { $('inPre').value = 'custom'; }
+    parseAndLoad(true);
+  });
+  $('inDir').onchange = () => parseAndLoad(true);
+  $('inS').onchange = $('inG').onchange = () => { POS = fit(layout()); load(); };
+  $('inLim').onchange = $('inEarly').onchange = load;
+
+  picker();
+  usePreset('lec');
+})();
+</script>
+</body>
+</html>

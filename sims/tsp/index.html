@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step travelling salesman problem: brute force, Held–Karp dynamic programming, branch and bound with reduced cost matrices, nearest neighbour, the MST 2-approximation and 2-opt.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Travelling Salesman Problem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.pgroup.app .chipbtn[aria-pressed="true"]{background:var(--src); border-color:var(--src); color:var(--surface)}
+textarea{font:14px/1.5 var(--f-mono); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:min(300px,100%); resize:vertical}
+.vizrow{display:flex; flex-wrap:wrap; gap:16px 24px; align-items:flex-start}
+svg.map{display:block; width:min(100%,420px); height:auto; background:var(--bg); border-radius:8px}
+.map .e{stroke:var(--line); stroke-width:1}
+.map .t{stroke:var(--accent); stroke-width:3; fill:none}
+.map .b{stroke:var(--inc); stroke-width:8; opacity:.35; fill:none}
+.map .c{stroke:var(--read); stroke-width:3; stroke-dasharray:6 4}
+.map .d{stroke:var(--dec); stroke-width:3; stroke-dasharray:3 5}
+.map .m{stroke:var(--src); stroke-width:5; opacity:.55}
+.map circle{fill:var(--surface); stroke:var(--ink); stroke-width:2}
+.map circle.start{fill:var(--accent)}
+.map text{font:700 13px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.map text.start{fill:var(--accent-ink)}
+.map text.w{font:600 10px var(--f-mono); fill:var(--muted)}
+.mtab{border-collapse:separate; border-spacing:2px; width:auto; min-width:0}
+.mtab td{min-width:38px; height:34px; padding:0 4px; text-align:center; border:2px solid var(--line); border-radius:6px; font:700 .88rem var(--f-mono); background:var(--surface)}
+.mtab th{font:600 .7rem var(--f-mono); color:var(--muted); border:0; padding:0 4px; text-transform:none}
+.mtab td.src{border-color:var(--accent); border-style:dashed}
+.mtab td.new{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 30%,var(--surface))}
+.mtab td.gone{border-color:var(--dec); background:color-mix(in oklab,var(--dec) 14%,var(--surface)); color:var(--muted)}
+.mtab td.inf{color:var(--muted); font-weight:400}
+h3.sub{font:700 .7rem/1.3 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+.glist{display:flex; flex-wrap:wrap; gap:5px; list-style:none; margin:0; padding:0}
+.glist li{font:600 .78rem var(--f-mono); padding:3px 8px; border-radius:6px; border:2px solid var(--line); background:var(--surface)}
+.glist li.new{border-color:var(--inc); background:color-mix(in oklab,var(--inc) 24%,var(--surface))}
+.glist li.top{border-color:var(--src)}
+.glist li b{color:var(--ink)} .glist li span{color:var(--muted); font-weight:400}
+svg.tree{display:block; width:100%; height:auto}
+.tree line{stroke:var(--line); stroke-width:2}
+.tree rect{fill:var(--surface); stroke:var(--muted); stroke-width:2}
+.tree .live rect{stroke:var(--accent)}
+.tree .done rect{fill:var(--bg)}
+.tree .sol rect{stroke:var(--inc); fill:color-mix(in oklab,var(--inc) 30%,var(--surface))}
+.tree .cur rect{stroke-width:4; stroke:var(--accent)}
+.tree text{font:700 11px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.tree text.c{font-weight:400; fill:var(--muted); font-size:10px}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+.ptable{min-width:600px}
+.ptable td{text-align:left}
+.ptable td:first-child{font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · NP-hard problems · Travelling salesman</p>
+    <h1>The travelling salesman problem, step by step</h1>
+    <p class="lede">Find the cheapest tour that starts at city 1, visits every other city exactly once and returns to city 1. The problem is <b>NP-hard</b>: the exact methods below all take exponential time in the worst case, so for large inputs we use <b>heuristics</b> and <b>approximation algorithms</b> instead. Compare them on the same cities.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/" aria-current="page">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Algorithm">
+    <div class="pgroup"><span class="lab">Exact</span><div class="btns" id="pExact"></div></div>
+    <div class="pgroup app"><span class="lab">Heuristic and approximate</span><div class="btns" id="pApprox"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field"><label for="inT">Input</label><select id="inT"><option value="m">Cost matrix</option><option value="p">Points “x y” (Euclidean)</option></select></div>
+    <div class="field grow"><label for="inM" id="labM">Cost matrix, one row per line (3 to 7 cities)</label><textarea id="inM" rows="6" spellcheck="false"></textarea></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bEx">Example</button>
+    <button class="btn" type="button" id="bRand">Random points</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="vizrow">
+        <svg class="map" id="map" viewBox="0 0 400 320" role="img" aria-label="Cities and tour"></svg>
+        <div id="matBox"><h3 class="sub" id="matTitle"></h3><div class="scroll"><table class="mtab" id="mat"></table></div></div>
+      </div>
+      <div id="listBox" hidden><h3 class="sub">Held–Karp table g(i, S), grouped by |S|</h3><ul class="glist" id="glist"></ul></div>
+      <div id="treeBox" hidden><h3 class="sub">State-space tree (city added · bound ĉ)</h3><svg class="tree" id="tree" role="img" aria-label="Branch and bound tree"></svg></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <aside class="side">
+      <section class="card code"><h2>Pseudocode</h2><ol id="code"></ol></section>
+      <section class="card vars"><h2>Variables</h2><dl id="vars"></dl><dl class="stats" id="stats"></dl><p class="stat-note" id="statNote"></p></section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <div class="tscroll"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>The methods compared</h2>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Method</th><th>Result</th><th>Time</th><th>Guarantee</th></tr></thead>
+      <tbody>
+        <tr><td>Brute force</td><td>optimal</td><td>Θ(n!)</td><td>exact</td></tr>
+        <tr><td>Held–Karp DP</td><td>optimal</td><td>Θ(n²·2ⁿ), space Θ(n·2ⁿ)</td><td>exact</td></tr>
+        <tr><td>Branch and bound</td><td>optimal</td><td>exponential worst case; often far fewer nodes</td><td>exact</td></tr>
+        <tr><td>Nearest neighbour</td><td>heuristic tour</td><td>O(n²)</td><td>none (can be Θ(log n) × optimal)</td></tr>
+        <tr><td>MST 2-approximation</td><td>approximate tour</td><td>O(n²)</td><td>≤ 2 × optimal for metric costs</td></tr>
+        <tr><td>2-opt</td><td>local optimum</td><td>O(n²) per pass</td><td>none in general; good in practice</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.TSPEngine, f = E.f;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ALL = Object.keys(E.MODES);
+  const MAT4 = '0 10 15 20\n5 0 9 10\n6 13 0 12\n8 8 9 0';
+  const MAT5 = '∞ 20 30 10 11\n15 ∞ 16 4 2\n3 5 ∞ 2 4\n19 6 18 ∞ 3\n16 4 7 16 ∞';
+  const PTS = '10 0\n4 0\n0 6\n10 7\n8 0\n6 4';
+  const EX = { brute: ['m', MAT4], hk: ['m', MAT4], bnb: ['m', MAT5], nn: ['m', MAT5], mst: ['p', PTS], twoopt: ['p', PTS] };
+  let MODE = ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'hk', RUN = null, NUM = {}, D = null, XY = null;
+
+  function picker() {
+    $('pExact').innerHTML = ALL.filter(m => E.MODES[m].group === 'exact').map(b).join('');
+    $('pApprox').innerHTML = ALL.filter(m => E.MODES[m].group === 'approx').map(b).join('');
+    function b(m) { return `<button type="button" class="chipbtn" data-m="${m}" aria-pressed="${m === MODE}">${E.MODES[m].short}</button>`; }
+  }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; MODE = b.dataset.m; picker(); try { history.replaceState(null, '', '#' + MODE); } catch (_) {} example(); });
+  function labels() { $('labM').textContent = $('inT').value === 'm' ? 'Cost matrix, one row per line; ∞ or - on the diagonal (3 to 7 cities)' : 'One city per line: x y (3 to 7 cities); costs = 10 × distance, rounded'; }
+  $('inT').onchange = labels;
+  function example() { $('inT').value = EX[MODE][0]; $('inM').value = EX[MODE][1]; labels(); apply(); }
+  function maxN() { return MODE === 'brute' ? 7 : MODE === 'bnb' || MODE === 'hk' ? 6 : 7; }
+  function parse() {
+    const rows = $('inM').value.trim().split(/\n|;/).map(r => r.trim()).filter(Boolean).map(r => r.split(/[\s,]+/));
+    const mx = maxN();
+    if ($('inT').value === 'p') {
+      if (rows.length < 3 || rows.length > mx) return { error: `Give between 3 and ${mx} cities for this method.` };
+      if (rows.some(r => r.length !== 2 || r.some(t => !/^-?\d+(\.\d+)?$/.test(t)))) return { error: 'Each line must be two numbers: x y.' };
+      const P = rows.map(r => r.map(Number));
+      if (P.some(p => Math.abs(p[0]) > 100 || Math.abs(p[1]) > 100)) return { error: 'Keep coordinates between −100 and 100.' };
+      return { P, D: P.map(a => P.map(b => Math.round(Math.hypot(a[0] - b[0], a[1] - b[1]) * 10))) };
+    }
+    const n = rows.length;
+    if (n < 3 || n > mx) return { error: `Give between 3 and ${mx} rows for this method.` };
+    if (rows.some(r => r.length !== n)) return { error: `The matrix must be square: ${n} rows of ${n} entries.` };
+    const M = [];
+    for (let i = 0; i < n; i++) { M.push([]); for (let j = 0; j < n; j++) {
+      const t = rows[i][j];
+      if (i === j) { if (!/^(0|∞|-|inf|x)$/i.test(t)) return { error: `The diagonal entry in row ${i + 1} should be 0, ∞ or -.` }; M[i].push(0); continue; }
+      if (!/^\d+$/.test(t) || +t > 999) return { error: `Row ${i + 1}, column ${j + 1}: costs must be whole numbers from 0 to 999.` };
+      M[i].push(+t);
+    } }
+    if ((MODE === 'mst' || MODE === 'twoopt') && M.some((r, i) => r.some((v, j) => v !== M[j][i]))) return { error: 'This method needs a symmetric matrix (D[i][j] = D[j][i]). Use points, or pick another method.' };
+    return { D: M, P: null };
+  }
+  function apply() {
+    const r = parse(); if (r.error) { $('err').textContent = r.error; return; }
+    $('err').textContent = ''; D = r.D;
+    if (r.P) { const xs = r.P.map(p => p[0]), ys = r.P.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), s = Math.min(340 / Math.max(1, x1 - x0), 260 / Math.max(1, y1 - y0)); XY = r.P.map(p => [30 + (p[0] - x0) * s + (340 - (x1 - x0) * s) / 2, 290 - (p[1] - y0) * s - (260 - (y1 - y0) * s) / 2]); }
+    else XY = D.map((_, i) => [200 + 125 * Math.sin(2 * Math.PI * i / D.length), 160 - 125 * Math.cos(2 * Math.PI * i / D.length)]);
+    load();
+  }
+
+  function renderMap(s) {
+    const n = D.length, sym = D.every((r, i) => r.every((v, j) => v === D[j][i]));
+    const L = (a, b, cls, arrow) => { const [x1, y1] = XY[a], [x2, y2] = XY[b], dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 1, k = 17 / d; return `<line class="${cls}" x1="${x1 + dx * k}" y1="${y1 + dy * k}" x2="${x2 - dx * k}" y2="${y2 - dy * k}"${arrow ? ' marker-end="url(#ah)"' : ''}/>`; };
+    let out = `<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>`;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out += L(i, j, 'e');
+    if (n <= 5 && sym) for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const [x1, y1] = XY[i], [x2, y2] = XY[j]; out += `<text class="w" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 7}">${D[i][j]}</text>`; }
+    if (s.best && s.best.length > 1) for (let k = 0; k + 1 < s.best.length; k++) out += L(s.best[k], s.best[k + 1], 'b');
+    if (s.mst) s.mst.forEach(([a, b]) => out += L(a, b, 'm'));
+    if (s.drop) s.drop.forEach(([a, b]) => out += L(a, b, 'd'));
+    if (s.tour && s.tour.length > 1) for (let k = 0; k + 1 < s.tour.length; k++) if (!(s.drop || []).some(([a, b]) => (a === s.tour[k] && b === s.tour[k + 1]) || (b === s.tour[k] && a === s.tour[k + 1]))) out += L(s.tour[k], s.tour[k + 1], 't', true);
+    (s.cand || []).forEach(([a, b]) => out += L(a, b, 'c'));
+    XY.forEach(([x, y], i) => out += `<circle class="${i ? '' : 'start'}" cx="${x}" cy="${y}" r="15"/><text class="${i ? '' : 'start'}" x="${x}" y="${y}">${i + 1}</text>`);
+    $('map').innerHTML = out;
+  }
+  function renderMatrix(s) {
+    const m = s.matrix; $('matBox').hidden = !m; if (!m) return;
+    $('matTitle').textContent = m.title;
+    $('mat').innerHTML = `<thead><tr><th></th>${m.v.map((_, j) => `<th>${j + 1}</th>`).join('')}</tr></thead><tbody>` +
+      m.v.map((r, i) => `<tr><th>${i + 1}</th>${r.map((v, j) => { const c = m.cls[`${i},${j}`] || ''; const isInf = v === Infinity || (i === j && MODE !== 'bnb'); return `<td class="${c} ${isInf ? 'inf' : ''}">${i === j && MODE !== 'bnb' ? '—' : f(v)}</td>`; }).join('')}</tr>`).join('') + '</tbody>';
+  }
+  function renderList(s) {
+    $('listBox').hidden = !s.list; if (!s.list) return;
+    $('glist').innerHTML = s.list.map((g, k) => `<li class="${k === s.list.length - 1 && !s.final ? 'new' : ''} ${g.top ? 'top' : ''}"><b>${g.name} = ${g.val}</b> <span>${g.how}</span></li>`).join('');
+  }
+  function renderTree(s) {
+    $('treeBox').hidden = !s.tree; if (!s.tree) return;
+    const nodes = s.tree, kids = nodes.map(() => []), pos = [], dep = [];
+    nodes.forEach(x => { if (x.parent >= 0) kids[x.parent].push(x.id); });
+    let leaf = 0, md = 0;
+    (function walk(id, d) { dep[id] = d; md = Math.max(md, d); if (!kids[id].length) pos[id] = leaf++; else { kids[id].forEach(k => walk(k, d + 1)); pos[id] = (pos[kids[id][0]] + pos[kids[id][kids[id].length - 1]]) / 2; } })(0, 0);
+    const W = 64, H = 62, X = id => 10 + pos[id] * W + W / 2, Y = id => 26 + dep[id] * H;
+    let out = '';
+    nodes.forEach(x => { if (x.parent >= 0) out += `<line x1="${X(x.parent)}" y1="${Y(x.parent) + 18}" x2="${X(x.id)}" y2="${Y(x.id) - 18}"/>`; });
+    nodes.forEach(x => out += `<g class="${x.st} ${x.id === s.cur ? 'cur' : ''}"><rect x="${X(x.id) - 26}" y="${Y(x.id) - 18}" width="52" height="36" rx="7"/><text x="${X(x.id)}" y="${Y(x.id) - 6}">${x.id + 1}: ${x.label}</text><text class="c" x="${X(x.id)}" y="${Y(x.id) + 9}">ĉ=${f(x.c)}</text></g>`);
+    const w = leaf * W + 20, h = (md + 1) * H + 14;
+    $('tree').setAttribute('viewBox', `0 0 ${w} ${h}`); $('tree').style.maxWidth = Math.min(w * 1.15, 1000) + 'px'; $('tree').innerHTML = out;
+  }
+  function render(s) {
+    $('msg').innerHTML = s.msg;
+    renderMap(s); renderMatrix(s); renderList(s); renderTree(s);
+    $('vars').innerHTML = Object.keys(s.vars).map(k => `<div><dt>${esc(k)}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('');
+    $('stats').innerHTML = `<div><dt>${MODE === 'bnb' ? 'nodes made' : 'operations'}</dt><dd>${MODE === 'bnb' && s.tree ? s.tree.length : s.ops}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div><div><dt>of</dt><dd>${RUN.steps.length}</dd></div>`;
+    $('statNote').textContent = { brute: 'Each tour costs n additions.', hk: 'Each candidate D[i][j] + g(j, S − {j}) counts as one.', bnb: 'Each child node needs one matrix reduction, O(n²).', nn: 'Each distance looked at counts as one.', mst: 'Each key update in Prim counts as one.', twoopt: 'Each pair of edges tested counts as one.' }[MODE];
+    $('thead').innerHTML = RUN.header.map(h => `<th>${esc(h)}</th>`).join('');
+    const rows = s.rows.slice(-80);
+    $('tbody').innerHTML = rows.length ? rows.map((r, i) => `<tr class="${i === rows.length - 1 ? 'last' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${RUN.header.length}">Rows appear as the algorithm runs.</td></tr>`;
+  }
+  function legend() {
+    const sw = (st, t) => `<span><i style="${st}"></i>${t}</span>`;
+    let h = sw('border-color:var(--accent);background:var(--accent)', 'current tour / path (arrows show direction)') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 40%,var(--surface))', 'best tour so far');
+    if (['nn', 'mst', 'twoopt'].includes(MODE)) h += sw('border-color:var(--read);border-style:dashed', MODE === 'twoopt' ? 'edges added' : 'edge being chosen');
+    if (MODE === 'twoopt') h += sw('border-color:var(--dec);border-style:dashed', 'edges removed');
+    if (MODE === 'mst') h += sw('border-color:var(--src);background:color-mix(in oklab,var(--src) 55%,var(--surface))', 'minimum spanning tree');
+    if (MODE === 'bnb') h += sw('border-color:var(--dec);background:color-mix(in oklab,var(--dec) 14%,var(--surface))', 'entries set to ∞ for the child');
+    else h += sw('border-color:var(--accent);border-style:dashed', 'matrix entries compared') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 30%,var(--surface))', 'entry chosen');
+    $('legend').innerHTML = h;
+  }
+  function codeHTML(lines) { let n = 0; NUM = {}; return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join(''); }
+  const player = Sim.start(render);
+  function load() {
+    RUN = E.run(MODE, { D });
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.MODES[MODE].name}</b>. ` + RUN.steps[0].msg;
+    legend(); player.load(RUN.steps);
+  }
+  $('setup').addEventListener('submit', e => { e.preventDefault(); apply(); });
+  $('bEx').onclick = example;
+  $('bRand').onclick = () => {
+    const n = Math.min(maxN(), 5 + Math.floor(Math.random() * 2)), rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+    $('inT').value = 'p'; $('inM').value = Array.from({ length: n }, () => `${rnd(0, 10)} ${rnd(0, 8)}`).join('\n'); labels(); apply();
+  };
+  picker(); example();
+  const jump = +new URLSearchParams(location.search).get('step');
+  for (let i = 1; i < jump; i++) document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+})();
+</script>
+</body>
+</html>

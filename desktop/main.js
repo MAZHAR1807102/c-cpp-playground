@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const WEB = path.join(__dirname, 'web');
 const NAME = 'Playground';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.tar': 'application/x-tar', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.zip': 'application/zip', '.whl': 'application/zip' };
-const PAGES = { editor: 'index.html', notebook: 'notebook.html', stl: 'stl.html' };
+const PAGES = { editor: 'index.html', algorithms: 'algorithms.html', stl: 'stl.html', notebook: 'notebook.html' };
 
 // keep settings (exam mode, saved code) in a folder with a specific name: "Playground" alone could clash with
 // another program's folder, and this is also where version 1.0.0 kept them
@@ -64,8 +64,8 @@ function createWindow() {
 function buildMenu() {
   const send = a => () => {
     if (!win) return;
-    // the STL page has no files or exam dialog: those actions open the code editor first
-    if (win.webContents.getURL().includes('/stl.html') && a !== 'run') {
+    // the STL and Algorithms pages have no files or exam dialog: those actions open the code editor first
+    if (/\/(stl|algorithms)\.html/.test(win.webContents.getURL()) && a !== 'run') {
       if (go('editor')) win.webContents.once('did-finish-load', () => win && win.webContents.send('menu', a));
       return;
     }
@@ -86,7 +86,7 @@ function buildMenu() {
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Run', submenu: [{ label: 'Run now / run cell', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
     { label: 'Guide', submenu: [{ label: 'Guide & help', accelerator: 'F1', click: send('guide') }] },
-    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+2', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+3', click: () => go('notebook') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
+    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Exam', submenu: [
       { label: 'Start exam mode…', enabled: !exam, click: send('examOn') },
       { label: 'End exam mode…', enabled: exam, click: send('examOff') }
@@ -151,7 +151,8 @@ app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(
 app.whenReady().then(() => {
   protocol.handle('app', async req => {
     const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, '');
-    const file = path.normalize(path.join(WEB, rel || 'index.html'));
+    // a folder address (sims/bubble-sort/) means the index.html inside it
+    const file = path.normalize(path.join(WEB, !rel || rel.endsWith('/') ? rel + 'index.html' : rel));
     if (!file.startsWith(WEB + path.sep)) return new Response('Forbidden', { status: 403 });
     try {
       const data = await fs.promises.readFile(file);

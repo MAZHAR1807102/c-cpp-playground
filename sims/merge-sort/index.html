@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step merge sort: recursive splits, the merge procedure, the call tree and stack, bottom-up merge sort and counting inversions.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Merge Sort Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.cell.dim{opacity:.38}
+.cell.stale{border-style:dashed; opacity:.4}
+.mergebox{display:grid; grid-template-columns:repeat(2,max-content); gap:10px 28px; align-items:start}
+.mergebox[hidden]{display:none!important}
+@media (max-width:560px){ .mergebox{grid-template-columns:max-content} }
+.tree{--tc:42px; display:grid; grid-auto-rows:auto; gap:8px 6px; width:max-content}
+.node{border:2px solid var(--line); border-radius:8px; padding:3px; display:flex; flex-direction:column; gap:2px; background:var(--surface); min-width:0}
+.node .rg{font:600 .62rem var(--f-mono); color:var(--muted); padding-left:3px}
+.node .vals{display:flex; gap:3px}
+.node .vals span{flex:1; text-align:center; font:700 .85rem var(--f-mono); padding:3px 0; border-radius:4px; background:var(--bg); min-width:0}
+.node.idle{border-style:dashed; opacity:.45}
+.node.idle .vals span{color:transparent}
+.node.split{border-color:var(--src)}
+.node.active{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 30%,transparent)}
+.node.done{border-color:var(--inc)}
+.node.done .vals span{background:color-mix(in oklab,var(--inc) 16%,var(--surface))}
+.stack{list-style:none; margin:0; padding:0 16px; display:flex; flex-direction:column-reverse; gap:4px; font:13px var(--f-mono)}
+.stack li{padding:5px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg)}
+.stack li:last-child{border-color:var(--accent); background:color-mix(in oklab,var(--accent) 14%,var(--surface)); font-weight:700}
+.stack-empty{padding:0 16px; color:var(--muted); font-size:.9rem; margin:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none}
+.code .proc::before{content:none}
+.code ol{font-size:12.4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Lecture 4 · Θ(n log n)</p>
+    <h1>Merge Sort, step by step</h1>
+    <p class="lede">Divide the array in half, sort each half recursively, then merge the two sorted halves. Watch the call tree fill in, the call stack grow and shrink, and every inversion get counted during the merges.</p>
+    <nav class="sortnav" aria-label="Sorting simulations">
+      <a href="../insertion-sort/">Insertion sort</a>
+      <a href="../bubble-sort/">Bubble sort</a>
+      <a href="../counting-sort/">Counting sort</a>
+      <a href="../merge-sort/" aria-current="page">Merge sort</a>
+      <a href="../quick-sort/">Quick sort</a>
+    </nav>
+  </header>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow"><label for="inA">Array A (integers −99 to 99, up to 16 keys)</label><input type="text" id="inA" value="5 2 4 7 1 3 2 6"></div>
+    <div class="field"><label for="inMode">Version</label>
+      <select id="inMode"><option value="td">Top-down (recursive)</option><option value="bu">Bottom-up (loop)</option></select></div>
+    <div class="field"><label for="inCond">Tie rule in merge</label>
+      <select id="inCond"><option value="le">L[i] ≤ R[j] (stable)</option><option value="lt">L[i] &lt; R[j] (not stable)</option></select></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bRand">Random</button>
+    <button class="btn" type="button" id="bEx1">8 numbers</button>
+    <button class="btn" type="button" id="bEx2">Inversions of 2 4 1 3 5</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>A<span id="aNote">positions 1..n</span></h2></div>
+        <div class="scroll"><div class="grid" id="gA"></div></div>
+      </div>
+      <div class="mergebox" id="mergebox">
+        <div class="arr"><div class="arr-head"><h2>L<span id="lNote"></span></h2></div><div class="scroll"><div class="grid" id="gL"></div></div></div>
+        <div class="arr"><div class="arr-head"><h2>R<span id="rNote"></span></h2></div><div class="scroll"><div class="grid" id="gR"></div></div></div>
+      </div>
+      <div class="arr">
+        <div class="arr-head"><h2 id="treeTitle">Call tree</h2></div>
+        <div class="scroll"><div class="tree" id="tree"></div></div>
+      </div>
+      <div class="legend">
+        <span><i style="border-color:var(--read)"></i>compared</span>
+        <span><i style="border-color:var(--read);background:color-mix(in oklab,var(--read) 38%,var(--surface))"></i>just written to A</span>
+        <span><i style="border-color:var(--src)"></i>split, waiting for halves</span>
+        <span><i style="border-color:var(--accent)"></i>working now</span>
+        <span><i style="border-color:var(--inc)"></i>sorted</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card code">
+        <h2>Pseudocode</h2>
+        <ol id="code"></ol>
+      </section>
+      <section class="card vars">
+        <h2 id="stackTitle">Call stack</h2>
+        <ol class="stack" id="stack"></ol>
+        <p class="stack-empty" id="stackEmpty">empty</p>
+      </section>
+      <section class="card vars">
+        <h2>Variables</h2>
+        <dl id="vars"></dl>
+        <dl class="stats" id="stats"></dl>
+        <p class="stat-note" id="statNote"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Merges</h2>
+    <p>One row per call of Merge. When a key is taken from R, every key still in L is larger, so each of them forms an inversion with it.</p>
+    <div class="tscroll"><table>
+      <thead><tr><th>#</th><th>Merge(A, p, q, r)</th><th>L</th><th>R</th><th>Result A[p..r]</th><th>Comparisons</th><th>Inversions added</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Why Θ(n log n)?</h2><p>T(n) = 2T(n/2) + Θ(n). The call tree has ⌈log₂ n⌉ levels below the root, and the merges on one level together write each of the n keys once. So the total work is <strong>Θ(n log n)</strong> in the best, average and worst case. Merge needs L and R, so the extra memory is <strong>Θ(n)</strong>.</p></div>
+    <div class="card"><h2>Stable, and it counts inversions</h2><p>On a tie the merge takes from L first, so equal keys keep their order: merge sort is <strong>stable</strong>. When R[j] is taken while L still holds |L| − i + 1 keys, R[j] is smaller than all of them, so add that many inversions. Summed over all merges this gives the inversion count in Θ(n log n).</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), fmt = Sim.fmt;
+  const EX1 = [5, 2, 4, 7, 1, 3, 2, 6], EX2 = [2, 4, 1, 3, 5];
+  let A = EX1.slice(), BU = false, LE = true;
+
+  const kw = s => `<span class="kw">${s}</span>`, cm = s => `<span class="cm">${s}</span>`;
+  const MERGE = M => [
+    [M,     `    L ← A[p..q];  R ← A[q+1..r]`],
+    [M + 1, `    i ← 1;  j ← 1;  k ← p`],
+    [M + 2, `    ${kw('while')} i ≤ |L| ${kw('and')} j ≤ |R|`],
+    [M + 3, `        ${kw('if')} L[i] ${LE ? '≤' : '<'} R[j]`],
+    [M + 4, `            A[k] ← L[i];  i ← i + 1`],
+    [M + 5, `        ${kw('else')} A[k] ← R[j];  j ← j + 1`],
+    [M + 6, `            inv ← inv + (|L| − i + 1)`],
+    [M + 7, `        k ← k + 1`],
+    [M + 8, `    copy the rest of L or R to A[k..r]`]];
+  function codeHTML() {
+    const top = BU ? [
+      [1, `w ← 1`],
+      [2, `${kw('while')} w < n`],
+      [3, `    ${kw('for')} p ← 1 ${kw('to')} n ${kw('step')} 2w`],
+      [4, `        q ← min(p+w−1, n)`],
+      [5, `        r ← min(p+2w−1, n)`],
+      [6, `        ${kw('if')} q < r: Merge(A, p, q, r)`],
+      [7, `    w ← 2w`]] : [
+      [1, `${kw('if')} p < r`],
+      [2, `    q ← ⌊(p + r) / 2⌋`],
+      [3, `    MergeSort(A, p, q)`],
+      [4, `    MergeSort(A, q+1, r)`],
+      [5, `    Merge(A, p, q, r)`]];
+    const li = ([l, t]) => `<li data-l="${l}">${t}</li>`;
+    return `<li class="proc">${BU ? 'BottomUpMergeSort(A, n)' : 'MergeSort(A, p, r)'}</li>` + top.map(li).join('') +
+      `<li class="proc">Merge(A, p, q, r)</li>` + MERGE(BU ? 8 : 6).map(li).join('');
+  }
+
+  function build() {
+    const n = A.length, tg = Sim.tags(A), trueInv = Sim.inversions(A), M = BU ? 8 : 6;
+    const arr = A.map((v, i) => ({ v, id: 'e' + i, t: tg[i] }));
+    const nodes = [], S = [], merges = [], stack = [];
+    let ns, merge = null, cmp = 0, inv = 0, rows = 0;
+
+    // call tree / run tree; row 0 = whole array
+    if (!BU) {
+      const mk = (p, r, row) => {
+        const id = nodes.length; nodes.push({ p, r, row }); rows = Math.max(rows, row + 1);
+        if (p < r) { const q = Math.floor((p + r) / 2); nodes[id].kids = [mk(p, q, row + 1), mk(q + 1, r, row + 1)]; }
+        return id;
+      };
+      mk(1, n, 0);
+    } else {
+      const widths = []; for (let w = 1; ; w *= 2) { widths.push(w); if (w >= n) break; }
+      rows = widths.length;
+      widths.forEach((w, li) => { for (let p = 1; p <= n; p += w) nodes.push({ p, r: Math.min(p + w - 1, n), row: rows - 1 - li, w }); });
+    }
+    ns = nodes.map(nd => ({ st: BU && nd.w === 1 ? 'done' : 'idle', vals: BU && nd.w === 1 ? [arr[nd.p - 1]] : null }));
+
+    const push = o => S.push(Object.assign({ arr: arr.slice(), ns: ns.map(x => Object.assign({}, x)), stack: stack.slice(),
+      merge: merge && Object.assign({}, merge), cmp, inv, trueInv, merges: merges.slice(), rng: null, hi: {}, hiL: {}, hiR: {}, vars: {}, nodes, rows }, o));
+    const slice = (p, r) => arr.slice(p - 1, r);
+
+    function doMerge(p, q, r, id, doneLine) {
+      const L = slice(p, q), R = slice(q + 1, r);
+      merge = { p, q, r, L, R, i: 1, j: 1, k: p };
+      ns[id] = { st: 'active', vals: slice(p, r) };
+      push({ line: [M, M + 1], rng: [p, r], vars: { p, q, r },
+        msg: `Merge(A, ${p}, ${q}, ${r}): copy the sorted halves into <code>L = ${L.map(fmt).join(' ')}</code> and <code>R = ${R.map(fmt).join(' ')}</code>. Set i = 1, j = 1, k = ${p}.` });
+      let mc = 0, mi = 0;
+      while (merge.i <= L.length && merge.j <= R.length) {
+        const { i, j, k } = merge, a = L[i - 1], b = R[j - 1];
+        cmp++; mc++;
+        const takeL = LE ? a.v <= b.v : a.v < b.v, rel = a.v < b.v ? '<' : a.v > b.v ? '>' : '=';
+        if (takeL) {
+          arr[k - 1] = a; merge.i++; merge.k++;
+          push({ line: [M + 3, M + 4, M + 7], rng: [p, r], hi: { [k]: 'landed' }, hiL: { [i]: 'cmp' }, hiR: { [j]: 'cmp' }, vars: { i, j, k, 'L[i]': a.v, 'R[j]': b.v },
+            msg: `<code>L[${i}] = ${fmt(a)} ${rel} R[${j}] = ${fmt(b)}</code>` + (rel === '=' ? ' (a tie: take from L, so equal keys keep their order)' : '') + `. <code>A[${k}] ← ${fmt(a)}</code>.` });
+        } else {
+          const left = L.slice(i - 1), add = left.length;
+          arr[k - 1] = b; merge.j++; merge.k++; inv += add; mi += add;
+          push({ line: [M + 3, M + 5, M + 6, M + 7], rng: [p, r], hi: { [k]: 'landed' }, hiL: { [i]: 'cmp' }, hiR: { [j]: 'cmp' }, vars: { i, j, k, 'L[i]': a.v, 'R[j]': b.v },
+            msg: `<code>L[${i}] = ${fmt(a)} ${rel} R[${j}] = ${fmt(b)}</code>, so <code>A[${k}] ← ${fmt(b)}</code>. It jumps ahead of the ${add} key${add > 1 ? 's' : ''} still in L (${left.map(fmt).join(', ')}): <b>inversions + ${add}</b>.` });
+        }
+      }
+      if (merge.k <= r) {
+        const fromL = merge.i <= L.length, rest = fromL ? L.slice(merge.i - 1) : R.slice(merge.j - 1), k0 = merge.k;
+        rest.forEach(x => { arr[merge.k - 1] = x; merge.k++; });
+        if (fromL) merge.i = L.length + 1; else merge.j = R.length + 1;
+        const hi = {}; for (let k = k0; k <= r; k++) hi[k] = 'landed';
+        push({ line: M + 8, rng: [p, r], hi, vars: { k: k0 },
+          msg: `${fromL ? 'R' : 'L'} is used up. Copy the rest of ${fromL ? 'L' : 'R'} (${rest.map(fmt).join(', ')}) into <code>A[${k0}..${r}]</code>. No comparisons needed.` });
+      }
+      merges.push({ p, q, r, L: L.map(fmt).join(' '), R: R.map(fmt).join(' '), out: slice(p, r).map(fmt).join(' '), mc, mi });
+      merge = null; ns[id] = { st: 'done', vals: slice(p, r) };
+      push({ line: doneLine, rng: [p, r], vars: { p, q, r },
+        msg: `Merge done: <code>A[${p}..${r}] = ${slice(p, r).map(fmt).join(' ')}</code> is sorted (${mc} comparison${mc === 1 ? '' : 's'}, ${mi} inversion${mi === 1 ? '' : 's'} found).` });
+    }
+
+    if (!BU) {
+      push({ line: 0, msg: `n = ${n}. Call <code>MergeSort(A, 1, ${n})</code>. The tree below shows every call it will make.` });
+      const rec = id => {
+        const { p, r, kids } = nodes[id];
+        stack.push(`MergeSort(A, ${p}, ${r})`);
+        ns[id] = { st: 'active', vals: slice(p, r) };
+        if (!kids) {
+          ns[id].st = 'done';
+          push({ line: 1, rng: [p, r], vars: { p, r }, msg: `<code>MergeSort(A, ${p}, ${r})</code>: p < r is false. One key is already sorted, so return.` });
+          stack.pop(); return;
+        }
+        const q = Math.floor((p + r) / 2);
+        push({ line: [1, 2], rng: [p, r], vars: { p, q, r },
+          msg: `<code>MergeSort(A, ${p}, ${r})</code>: p < r, so split at <code>q = ⌊(${p} + ${r}) / 2⌋ = ${q}</code>. Sort A[${p}..${q}] first, then A[${q + 1}..${r}].` });
+        ns[id].st = 'split';
+        rec(kids[0]); rec(kids[1]);
+        doMerge(p, q, r, id, 5);
+        stack.pop();
+      };
+      rec(0);
+    } else {
+      push({ line: 1, vars: { w: 1 }, msg: `Bottom-up: no recursion. Start with ${n} runs of length 1, each already sorted.` });
+      for (let w = 1; w < n; w *= 2) {
+        push({ line: 2, vars: { w }, msg: `<code>w = ${w}</code> < n: merge neighbouring runs of length ${w} into runs of length ${2 * w}.` });
+        for (let p = 1; p <= n; p += 2 * w) {
+          const q = Math.min(p + w - 1, n), r = Math.min(p + 2 * w - 1, n);
+          const id = nodes.findIndex(nd => nd.w === 2 * w && nd.p === p);
+          if (q < r) { stack.length = 0; stack.push(`Merge(A, ${p}, ${q}, ${r})`); doMerge(p, q, r, id, 6); stack.length = 0; }
+          else {
+            ns[id] = { st: 'done', vals: slice(p, r) };
+            push({ line: [3, 4, 5, 6], rng: [p, r], vars: { w, p, q, r }, msg: `<code>p = ${p}</code>: q = ${q} is not < r = ${r}, so there is no right run. A[${p}..${r}] moves up unchanged.` });
+          }
+        }
+      }
+    }
+    const st = Sim.stability(arr);
+    let msg = `Sorted with ${cmp} comparisons in ${merges.length} merges. Inversions counted: <b>${inv}</b>` +
+      (inv === trueInv ? ` (correct: the input has ${trueInv}).` : `, but the input has ${trueInv}: with the &lt; rule, equal pairs are counted as inversions.`);
+    if (st) msg += st.kept ? ` Equal keys kept their order (${st.seq}): <b>stable</b>.` : ` Equal keys changed order (${st.seq}): <b>not stable</b>.`;
+    push({ line: 0, msg });
+    return S;
+  }
+
+  function render(s) {
+    const n = A.length;
+    $('msg').innerHTML = s.msg;
+    const m = s.merge;
+    // A: outside the active range dimmed; inside a merge, A[k..r] still holds old copies (stale)
+    $('gA').innerHTML = Sim.rowHTML(s.arr.map((item, p) => {
+      const pos = p + 1, out = s.rng && (pos < s.rng[0] || pos > s.rng[1]), stale = m && pos >= m.k && pos <= m.r;
+      return { item, hot: !!s.hi[pos], cls: (s.hi[pos] || '') + (out ? ' dim' : '') + (stale ? ' stale' : '') };
+    }), null, true).replace(/<div class="cell ([^"]*stale[^"]*)" data-id="[^"]*"/g, '<div class="cell $1"');
+    $('aNote').textContent = s.rng ? `working on A[${s.rng[0]}..${s.rng[1]}]` : 'positions 1..n';
+    $('mergebox').hidden = !m;
+    if (m) {
+      const side = (arr, idx, hi, name) => Sim.rowHTML(arr.map((item, x) => ({ item: x + 1 < idx ? null : item, label: x + 1 < idx ? fmt(item) : '', hot: !!hi[x + 1], cls: hi[x + 1] || (x + 1 < idx ? 'used' : '') })),
+        { [Math.min(idx, arr.length)]: idx <= arr.length ? name : '' }, true);
+      $('gL').innerHTML = side(m.L, m.i, s.hiL, 'i');
+      $('gR').innerHTML = side(m.R, m.j, s.hiR, 'j');
+      $('lNote').textContent = `= A[${m.p}..${m.q}]`; $('rNote').textContent = `= A[${m.q + 1}..${m.r}]`;
+    }
+    $('tree').style.gridTemplateColumns = `repeat(${n}, var(--tc))`;
+    $('tree').innerHTML = s.nodes.map((nd, id) => {
+      const x = s.ns[id], len = nd.r - nd.p + 1;
+      const vals = x.vals ? x.vals.map(it => `<span>${fmt(it)}</span>`).join('') : '<span>·</span>'.repeat(len);
+      return `<div class="node ${x.st}" style="grid-row:${nd.row + 1};grid-column:${nd.p} / ${nd.r + 1}"><div class="rg">${nd.p === nd.r ? nd.p : nd.p + '..' + nd.r}</div><div class="vals">${vals}</div></div>`;
+    }).join('');
+    $('stack').innerHTML = s.stack.map(f => `<li>${f}</li>`).join('');
+    $('stackEmpty').hidden = s.stack.length > 0;
+    const vk = Object.keys(s.vars);
+    $('vars').innerHTML = vk.length ? vk.map(k => `<div><dt>${k}</dt><dd>${s.vars[k]}</dd></div>`).join('')
+      : `<div><dt>n</dt><dd>${n}</dd></div><div><dt>levels</dt><dd>${s.rows - 1}</dd></div>`;
+    $('stats').innerHTML = `<div><dt>comparisons</dt><dd>${s.cmp}</dd></div><div><dt>inversions</dt><dd>${s.inv}</dd></div><div><dt>merges</dt><dd>${s.merges.length}</dd></div>`;
+    const lg = Math.ceil(Math.log2(n));
+    $('statNote').textContent = `Each level writes all n keys once and there are ⌈log₂ ${n}⌉ = ${lg} levels, so comparisons ≤ n⌈log₂ n⌉ = ${n * lg}.`;
+    $('tbody').innerHTML = s.merges.length
+      ? s.merges.map((r, i) => `<tr class="${i === s.merges.length - 1 ? 'last' : ''}"><td>${i + 1}</td><td>(A, ${r.p}, ${r.q}, ${r.r})</td><td>${r.L}</td><td>${r.R}</td><td>${r.out}</td><td>${r.mc}</td><td>${r.mi}</td></tr>`).join('')
+      : `<tr class="tempty"><td colspan="7">Rows appear as merges finish.</td></tr>`;
+  }
+
+  const player = Sim.start(render);
+  function load() {
+    $('code').innerHTML = codeHTML();
+    $('treeTitle').textContent = BU ? 'Runs, by width (bottom row first)' : 'Call tree';
+    $('stackTitle').textContent = BU ? 'Current call' : 'Call stack';
+    player.load(build());
+  }
+  $('setup').addEventListener('submit', e => {
+    e.preventDefault();
+    const r = Sim.parse($('inA').value, 16, -99, 99);
+    $('err').textContent = r.error || '';
+    if (r.error) return;
+    A = r.arr; BU = $('inMode').value === 'bu'; LE = $('inCond').value === 'le'; load();
+  });
+  $('bRand').onclick = () => {
+    const n = 6 + Math.floor(Math.random() * 7);
+    $('inA').value = Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join(' ');
+    $('setup').requestSubmit();
+  };
+  $('bEx1').onclick = () => { $('inA').value = EX1.join(' '); $('setup').requestSubmit(); };
+  $('bEx2').onclick = () => { $('inA').value = EX2.join(' '); $('setup').requestSubmit(); };
+  $('inMode').onchange = $('inCond').onchange = () => $('setup').requestSubmit();
+  load();
+})();
+</script>
+</body>
+</html>

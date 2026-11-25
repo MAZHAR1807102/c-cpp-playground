@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step shortest-path algorithms: BFS, Dijkstra, Bellman–Ford, DAG shortest paths, Floyd–Warshall and Johnson, with relaxation, negative edges and negative cycles.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Shortest Path Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.picker{display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 16px}
+.pgroup{display:flex; flex-direction:column; gap:6px; min-width:0}
+.pgroup .lab{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.pgroup .btns{display:flex; flex-wrap:wrap; gap:6px}
+.chipbtn{font:600 .88rem var(--f-body); color:var(--ink); padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); cursor:pointer}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.pgroup.ap .chipbtn[aria-pressed="true"]{background:var(--src); border-color:var(--src); color:var(--surface)}
+details.edit{flex-basis:100%; border-top:1px solid var(--line); padding-top:10px}
+details.edit summary{cursor:pointer; font:700 .85rem var(--f-body); color:var(--accent)}
+textarea{font:14px/1.5 var(--f-mono); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:100%; max-width:520px; resize:vertical}
+.hint{font-size:.82rem; color:var(--muted); margin:4px 0 0; max-width:70ch}
+.check{display:flex; align-items:center; gap:8px; font-size:.9rem; color:var(--ink)}
+
+/* graph */
+.gwrap{border:1px solid var(--line); border-radius:8px; background:var(--bg)}
+svg.g{display:block; width:100%; height:auto}
+.ed path{fill:none; stroke:var(--line); stroke-width:2.2; transition:stroke .25s}
+.ed.tree path{stroke:var(--accent); stroke-width:3.4}
+.ed.cyc path{stroke:var(--dec); stroke-width:4.5}
+.ed.pth path{stroke:var(--inc); stroke-width:5.5}
+.ed.rok path{stroke:var(--inc); stroke-width:4.5; stroke-dasharray:none}
+.ed.rno path{stroke:var(--read); stroke-width:4; stroke-dasharray:6 4}
+.ed rect{fill:var(--bg)}
+.ed text{font:600 12px var(--f-mono); fill:var(--muted); text-anchor:middle; dominant-baseline:central}
+.ed.neg text{fill:var(--dec)}
+.ed.hat text{fill:var(--src)}
+.ed.rok text,.ed.rno text{fill:var(--ink); font-weight:700}
+.mk{fill:var(--muted)} .mk.tree{fill:var(--accent)} .mk.pth{fill:var(--inc)} .mk.rok{fill:var(--inc)} .mk.rno{fill:var(--read)} .mk.cyc{fill:var(--dec)}
+.nd circle.c{fill:var(--surface); stroke:var(--muted); stroke-width:2; transition:fill .25s, stroke .25s}
+.nd text.n{font:700 13px var(--f-mono); fill:var(--ink); text-anchor:middle; dominant-baseline:central}
+.nd text.dv{font:700 13px var(--f-mono); fill:var(--accent); text-anchor:middle; paint-order:stroke; stroke:var(--bg); stroke-width:4px}
+.nd text.dv.inf{fill:var(--muted); font-weight:600}
+.nd text.tag{font:700 10px var(--f-mono); letter-spacing:.06em; fill:var(--accent); text-anchor:middle}
+.nd.inq circle.c{fill:color-mix(in oklab,var(--read) 24%,var(--surface)); stroke:var(--read)}
+.nd.done circle.c{fill:color-mix(in oklab,var(--muted) 24%,var(--surface)); stroke:var(--muted)}
+.nd.cur circle.c{fill:var(--accent); stroke:var(--accent)} .nd.cur text.n{fill:var(--accent-ink)}
+.nd.tgt circle.c{stroke:var(--inc); stroke-width:3}
+.nd.kk circle.c{fill:var(--src); stroke:var(--src)} .nd.kk text.n{fill:var(--surface)}
+.nd.ii circle.c{stroke:var(--accent); stroke-width:3.5}
+.nd.cyc circle.c{stroke:var(--dec); stroke-width:3.5}
+.pathline{font:600 .95rem var(--f-mono); margin:0; color:var(--ink)}
+.pathline b{color:var(--inc)}
+
+/* tables */
+.dtab{min-width:0; width:auto}
+.dtab td,.dtab th{padding:5px 12px}
+.dtab th,.mat th{text-transform:none; font-size:.8rem; letter-spacing:0}
+.dtab tr.cur td{background:color-mix(in oklab,var(--accent) 16%,var(--surface)); font-weight:700}
+.dtab tr.chg td.dd{background:color-mix(in oklab,var(--inc) 24%,var(--surface)); font-weight:700}
+.st{font:700 .66rem var(--f-mono); letter-spacing:.05em; text-transform:uppercase; padding:2px 6px; border-radius:4px; border:1px solid var(--line); color:var(--muted)}
+.st.S{color:var(--ink); background:color-mix(in oklab,var(--muted) 20%,var(--surface))}
+.st.Q{color:var(--read); border-color:var(--read)}
+.chips{display:flex; flex-wrap:wrap; gap:5px; list-style:none; margin:0; padding:0}
+.chips li{font:700 .85rem var(--f-mono); padding:3px 9px; border-radius:6px; border:2px solid var(--line); background:var(--surface)}
+.chips li small{font:600 .7rem var(--f-mono); color:var(--muted); margin-left:4px}
+.chips li.on{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 30%,transparent)}
+.chips li.past{opacity:.45}
+.chips li.q{border-color:var(--read); background:color-mix(in oklab,var(--read) 14%,var(--surface))}
+.chips .none{font:400 .88rem var(--f-body); color:var(--muted); border:0; background:none; padding:3px 0}
+.two{display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:14px 22px; align-items:start}
+@media (max-width:700px){ .two{grid-template-columns:minmax(0,1fr)} }
+h3.sub{font:700 .7rem/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+.mats{display:flex; flex-wrap:wrap; gap:14px 22px}
+.mat{min-width:0; width:auto; font-size:13px}
+.mat th,.mat td{padding:4px 8px; min-width:34px}
+.mat th.rowh{border-bottom:1px solid var(--line); border-right:2px solid var(--line)}
+.mat td.kr{background:color-mix(in oklab,var(--src) 12%,var(--surface))}
+.mat td.ir{background:color-mix(in oklab,var(--accent) 10%,var(--surface))}
+.mat td.ch{background:color-mix(in oklab,var(--inc) 34%,var(--surface)); font-weight:700}
+.mat td.blank{color:var(--muted)}
+.mat td.neg{color:var(--dec); font-weight:700}
+.mat th.k{color:var(--src)} .mat th.i{color:var(--accent)}
+.code ol{font-size:12.6px}
+.code li{white-space:pre-wrap; padding-left:3.2em; text-indent:-3.2em}
+.code li::before{width:2.4em; padding-right:.8em; text-indent:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none; white-space:normal; text-indent:0}
+.code .proc::before{content:none}
+tr.cmp-row{cursor:pointer}
+tr.cmp-row:hover td{background:color-mix(in oklab,var(--accent) 6%,var(--surface))}
+tr.cmp-row.sel td{background:color-mix(in oklab,var(--accent) 14%,var(--surface)); font-weight:700}
+td.l{text-align:left}
+.yes{color:var(--inc); font-weight:700} .no{color:var(--dec); font-weight:700}
+.kind{font:700 .66rem var(--f-mono); letter-spacing:.06em; text-transform:uppercase; padding:2px 6px; border-radius:4px; border:1px solid var(--line)}
+.kind.ss{color:var(--accent)} .kind.ap{color:var(--src)}
+.ptable{min-width:680px}
+.ptable td:first-child{text-align:left; font-family:var(--f-body); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Graphs · Shortest paths</p>
+    <h1>Shortest paths, step by step</h1>
+    <p class="lede">Find the least-weight path between vertices of a weighted, directed graph. Every algorithm here is built on one operation, <b>relaxation</b>: if going through u gives v a shorter path, take it. They differ in the <b>order</b> they relax edges, and that decides what they can handle: negative edges, negative cycles, one source or all pairs.</p>
+    <nav class="sortnav" aria-label="Simulations">
+      <a href="../">All simulations</a>
+      <a href="../search/">Search</a>
+      <a href="../shortest-path/" aria-current="page">Shortest paths</a>
+      <a href="../mst/">MST</a>
+      <a href="../string-matching/">String matching</a>
+      <a href="../prefix-sum/">Prefix sums</a>
+      <a href="../dynamic-programming/">Dynamic programming</a>
+      <a href="../n-queens/">N-Queens</a>
+      <a href="../tsp/">Travelling salesman</a>
+      <a href="../game-theory/">Game theory</a>
+    </nav>
+  </header>
+
+  <section class="card picker" aria-label="Algorithm">
+    <div class="pgroup ss"><span class="lab">Single source</span><div class="btns" id="pSS"></div></div>
+    <div class="pgroup ap"><span class="lab">All pairs</span><div class="btns" id="pAP"></div></div>
+  </section>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field"><label for="inPre">Graph</label>
+      <select id="inPre">
+        <option value="dij">Non-negative weights</option>
+        <option value="bf">Negative edges, no negative cycle</option>
+        <option value="dag">Directed acyclic graph (DAG)</option>
+        <option value="fw">All-pairs example (5 vertices)</option>
+        <option value="fail">Dijkstra fails (one negative edge)</option>
+        <option value="neg">Negative cycle</option>
+        <option value="road">Undirected road map</option>
+        <option value="custom" hidden>Custom (edited)</option>
+      </select></div>
+    <div class="field"><label for="inS">Source s</label><select id="inS"></select></div>
+    <div class="field"><label for="inT">Target (path shown)</label><select id="inT"></select></div>
+    <label class="check" id="fEarly"><input type="checkbox" id="inEarly"> Stop early when a pass changes nothing</label>
+    <label class="check"><input type="checkbox" id="inDir" checked> Directed edges</label>
+    <details class="edit" id="edit">
+      <summary>Edit the graph</summary>
+      <div class="field" style="margin-top:10px"><label for="inE">Edges: one per line, “from to weight”</label><textarea id="inE" rows="8" spellcheck="false"></textarea>
+        <p class="hint">Up to 10 vertices; weights are whole numbers from −999 to 999. Bellman–Ford relaxes the edges in the order you list them; every other algorithm takes neighbours in name order.</p>
+        <div style="margin-top:10px"><button class="btn primary" type="submit">Apply</button></div></div>
+    </details>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>Graph<span id="gNote">edge labels are weights; d under each vertex</span></h2></div>
+        <div class="gwrap"><svg class="g" id="gSvg" role="img" aria-label="Weighted graph"></svg></div>
+        <p class="pathline" id="pathLine"></p>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div id="ssPanel" class="two">
+        <div><h3 class="sub">Distance table</h3><div class="tscroll"><table class="dtab"><thead><tr><th>v</th><th>v.d</th><th>v.π</th><th id="stHead">state</th></tr></thead><tbody id="dBody"></tbody></table></div></div>
+        <div><h3 class="sub" id="chipName">Queue</h3><ul class="chips" id="chips"></ul></div>
+      </div>
+      <div id="apPanel">
+        <div class="mats">
+          <div><h3 class="sub" id="dName">Distance matrix D</h3><div class="tscroll"><table class="mat" id="matD"></table></div></div>
+          <div><h3 class="sub">Predecessor matrix Π</h3><div class="tscroll"><table class="mat" id="matP"></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card code">
+        <h2>Pseudocode</h2>
+        <ol id="code"></ol>
+      </section>
+      <section class="card vars">
+        <h2>Variables</h2>
+        <dl id="vars"></dl>
+        <dl class="stats" id="stats"></dl>
+        <p class="stat-note" id="statNote"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Trace</h2>
+    <p id="traceNote"></p>
+    <div class="tscroll"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>All six algorithms on this graph</h2>
+    <p>Distances from the chosen source; for the all-pairs algorithms, that source’s row of D. “Correct?” compares with Bellman–Ford. Click a row to step through it.</p>
+    <div class="tscroll"><table>
+      <thead><tr><th>Algorithm</th><th>Type</th><th>Distances from source</th><th>Relaxations</th><th>Correct?</th></tr></thead>
+      <tbody id="cmpBody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card trace">
+    <h2>Properties</h2>
+    <p>V = number of vertices, E = number of edges. Times assume adjacency lists; Dijkstra with a binary heap.</p>
+    <div class="tscroll"><table class="ptable">
+      <thead><tr><th>Algorithm</th><th>Problem</th><th>Negative edges?</th><th>Negative cycles</th><th>Time</th><th>Idea</th></tr></thead>
+      <tbody>
+        <tr><td>BFS</td><td>Single source, unweighted</td><td>— (ignores weights)</td><td>—</td><td>O(V + E)</td><td>FIFO queue: fewest edges first</td></tr>
+        <tr><td>Dijkstra</td><td>Single source</td><td>No</td><td>—</td><td>O((V + E) log V)</td><td>Greedy: finalise the closest vertex, relax its edges</td></tr>
+        <tr><td>Bellman–Ford</td><td>Single source</td><td>Yes</td><td>Detects them</td><td>O(V E)</td><td>Relax every edge V − 1 times</td></tr>
+        <tr><td>DAG shortest paths</td><td>Single source, acyclic</td><td>Yes</td><td>None possible</td><td>O(V + E)</td><td>Relax edges in topological order, once</td></tr>
+        <tr><td>Floyd–Warshall</td><td>All pairs</td><td>Yes</td><td>Detects them (d[i][i] &lt; 0)</td><td>Θ(V³)</td><td>Dynamic programming over intermediate vertices</td></tr>
+        <tr><td>Johnson</td><td>All pairs, sparse</td><td>Yes</td><td>Detects them</td><td>O(V E log V)</td><td>Reweight with Bellman–Ford, then Dijkstra from every vertex</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Relaxation</h2><p>Each vertex keeps v.d, the best distance found so far (an upper bound), and v.π, its predecessor. <strong>RELAX(u, v)</strong> asks: is u.d + w(u, v) smaller than v.d? If so, v gets the shorter path through u. Distances only ever go down, and once v.d equals the true distance δ(s, v) it never changes again.</p></div>
+    <div class="card"><h2>Why Dijkstra needs w ≥ 0</h2><p>Dijkstra finalises a vertex as soon as it is extracted, trusting that no later path can be shorter, since every later path only adds non-negative weights. One negative edge breaks this. Open <strong>Dijkstra fails</strong>: a is finalised with d = 2, then b → a (−2) lowers it to 1, but c has already used the old value and keeps 3 instead of 2.</p></div>
+    <div class="card"><h2>Negative cycles</h2><p>If a cycle has negative total weight, going round it again always makes a path shorter, so “shortest path” has no answer for any vertex reachable through it. Bellman–Ford spots it because an edge can still be relaxed after V − 1 passes; Floyd–Warshall because a diagonal entry becomes negative.</p></div>
+    <div class="card"><h2>Which one to use?</h2><p>Unweighted: <strong>BFS</strong>. Non-negative weights: <strong>Dijkstra</strong>. Negative edges: <strong>Bellman–Ford</strong>, or the faster <strong>DAG</strong> method if there are no cycles. All pairs: <strong>Floyd–Warshall</strong> for dense graphs (short code, Θ(V³)), <strong>Johnson</strong> for sparse graphs.</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), E = window.SPEngine, fd = E.fd, INF = E.INF;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // presets: edges (in Bellman-Ford order), source, target, directed, positions (x right, y up)
+  const PRESETS = {
+    dij: { e: 's t 10\ns y 5\nt x 1\nt y 2\ny t 3\ny x 9\ny z 2\nx z 4\nz x 6\nz s 7', s: 's', t: 'x', dir: true,
+      pos: { s: [0, 0], t: [1.7, 1.2], x: [3.7, 1.2], y: [1.7, -1.2], z: [3.7, -1.2] } },
+    bf: { e: 't x 5\nt y 8\nt z -4\nx t -2\ny x -3\ny z 9\nz x 7\nz s 2\ns t 6\ns y 7', s: 's', t: 'z', dir: true,
+      pos: { s: [0, 0], t: [1.7, 1.2], x: [3.7, 1.2], y: [1.7, -1.2], z: [3.7, -1.2] } },
+    dag: { e: 'r s 5\nr t 3\ns t 2\ns x 6\nt x 7\nt y 4\nt z 2\nx y -1\nx z 1\ny z -2', s: 's', t: 'z', dir: true,
+      pos: { r: [0, 0], s: [1.5, 1], t: [3, 0], x: [4.5, 1], y: [6, 0], z: [7.5, 1] } },
+    fw: { e: '1 2 3\n1 3 8\n1 5 -4\n2 4 1\n2 5 7\n3 2 4\n4 1 2\n4 3 -5\n5 4 6', s: '1', t: '3', dir: true,
+      pos: { 1: [0, 0.5], 2: [1.6, 1.6], 3: [3.2, 0.5], 4: [2.4, -1.1], 5: [0.8, -1.1] } },
+    fail: { e: 's a 2\ns b 3\nb a -2\na c 1', s: 's', t: 'c', dir: true,
+      pos: { s: [0, 0], a: [2, 1], b: [2, -1], c: [4, 1] } },
+    neg: { e: 's a 4\na b -2\nb c 1\nc a -1\ns c 5', s: 's', t: 'b', dir: true,
+      pos: { s: [0, 0], a: [1.7, 1.1], b: [3.4, 0], c: [1.7, -1.1] } },
+    road: { e: 'A B 4\nA C 2\nB C 1\nB D 5\nC D 8\nC E 10\nD E 2\nD F 6\nE F 3', s: 'A', t: 'F', dir: false,
+      pos: { A: [0, 0], B: [1.6, 1], C: [1.6, -1], D: [3.2, 1], E: [3.2, -1], F: [4.8, 0] } }
+  };
+  const ORDER = ['bfs', 'dij', 'bf', 'dag', 'fw', 'jo'];
+  let ALG = ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dij';
+  let PRE = 'dij', G = null, POS = {}, RUN = null, NUM = {};
+  const AP = () => E.ALGS[ALG].kind === 'ap';
+
+  function picker() {
+    const btn = a => `<button type="button" class="chipbtn" data-alg="${a}" aria-pressed="${a === ALG}">${E.ALGS[a].short}</button>`;
+    $('pSS').innerHTML = ORDER.filter(a => E.ALGS[a].kind === 'ss').map(btn).join('');
+    $('pAP').innerHTML = ORDER.filter(a => E.ALGS[a].kind === 'ap').map(btn).join('');
+  }
+  document.querySelector('.picker').addEventListener('click', e => { const b = e.target.closest('[data-alg]'); if (b) setAlg(b.dataset.alg); });
+  function setAlg(a) { ALG = a; picker(); try { history.replaceState(null, '', '#' + a); } catch (_) {} load(); }
+
+  // ---------- layout ----------
+  function layout() {
+    const pre = PRESETS[PRE], P = {};
+    if (pre && G.V.every(n => pre.pos[n])) { G.V.forEach(n => P[n] = [pre.pos[n][0], -pre.pos[n][1]]); return P; }
+    const n = G.V.length;   // circle layout for custom graphs
+    G.V.forEach((v, i) => { const a = -Math.PI / 2 + 2 * Math.PI * i / n; P[v] = [Math.cos(a) * 2.2, Math.sin(a) * 2.2]; });
+    return P;
+  }
+  function fit(P) {
+    const xs = Object.values(P).map(p => p[0]), ys = Object.values(P).map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = 680, pad = 46, dx = Math.max(maxX - minX, 1e-6), dy = Math.max(maxY - minY, 1e-6);
+    const sc = Math.min((W - 2 * pad) / dx, 330 / dy);
+    const H = Math.round(dy * sc + 2 * pad + 18), offX = (W - dx * sc) / 2, out = {};
+    Object.keys(P).forEach(n => out[n] = [offX + (P[n][0] - minX) * sc, pad + 4 + (P[n][1] - minY) * sc]);
+    return { pos: out, W, H };
+  }
+
+  // ---------- current paths ----------
+  function pathNow(s) {
+    const src = $('inS').value, tgt = $('inT').value;
+    if (AP()) {
+      if (!s.M) return null;
+      const i = G.V.indexOf(src), j = G.V.indexOf(tgt);
+      if (s.M.D[i][j] == null || s.M.D[i][j] === INF) return null;
+      const p = E.pathFromP(G.V, s.M.P, i, j);
+      return p ? { p, len: s.M.D[i][j] } : null;
+    }
+    if (s.d[tgt] === INF || s.d[tgt] == null) return null;
+    const p = E.pathFromPi(s.pi, s.src || src, tgt);
+    return p ? { p, len: s.d[tgt] } : null;
+  }
+
+  // ---------- render ----------
+  const R = 19;
+  function renderGraph(s) {
+    const { pos, W, H } = POS, src = $('inS').value, tgt = $('inT').value;
+    const cls = {}, pathInfo = s.final || ALG !== 'fw' ? pathNow(s) : null;
+    const key = (u, v) => G.directed ? `${u}>${v}` : [u, v].sort().join('|');
+    // shortest-path tree from π (single source) or Π row of the source (all pairs)
+    if (!AP()) G.V.forEach(v => { if (s.pi[v] != null) cls[key(s.pi[v], v)] = 'tree'; });
+    else if (s.M && ALG === 'jo' && s.src != null) G.V.forEach(v => { if (s.pi[v] != null) cls[key(s.pi[v], v)] = 'tree'; });
+    if (pathInfo && (s.final || !AP())) for (let i = 1; i < pathInfo.p.length; i++) cls[key(pathInfo.p[i - 1], pathInfo.p[i])] = 'pth';
+    if (s.cycle) for (let i = 1; i < s.cycle.length; i++) cls[key(s.cycle[i - 1], s.cycle[i])] = 'cyc';
+    if (s.edge) cls[key(s.edge.u, s.edge.v)] = s.edge.ok ? 'rok' : 'rno';
+    let defs = '<defs>';
+    ['', 'tree', 'pth', 'rok', 'rno', 'cyc'].forEach(c => { defs += `<marker id="m${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="mk ${c}" d="M0 0L10 5L0 10z"/></marker>`; });
+    defs += '</defs>';
+    let out = defs;
+    const arcSet = new Set(G.arcs.map(a => a.u + '>' + a.v));
+    G.drawn.forEach(({ u, v, w }) => {
+      const [x1, y1] = pos[u], [x2, y2] = pos[v], L = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / L, ny = (x2 - x1) / L;
+      const bend = G.directed && arcSet.has(v + '>' + u) ? 22 : 0;
+      const cx = (x1 + x2) / 2 + nx * bend, cy = (y1 + y2) / 2 + ny * bend;
+      const a1 = Math.atan2(cy - y1, cx - x1), a2 = Math.atan2(y2 - cy, x2 - cx);
+      const sx = x1 + Math.cos(a1) * R, sy = y1 + Math.sin(a1) * R, ex = x2 - Math.cos(a2) * (R + 3), ey = y2 - Math.sin(a2) * (R + 3);
+      const c = cls[key(u, v)] || '';
+      const lx = (sx + 2 * cx + ex) / 4, ly = (sy + 2 * cy + ey) / 4;
+      const hv = s.hat ? s.hat[u + '>' + v] : null, lab = hv != null ? fd(hv) : fd(w);
+      const wd = lab.length * 7.4 + 8;
+      out += `<g class="ed ${c} ${w < 0 && hv == null ? 'neg' : ''} ${hv != null ? 'hat' : ''}"><path d="M${sx} ${sy} Q${cx} ${cy} ${ex} ${ey}"${G.directed ? ` marker-end="url(#m${c})"` : ''}/>` +
+        `<rect x="${lx - wd / 2}" y="${ly - 8}" width="${wd}" height="16" rx="4"/><text x="${lx}" y="${ly}">${lab}</text></g>`;
+    });
+    const inQ = new Set(s.Q.map(x => x.v));
+    G.V.forEach((v, i) => {
+      const [x, y] = pos[v], c = [];
+      if (AP()) {
+        if (s.M && s.M.k != null && G.V[s.M.k] === v) c.push('kk');
+        if (s.M && s.M.i != null && G.V[s.M.i] === v) c.push(ALG === 'jo' ? 'cur' : 'ii');
+      } else {
+        if (s.cur === v) c.push('cur'); else if (s.S.includes(v)) c.push('done'); else if (inQ.has(v)) c.push('inq');
+      }
+      if (s.cycle && s.cycle.includes(v)) c.push('cyc');
+      if (v === tgt) c.push('tgt');
+      let label = '';
+      if (!AP()) { const dv = s.d[v]; label = `<text class="dv ${dv === INF ? 'inf' : ''}" x="${x + R + 5}" y="${y - R + 4}" style="text-anchor:start">${dv === INF ? '∞' : fd(dv)}</text>`; }
+      else if (ALG === 'jo' && s.h) label = `<text class="dv" x="${x + R + 5}" y="${y - R + 4}" style="fill:var(--src);text-anchor:start">h=${fd(s.h[v])}</text>`;
+      else if (ALG === 'jo' && s.src && s.d[v] != null) label = '';
+      out += `<g class="nd ${c.join(' ')}"><circle class="c" cx="${x}" cy="${y}" r="${R}"/><text class="n" x="${x}" y="${y}">${esc(v)}</text>` +
+        (v === src ? `<text class="tag" x="${x}" y="${y - R - 7}">SOURCE</text>` : v === tgt ? `<text class="tag" x="${x}" y="${y - R - 7}" style="fill:var(--inc)">TARGET</text>` : '') + label + `</g>`;
+    });
+    $('gSvg').setAttribute('viewBox', `0 0 ${W} ${H}`);
+    $('gSvg').innerHTML = out;
+    // path text
+    let pt = '';
+    if (s.cycle) pt = `Negative cycle: <b style="color:var(--dec)">${s.cycle.map(esc).join(' → ')}</b>`;
+    else if (pathInfo) pt = `Path ${esc(src)} → ${esc(tgt)}: <b>${pathInfo.p.map(esc).join(' → ')}</b>, weight ${fd(pathInfo.len)}${s.final ? '' : ' (so far)'}`;
+    else if (s.final && RUN.result.status === 'ok') pt = `${esc(tgt)} cannot be reached from ${esc(src)}.`;
+    $('pathLine').innerHTML = pt;
+  }
+
+  function renderSS(s) {
+    const inQ = new Set(s.Q.map(x => x.v));
+    const changed = s.edge && s.edge.ok ? s.edge.v : null;
+    $('stHead').textContent = ALG === 'dag' ? 'done?' : 'state';
+    $('dBody').innerHTML = G.V.map(v => {
+      const st = s.S.includes(v) ? `<span class="st S">${ALG === 'dij' ? 'in S' : ALG === 'bfs' ? 'dequeued' : 'done'}</span>` : inQ.has(v) ? `<span class="st Q">in Q</span>` : ALG === 'bf' ? '' : `<span class="st">—</span>`;
+      return `<tr class="${s.cur === v ? 'cur' : ''} ${changed === v ? 'chg' : ''}"><td>${esc(v)}</td><td class="dd">${fd(s.d[v])}</td><td>${s.pi[v] == null ? 'NIL' : esc(s.pi[v])}</td><td>${st}</td></tr>`;
+    }).join('');
+    let chips = '';
+    if (ALG === 'dij' || ALG === 'bfs') {
+      $('chipName').textContent = ALG === 'dij' ? 'Q (min-priority queue on d, smallest first)' : 'Q (FIFO queue, front first)';
+      chips = s.Q.length ? s.Q.map((x, i) => `<li class="q ${i === 0 && !s.final ? 'on' : ''}">${esc(x.v)}<small>${fd(x.key)}</small></li>`).join('') : '<li class="none">empty</li>';
+    } else if (ALG === 'bf') {
+      $('chipName').textContent = 'Edge order (each pass relaxes all of them)';
+      chips = G.arcs.map(a => `<li class="${s.edge && s.edge.u === a.u && s.edge.v === a.v ? 'on' : ''}">(${esc(a.u)}, ${esc(a.v)})<small>${fd(a.w)}</small></li>`).join('');
+    } else if (ALG === 'dag') {
+      $('chipName').textContent = 'Topological order';
+      chips = s.topo ? s.topo.map(v => `<li class="${s.cur === v ? 'on' : s.S.includes(v) ? 'past' : ''}">${esc(v)}</li>`).join('') : '<li class="none">not computed yet</li>';
+    }
+    $('chips').innerHTML = chips;
+  }
+
+  function renderAP(s) {
+    const V = G.V, M = s.M;
+    $('dName').textContent = ALG === 'fw' ? (M && M.k != null ? `Distance matrix D (building D(${V[M.k]}))` : 'Distance matrix D') : 'Distance matrix D (row by row)';
+    if (!M) { $('matD').innerHTML = $('matP').innerHTML = ''; return; }
+    const chg = new Set(M.chg);
+    const head = `<thead><tr><th class="rowh"></th>${V.map((v, j) => `<th class="${M.k === j && ALG === 'fw' ? 'k' : ''}">${esc(v)}</th>`).join('')}</tr></thead>`;
+    const cellCls = (i, j) => {
+      const c = [];
+      if (chg.has(i + ',' + j)) c.push('ch');
+      else if (ALG === 'fw' && M.k != null && (i === M.k || j === M.k)) c.push('kr');
+      else if (M.i === i) c.push('ir');
+      return c.join(' ');
+    };
+    const body = (f) => `<tbody>${V.map((v, i) => `<tr><th class="rowh ${M.i === i ? 'i' : ''} ${ALG === 'fw' && M.k === i ? 'k' : ''}">${esc(v)}</th>${V.map((w, j) => f(i, j)).join('')}</tr>`).join('')}</tbody>`;
+    $('matD').innerHTML = head + body((i, j) => {
+      const x = M.D[i][j];
+      return x == null ? `<td class="blank">·</td>` : `<td class="${cellCls(i, j)} ${x < 0 ? 'neg' : ''} ${i === j && x < 0 ? 'neg' : ''}">${fd(x)}</td>`;
+    });
+    $('matP').innerHTML = head + body((i, j) => {
+      const x = M.P[i][j];
+      if (ALG === 'jo' && M.D[i][j] == null) return `<td class="blank">·</td>`;
+      return `<td class="${cellCls(i, j)}">${x == null ? 'NIL' : esc(V[x])}</td>`;
+    });
+  }
+
+  let LAST = null;
+  function render(s) {
+    LAST = s;
+    $('msg').innerHTML = s.msg;
+    renderGraph(s);
+    $('ssPanel').hidden = AP(); $('apPanel').hidden = !AP();
+    if (AP()) renderAP(s); else renderSS(s);
+    const vk = Object.keys(s.vars);
+    $('vars').innerHTML = vk.map(k => `<div><dt>${k}</dt><dd>${esc(s.vars[k])}</dd></div>`).join('') +
+      `<div><dt>|V|, |E|</dt><dd>${G.V.length}, ${G.arcs.length}</dd></div>`;
+    $('stats').innerHTML = `<div><dt>${ALG === 'fw' ? 'comparisons' : ALG === 'bfs' ? 'edges checked' : 'relaxations'}</dt><dd>${s.st.relax}</dd></div><div><dt>${ALG === 'jo' ? '—' : 'improvements'}</dt><dd>${ALG === 'jo' ? '' : s.st.upd}</dd></div><div><dt>step</dt><dd>${RUN.steps.indexOf(s) + 1}</dd></div>`;
+    const V = G.V.length, Ecount = G.arcs.length;
+    $('statNote').textContent = ALG === 'bf' ? `Bellman–Ford relaxes (|V| − 1)·|E| = ${(V - 1) * Ecount} edges, plus ${Ecount} checks.`
+      : ALG === 'fw' ? `Floyd–Warshall always makes n³ = ${V ** 3} comparisons.`
+      : ALG === 'dij' || ALG === 'dag' ? `Each edge is relaxed exactly once: ${Ecount} relaxations in all.`
+      : ALG === 'bfs' ? `Each edge is looked at once: O(V + E).` : `Bellman–Ford once on V + 1 vertices, then Dijkstra ${V} times.`;
+    const H = RUN.header;
+    $('thead').innerHTML = H.map(h => `<th>${esc(h)}</th>`).join('');
+    $('tbody').innerHTML = s.rows.length
+      ? s.rows.map((r, i) => `<tr class="${i === s.rows.length - 1 ? 'last' : ''}">${r.map((c, j) => `<td class="${(ALG === 'dij' || ALG === 'bfs' || ALG === 'fw' || ALG === 'jo') && j > 0 ? 'l' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tempty"><td colspan="${H.length}">Rows appear as the algorithm runs.</td></tr>`;
+  }
+
+  function legend() {
+    const sw = (style, t) => `<span><i style="${style}"></i>${t}</span>`;
+    let h = '';
+    if (!AP()) h += sw('border-color:var(--accent);background:var(--accent)', 'current u') +
+      (ALG === 'dij' || ALG === 'bfs' ? sw('border-color:var(--read);background:color-mix(in oklab,var(--read) 24%,var(--surface))', 'in Q') : '') +
+      (ALG !== 'bf' ? sw('border-color:var(--muted);background:color-mix(in oklab,var(--muted) 24%,var(--surface))', ALG === 'dij' ? 'in S (final)' : 'done') : '');
+    else if (ALG === 'fw') h += sw('border-color:var(--src);background:var(--src)', 'k (intermediate)') + sw('border-color:var(--accent)', 'row i') + sw('border-color:var(--inc);background:color-mix(in oklab,var(--inc) 34%,var(--surface))', 'improved cell');
+    else h += sw('border-color:var(--accent);background:var(--accent)', 'source of this Dijkstra run') + sw('border-color:var(--src)', 'reweighted ŵ');
+    h += sw('border-color:var(--accent)', ALG === 'fw' ? 'π edge' : 'shortest-path tree (π)') +
+      sw('border-color:var(--inc)', 'edge improved / path to target') + (AP() ? '' : sw('border-color:var(--read);border-style:dashed', 'edge checked, no change')) +
+      sw('border-color:var(--dec)', 'negative weight / cycle');
+    $('legend').innerHTML = h;
+  }
+
+  function compare() {
+    const o = opts(), truth = E.bellmanFord(G, o.source);
+    $('cmpBody').innerHTML = ORDER.map(a => {
+      const r = E.run(a, G, o).result, A = E.ALGS[a];
+      let dist, ok;
+      if (r.status === 'negcycle') { dist = 'negative cycle found'; ok = '<span class="yes">detected</span>'; }
+      else if (r.status === 'notdag') { dist = 'not a DAG: cannot run'; ok = '—'; }
+      else if (r.status !== 'ok') { dist = 'too many steps'; ok = '—'; }
+      else {
+        dist = G.V.map(v => `${esc(v)}:${fd(r.row[v])}`).join('  ');
+        if (truth.neg) ok = '<span class="no">no (negative cycle missed)</span>';
+        else if (a === 'bfs') ok = G.V.every(v => r.row[v] === truth.d[v]) ? '<span class="yes">yes</span>' : '<span class="no">counts edges</span>';
+        else ok = G.V.every(v => r.row[v] === truth.d[v]) ? '<span class="yes">yes</span>' : '<span class="no">no</span>';
+      }
+      return `<tr class="cmp-row ${a === ALG ? 'sel' : ''}" data-alg="${a}" tabindex="0"><td class="l">${A.name}</td><td><span class="kind ${A.kind}">${A.kind === 'ss' ? 'single source' : 'all pairs'}</span></td><td class="l">${dist}</td><td>${r.relax}</td><td>${ok}</td></tr>`;
+    }).join('');
+  }
+  $('cmpBody').addEventListener('click', e => { const r = e.target.closest('[data-alg]'); if (r) setAlg(r.dataset.alg); });
+  $('cmpBody').addEventListener('keydown', e => { const r = e.target.closest('[data-alg]'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setAlg(r.dataset.alg); } });
+
+  function codeHTML(lines) {
+    let n = 0; NUM = {};
+    return lines.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join('');
+  }
+  const opts = () => ({ source: $('inS').value, early: $('inEarly').checked });
+
+  const player = Sim.start(render);
+  function load() {
+    $('fEarly').hidden = ALG !== 'bf';
+    $('gNote').textContent = ALG === 'jo' ? 'edge labels: w, then ŵ (blue) after reweighting; h beside each vertex'
+      : ALG === 'fw' ? 'edge labels are weights; k and row i are highlighted' : ALG === 'bfs' ? 'weights are ignored: every edge counts 1; d beside each vertex' : 'edge labels are weights; d beside each vertex';
+    $('traceNote').textContent = ALG === 'bf' ? 'One row per pass: d after the pass, as in the textbook figure.' : ALG === 'dag' ? 'One row per vertex in topological order: d after relaxing its edges.'
+      : ALG === 'fw' ? 'One row per value of k.' : ALG === 'jo' ? 'The Bellman–Ford phase, then one row per Dijkstra run.' : 'One row per vertex taken from the queue.';
+    const o = opts();
+    RUN = E.run(ALG, G, o);
+    $('code').innerHTML = codeHTML(RUN.code);
+    RUN.steps.forEach(s => { s.line = s.line.map(k => NUM[k]).filter(Boolean); });
+    RUN.steps[0].msg = `<b>${E.ALGS[ALG].name}</b>${AP() ? '' : ` from ${esc(o.source)}`}. ` + RUN.steps[0].msg;
+    legend(); compare();
+    player.load(RUN.steps);
+  }
+
+  function fillEnds(s, t) {
+    const opt = G.V.map(n => `<option>${esc(n)}</option>`).join('');
+    $('inS').innerHTML = opt; $('inT').innerHTML = opt;
+    $('inS').value = G.V.includes(s) ? s : G.V[0];
+    $('inT').value = G.V.includes(t) ? t : G.V[G.V.length - 1];
+  }
+  function parseAndLoad(keep) {
+    const r = E.parseGraph($('inE').value, $('inDir').checked);
+    if (r.error) { $('err').textContent = r.error; return; }
+    $('err').textContent = '';
+    const P = PRESETS[PRE] || {};
+    const s = keep ? $('inS').value : P.s, t = keep ? $('inT').value : P.t;
+    G = r; fillEnds(s, t); POS = fit(layout());
+    load();
+  }
+  function usePreset(p) {
+    PRE = p; const P = PRESETS[p];
+    $('inPre').value = p; $('inE').value = P.e; $('inDir').checked = P.dir;
+    parseAndLoad(false);
+  }
+  $('inPre').onchange = () => { if (PRESETS[$('inPre').value]) usePreset($('inPre').value); };
+  $('setup').addEventListener('submit', e => {
+    e.preventDefault();
+    const P = PRESETS[PRE];
+    if (!P || $('inE').value.trim() !== P.e) $('inPre').value = 'custom';
+    parseAndLoad(true);
+  });
+  $('inDir').onchange = () => parseAndLoad(true);
+  $('inS').onchange = load;
+  $('inT').onchange = () => { if (LAST) render(LAST); };
+  $('inEarly').onchange = load;
+
+  picker();
+  usePreset(ALG === 'fw' || ALG === 'jo' ? 'fw' : ALG === 'dag' ? 'dag' : ALG === 'bf' ? 'bf' : 'dij');
+})();
+</script>
+</body>
+</html>

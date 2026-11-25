@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive step-by-step quick sort: Lomuto and Hoare partition, fixed or random pivot, the worst case on sorted input, and quickselect.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Quick Sort Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../assets/sim.css">
+<style>
+.cell.dim{opacity:.35}
+.cell.lt{background:color-mix(in oklab,var(--src) 16%,var(--surface)); border-color:color-mix(in oklab,var(--src) 55%,var(--surface))}
+.cell.gt{background:color-mix(in oklab,var(--read) 16%,var(--surface)); border-color:color-mix(in oklab,var(--read) 55%,var(--surface))}
+.cell.pv{border-color:var(--dec); box-shadow:0 0 0 3px color-mix(in oklab,var(--dec) 30%,transparent)}
+.cell.cmp{border-color:var(--accent); background:color-mix(in oklab,var(--accent) 18%,var(--surface))}
+.tree{--tc:42px; display:grid; gap:8px 6px; width:max-content}
+.node{border:2px solid var(--line); border-radius:8px; padding:3px; display:flex; flex-direction:column; gap:2px; background:var(--surface); min-width:0}
+.node .rg{font:600 .62rem var(--f-mono); color:var(--muted); padding-left:3px}
+.node .vals{display:flex; gap:3px}
+.node .vals span{flex:1; text-align:center; font:700 .85rem var(--f-mono); padding:3px 0; border-radius:4px; background:var(--bg); min-width:0}
+.node .vals span.pv{outline:2px solid var(--dec); outline-offset:-2px}
+.node.split{border-color:var(--src)}
+.node.active{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 30%,transparent)}
+.node.done{border-color:var(--inc)}
+.node.done .vals span{background:color-mix(in oklab,var(--inc) 16%,var(--surface))}
+.stack{list-style:none; margin:0; padding:0 16px; display:flex; flex-direction:column-reverse; gap:4px; font:13px var(--f-mono)}
+.stack li{padding:5px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg)}
+.stack li:last-child{border-color:var(--accent); background:color-mix(in oklab,var(--accent) 14%,var(--surface)); font-weight:700}
+.stack-empty{padding:0 16px; color:var(--muted); font-size:.9rem; margin:0}
+.code .proc{font:700 .72rem var(--f-mono); letter-spacing:.06em; color:var(--muted); padding:8px 16px 2px; list-style:none; counter-increment:none}
+.code .proc::before{content:none}
+.code ol{font-size:12.6px}
+#inSeed, #inK{width:80px}
+.field.off{opacity:.45}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Algorithms · Lecture 5 · Θ(n log n) expected, Θ(n²) worst</p>
+    <h1>Quick Sort, step by step</h1>
+    <p class="lede">Pick a pivot, partition the range so smaller keys go left and larger keys go right, then sort the two sides recursively. Compare Lomuto and Hoare partition, see sorted input push a fixed pivot into the worst case, and use the same partition to find the k-th smallest key.</p>
+    <nav class="sortnav" aria-label="Sorting simulations">
+      <a href="../insertion-sort/">Insertion sort</a>
+      <a href="../bubble-sort/">Bubble sort</a>
+      <a href="../counting-sort/">Counting sort</a>
+      <a href="../merge-sort/">Merge sort</a>
+      <a href="../quick-sort/" aria-current="page">Quick sort</a>
+    </nav>
+  </header>
+
+  <form class="card setup" id="setup" autocomplete="off">
+    <div class="field grow"><label for="inA">Array A (integers −99 to 99, up to 16 keys)</label><input type="text" id="inA" value="2 8 7 1 3 5 6 4"></div>
+    <div class="field"><label for="inMode">Task</label>
+      <select id="inMode"><option value="sort">Sort</option><option value="sel">Quickselect</option></select></div>
+    <div class="field" id="fK"><label for="inK">k (k-th smallest)</label><input type="number" id="inK" min="1" value="5"></div>
+    <div class="field" id="fPart"><label for="inPart">Partition</label>
+      <select id="inPart"><option value="lom">Lomuto (pivot = last)</option><option value="hoa">Hoare (pivot = first)</option></select></div>
+    <div class="field"><label for="inPiv">Pivot</label>
+      <select id="inPiv"><option value="fix">Fixed</option><option value="rnd">Random</option></select></div>
+    <div class="field" id="fSeed"><label for="inSeed">Seed</label><input type="number" id="inSeed" min="1" value="7"></div>
+    <button class="btn primary" type="submit">Load</button>
+    <button class="btn" type="button" id="bRand">Random array</button>
+    <button class="btn" type="button" id="bEx1">Example</button>
+    <button class="btn" type="button" id="bEx2">Sorted input</button>
+    <button class="btn" type="button" id="bEx3">All keys equal</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <div class="stage">
+    <section class="card viz" aria-live="polite">
+      <div class="msg" id="msg"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>A<span id="aNote">positions 1..n</span></h2></div>
+        <div class="scroll"><div class="grid" id="gA"></div></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="arr">
+        <div class="arr-head"><h2>Recursion tree<span>one row per depth; the pivot is outlined</span></h2></div>
+        <div class="scroll"><div class="tree" id="tree"></div></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card code">
+        <h2>Pseudocode</h2>
+        <ol id="code"></ol>
+      </section>
+      <section class="card vars">
+        <h2>Call stack</h2>
+        <ol class="stack" id="stack"></ol>
+        <p class="stack-empty" id="stackEmpty">empty</p>
+      </section>
+      <section class="card vars">
+        <h2>Variables</h2>
+        <dl id="vars"></dl>
+        <dl class="stats" id="stats"></dl>
+        <p class="stat-note" id="statNote"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card trace">
+    <h2>Partitions</h2>
+    <p>One row per call of Partition: the pivot, the range after partitioning, and where it was split.</p>
+    <div class="tscroll"><table>
+      <thead><tr><th>#</th><th>Partition(A, p, r)</th><th>Pivot</th><th>A[p..r] after</th><th id="qHead">q</th><th>Comparisons</th><th>Swaps</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h2>Best, worst, expected</h2><p>If every pivot lands near the middle, the tree has about log₂ n levels and each level costs Θ(n): <strong>Θ(n log n)</strong>. If every pivot is the smallest or largest key (sorted input with a fixed last or first pivot), each call removes only one key: T(n) = T(n−1) + Θ(n) = <strong>Θ(n²)</strong> and the recursion is n levels deep. A random pivot makes the expected cost about 1.39 n log₂ n comparisons on every input.</p></div>
+    <div class="card"><h2>Lomuto or Hoare?</h2><p>Lomuto is easier to prove and puts the pivot in its final place, but with many equal keys it sends them all to one side. Hoare does about three times fewer swaps and splits equal keys evenly, but the pivot is not fixed in place, so it recurses on A[p..q] and A[q+1..r]. Neither is <strong>stable</strong>. Quickselect recurses into one side only: <strong>Θ(n)</strong> expected.</p></div>
+  </section>
+
+  <footer class="site-foot">Made by Mazharul Islam · <a href="../">More algorithm simulations</a></footer>
+
+  <div class="transport">
+    <div class="inner">
+      <div class="tbtns">
+        <button class="tbtn" id="bFirst" aria-label="First step"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="tbtn" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24"><path d="M17 5v14L6 12z"/></svg></button>
+        <button class="tbtn play" id="bPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5v14l12-7z"/></svg></button>
+        <button class="tbtn" id="bNext" aria-label="Next step"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button>
+        <button class="tbtn" id="bLast" aria-label="Last step"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step"><span class="count" id="count"></span></div>
+      <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play</span>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/sim.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), fmt = Sim.fmt;
+  const EX1 = [2, 8, 7, 1, 3, 5, 6, 4];
+  let A = EX1.slice(), HOARE = false, RND = false, SEL = false, SEED = 7, K = 5, NUM = {};
+
+  const kw = s => `<span class="kw">${s}</span>`, cm = s => `<span class="cm">${s}</span>`;
+  function codeLines() {
+    const out = [];
+    const proc = t => out.push({ proc: t }), add = (key, text) => out.push({ key, text });
+    if (SEL) {
+      proc('Select(A, p, r, k)   ▷ k-th smallest');
+      add('s1', `${kw('if')} p = r  ${kw('return')} A[p]`);
+      add('s2', `q ← Partition(A, p, r)`);
+      add('s3', `${kw('if')} k = q  ${kw('return')} A[q]`);
+      add('s4', `${kw('if')} k < q  ${kw('return')} Select(A, p, q−1, k)`);
+      add('s5', `${kw('else return')} Select(A, q+1, r, k)`);
+    } else {
+      proc('QuickSort(A, p, r)');
+      add('q1', `${kw('if')} p < r`);
+      add('q2', `    q ← Partition(A, p, r)`);
+      add('q3', HOARE ? `    QuickSort(A, p, q)` : `    QuickSort(A, p, q − 1)`);
+      add('q4', `    QuickSort(A, q + 1, r)`);
+    }
+    proc(`Partition(A, p, r)   ▷ ${HOARE ? 'Hoare' : 'Lomuto'}`);
+    if (RND) add('rnd', `s ← Random(p, r);  swap A[${HOARE ? 'p' : 'r'}], A[s]`);
+    if (!HOARE) {
+      add('l1', `x ← A[r]   ${cm('▷ pivot')}`);
+      add('l2', `i ← p − 1`);
+      add('l3', `${kw('for')} j ← p ${kw('to')} r − 1`);
+      add('l4', `    ${kw('if')} A[j] ≤ x`);
+      add('l5', `        i ← i + 1;  swap A[i], A[j]`);
+      add('l6', `swap A[i+1], A[r]`);
+      add('l7', `${kw('return')} i + 1`);
+    } else {
+      add('h1', `x ← A[p]   ${cm('▷ pivot')}`);
+      add('h2', `i ← p − 1;  j ← r + 1`);
+      add('h3', `${kw('while')} true`);
+      add('h4', `    ${kw('repeat')} j ← j − 1 ${kw('until')} A[j] ≤ x`);
+      add('h5', `    ${kw('repeat')} i ← i + 1 ${kw('until')} A[i] ≥ x`);
+      add('h6', `    ${kw('if')} i < j  swap A[i], A[j]`);
+      add('h7', `    ${kw('else return')} j`);
+    }
+    let n = 0; NUM = {};
+    return out.map(o => o.proc ? `<li class="proc">${o.proc}</li>` : (NUM[o.key] = ++n, `<li data-l="${n}">${o.text}</li>`)).join('');
+  }
+
+  function build() {
+    const n = A.length, tg = Sim.tags(A);
+    const arr = A.map((v, i) => ({ v, id: 'e' + i, t: tg[i] }));
+    const S = [], parts = [], stack = [], nodes = [], fin = new Set();
+    let cmp = 0, sw = 0, maxD = 0, seed = BigInt(SEED), answer = null;
+    const rand = (p, r) => { seed = (seed * 1103515245n + 12345n) % 2147483648n; return p + Number(seed % BigInt(r - p + 1)); };
+    const swap = (a, b) => { const t = arr[a - 1]; arr[a - 1] = arr[b - 1]; arr[b - 1] = t; };
+    const slice = (p, r) => arr.slice(p - 1, r);
+    const push = o => {
+      if (o.line) o.line = [].concat(o.line).map(k => NUM[k]);
+      S.push(Object.assign({ arr: arr.slice(), fin: new Set(fin), stack: stack.slice(), nodes: nodes.map(x => Object.assign({}, x)),
+        parts: parts.slice(), cmp, sw, maxD, rng: null, reg: null, hi: {}, vars: {} }, o));
+    };
+    const vs = (p, r) => slice(p, r).map(fmt).join(' ');
+
+    function lomuto(p, r) {
+      let pc = 0, ps = 0;
+      if (RND) {
+        const s = rand(p, r); const v = arr[s - 1];
+        if (s !== r) { swap(s, r); sw++; ps++; }
+        push({ line: 'rnd', rng: [p, r], hi: { [r]: 'moved', [s]: 'moved' }, vars: { p, r, s },
+          msg: `Random pivot: <code>s = Random(${p}, ${r}) = ${s}</code>. ` + (s !== r ? `Swap A[${s}] and A[${r}] so the pivot ${fmt(v)} sits at the end.` : `It is already at the end.`) });
+      }
+      const x = arr[r - 1]; let i = p - 1;
+      push({ line: ['l1', 'l2'], rng: [p, r], reg: { t: 'L', p, r, i, j: p }, vars: { p, r, x: x.v, i },
+        msg: `Pivot <code>x = A[${r}] = ${fmt(x)}</code>, <code>i = ${i}</code>. Scan j = ${p}..${r - 1}: keys ≤ ${x.v} are collected in a block on the left.` });
+      for (let j = p; j <= r - 1; j++) {
+        const a = arr[j - 1]; cmp++; pc++;
+        if (a.v <= x.v) {
+          i++;
+          const moved = i !== j; if (moved) { swap(i, j); sw++; ps++; }
+          push({ line: ['l3', 'l4', 'l5'], rng: [p, r], reg: { t: 'L', p, r, i, j: j + 1, jc: j }, hi: moved ? { [i]: 'moved', [j]: 'moved' } : { [i]: 'cmp' }, vars: { p, r, x: x.v, i, j },
+            msg: `<code>A[${j}] = ${fmt(a)} ≤ ${x.v}</code>: i ← ${i}, ` + (moved ? `swap A[${i}] and A[${j}]. The ≤ block grows to A[${p}..${i}].` : `swap A[${i}] with itself (nothing moves). The ≤ block is A[${p}..${i}].`) });
+        } else {
+          push({ line: ['l3', 'l4'], rng: [p, r], reg: { t: 'L', p, r, i, j: j + 1, jc: j }, hi: { [j]: 'cmp' }, vars: { p, r, x: x.v, i, j },
+            msg: `<code>A[${j}] = ${fmt(a)} > ${x.v}</code>: leave it. The > block is A[${i + 1}..${j}].` });
+        }
+      }
+      const q = i + 1;
+      if (q !== r) { swap(q, r); sw++; ps++; }
+      fin.add(q);
+      parts.push({ p, r, piv: fmt(x), after: vs(p, r), q: String(q), pc, ps });
+      push({ line: ['l6', 'l7'], rng: [p, r], hi: { [q]: 'moved' }, vars: { p, r, x: x.v, q },
+        msg: `Swap A[${q}] and A[${r}]: the pivot ${fmt(x)} moves to position ${q}, its final place. Left of it: keys ≤ ${x.v}; right: keys > ${x.v}. Return q = ${q}.` });
+      return q;
+    }
+
+    function hoare(p, r) {
+      let pc = 0, ps = 0;
+      if (RND) {
+        const s = rand(p, r); const v = arr[s - 1];
+        if (s !== p) { swap(s, p); sw++; ps++; }
+        push({ line: 'rnd', rng: [p, r], hi: { [p]: 'moved', [s]: 'moved' }, vars: { p, r, s },
+          msg: `Random pivot: <code>s = Random(${p}, ${r}) = ${s}</code>. ` + (s !== p ? `Swap A[${p}] and A[${s}] so the pivot ${fmt(v)} comes first.` : `It is already first.`) });
+      }
+      const x = arr[p - 1]; let i = p - 1, j = r + 1, lo = p - 1, hiB = r + 1;
+      const reg = () => ({ t: 'H', p, r, lo, hi: hiB, pvid: x.id, i, j });
+      push({ line: ['h1', 'h2'], rng: [p, r], reg: reg(), vars: { p, r, x: x.v },
+        msg: `Pivot <code>x = A[${p}] = ${fmt(x)}</code>. i starts left of the range (${i}), j right of it (${j}). They walk towards each other.` });
+      while (true) {
+        let c = 0; do { j--; cmp++; pc++; c++; } while (arr[j - 1].v > x.v);
+        hiB = j + 1;
+        push({ line: ['h3', 'h4'], rng: [p, r], reg: reg(), hi: { [j]: 'cmp' }, vars: { p, r, x: x.v, i, j },
+          msg: `Move j left until <code>A[j] ≤ ${x.v}</code>: j stops at ${j} (A[${j}] = ${fmt(arr[j - 1])}) after ${c} comparison${c > 1 ? 's' : ''}.` });
+        c = 0; do { i++; cmp++; pc++; c++; } while (arr[i - 1].v < x.v);
+        lo = i - 1;
+        push({ line: 'h5', rng: [p, r], reg: reg(), hi: { [i]: 'cmp', [j]: 'cmp' }, vars: { p, r, x: x.v, i, j },
+          msg: `Move i right until <code>A[i] ≥ ${x.v}</code>: i stops at ${i} (A[${i}] = ${fmt(arr[i - 1])}) after ${c} comparison${c > 1 ? 's' : ''}.` });
+        if (i < j) {
+          const a = arr[i - 1], b = arr[j - 1];
+          swap(i, j); sw++; ps++; lo = i; hiB = j;
+          push({ line: 'h6', rng: [p, r], reg: reg(), hi: { [i]: 'moved', [j]: 'moved' }, vars: { p, r, x: x.v, i, j },
+            msg: `i < j: swap A[${i}] = ${fmt(a)} and A[${j}] = ${fmt(b)}. Now A[${p}..${i}] ≤ ${x.v} and A[${j}..${r}] ≥ ${x.v}.` });
+        } else {
+          lo = j; hiB = j + 1;
+          parts.push({ p, r, piv: fmt(x), after: vs(p, r), q: `${j} → [${p}..${j}] [${j + 1}..${r}]`, pc, ps });
+          push({ line: 'h7', rng: [p, r], reg: reg(), vars: { p, r, x: x.v, q: j },
+            msg: `i = ${i} ≥ j = ${j}: the pointers have met. Return <code>q = ${j}</code>: every key in A[${p}..${j}] ≤ every key in A[${j + 1}..${r}].` });
+          return j;
+        }
+      }
+    }
+    const partition = (p, r) => HOARE ? hoare(p, r) : lomuto(p, r);
+    const addNode = (p, r, d) => { nodes.push({ p, r, row: d, st: 'active', vals: slice(p, r), piv: 0 }); return nodes.length - 1; };
+
+    function qs(p, r, d) {
+      stack.push(`QuickSort(A, ${p}, ${r})`); maxD = Math.max(maxD, d);
+      if (p > r) { push({ line: 'q1', vars: { p, r }, msg: `<code>QuickSort(A, ${p}, ${r})</code>: empty range, return.` }); stack.pop(); return; }
+      const id = addNode(p, r, d);
+      if (p === r) {
+        fin.add(p); nodes[id].st = 'done';
+        push({ line: 'q1', rng: [p, r], vars: { p, r }, msg: `<code>QuickSort(A, ${p}, ${r})</code>: one key, already in place.` });
+        stack.pop(); return;
+      }
+      push({ line: ['q1', 'q2'], rng: [p, r], vars: { p, r }, msg: `<code>QuickSort(A, ${p}, ${r})</code>: p < r, so partition A[${p}..${r}] = ${vs(p, r)}.` });
+      const q = partition(p, r);
+      Object.assign(nodes[id], { st: 'split', vals: slice(p, r), piv: HOARE ? 0 : q });
+      if (HOARE) { qs(p, q, d + 1); qs(q + 1, r, d + 1); } else { qs(p, q - 1, d + 1); qs(q + 1, r, d + 1); }
+      for (let k = p; k <= r; k++) fin.add(k);
+      Object.assign(nodes[id], { st: 'done', vals: slice(p, r) });
+      push({ line: 'q4', rng: [p, r], vars: { p, r }, msg: `<code>QuickSort(A, ${p}, ${r})</code> returns: A[${p}..${r}] = ${vs(p, r)} is sorted.` });
+      stack.pop();
+    }
+
+    function sel(p, r, d) {
+      stack.push(`Select(A, ${p}, ${r}, ${K})`); maxD = Math.max(maxD, d);
+      const id = addNode(p, r, d);
+      if (p === r) {
+        fin.add(p); nodes[id].st = 'done'; answer = arr[p - 1];
+        push({ line: 's1', rng: [p, r], hi: { [p]: 'moved' }, vars: { p, r, k: K }, msg: `p = r = ${p}: one key left, so A[${p}] = ${fmt(answer)} is the answer.` });
+        return;
+      }
+      push({ line: 's2', rng: [p, r], vars: { p, r, k: K }, msg: `<code>Select(A, ${p}, ${r}, ${K})</code>: partition A[${p}..${r}] = ${vs(p, r)}.` });
+      const q = lomuto(p, r);
+      Object.assign(nodes[id], { st: 'split', vals: slice(p, r), piv: q });
+      if (K === q) {
+        answer = arr[q - 1]; nodes[id].st = 'done';
+        push({ line: 's3', rng: [p, r], hi: { [q]: 'moved' }, vars: { p, r, k: K, q }, msg: `k = q = ${q}: the pivot ${fmt(answer)} is the answer. No need to look at either side.` });
+        return;
+      }
+      if (K < q) {
+        push({ line: 's4', rng: [p, q - 1], vars: { p, r, k: K, q }, msg: `k = ${K} < q = ${q}: the answer is in A[${p}..${q - 1}]. A[${q + 1}..${r}] is never touched again.` });
+        sel(p, q - 1, d + 1);
+      } else {
+        push({ line: 's5', rng: [q + 1, r], vars: { p, r, k: K, q }, msg: `k = ${K} > q = ${q}: the answer is in A[${q + 1}..${r}]. A[${p}..${q - 1}] is never touched again.` });
+        sel(q + 1, r, d + 1);
+      }
+      nodes[id].st = 'done';
+    }
+
+    if (SEL) {
+      push({ msg: `Find the ${ord(K)} smallest key: the key that would be at position ${K} if A were sorted. Call <code>Select(A, 1, ${n}, ${K})</code>.` });
+      sel(1, n, 1);
+      const check = A.slice().sort((a, b) => a - b)[K - 1];
+      stack.length = 0;
+      push({ hi: { [arr.indexOf(answer) + 1]: 'moved' }, msg: `The ${ord(K)} smallest key is <b>${fmt(answer)}</b> (check: sorted A has ${check} at position ${K}). ${cmp} comparisons, against about n log₂ n = ${Math.round(n * Math.log2(n))} for a full sort.` });
+    } else {
+      push({ msg: `n = ${n}. Call <code>QuickSort(A, 1, ${n})</code>.` });
+      qs(1, n, 1);
+      const best = Math.ceil(Math.log2(n)) + 1;
+      let msg = `Sorted with ${cmp} comparisons and ${sw} swaps. Deepest call: level ${maxD} (a perfect split would need about ${best}).`;
+      if (maxD >= n - 1 && n > 3) msg += ` Every pivot was the smallest or largest key: this is the <b>worst case</b>, Θ(n²). Try the random pivot.`;
+      const st = Sim.stability(arr);
+      if (st && !st.kept) msg += ` Equal keys changed order (${st.seq}): quick sort is <b>not stable</b>.`;
+      else if (st) msg += ` Equal keys happen to keep their order here (${st.seq}), but quick sort is not stable in general.`;
+      push({ msg });
+    }
+    return S;
+  }
+  const ord = k => k + (k % 100 >= 11 && k % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][k % 10] || 'th');
+
+  function render(s) {
+    const n = A.length, g = s.reg;
+    $('msg').innerHTML = s.msg;
+    const ptr = {};
+    if (g && g.t === 'L') { if (g.i >= g.p) ptr[g.i] = 'i'; if (g.jc) ptr[g.jc] = (ptr[g.jc] ? ptr[g.jc] + ' ' : '') + 'j'; }
+    if (g && g.t === 'H') { if (g.i >= g.p && g.i <= g.r) ptr[g.i] = 'i'; if (g.j >= g.p && g.j <= g.r) ptr[g.j] = (ptr[g.j] ? ptr[g.j] + ' ' : '') + 'j'; }
+    $('gA').innerHTML = Sim.rowHTML(s.arr.map((item, x) => {
+      const pos = x + 1, c = [];
+      if (g && g.t === 'L' && pos >= g.p && pos <= g.r) { if (pos <= g.i) c.push('lt'); else if (pos < g.j && pos < g.r) c.push('gt'); if (pos === g.r) c.push('pv'); }
+      else if (g && g.t === 'H' && pos >= g.p && pos <= g.r) { if (pos <= g.lo) c.push('lt'); else if (pos >= g.hi) c.push('gt'); if (item.id === g.pvid) c.push('pv'); }
+      else if (s.fin.has(pos)) c.push('sorted');
+      if (s.hi[pos]) c.push(s.hi[pos]);
+      if (s.rng && (pos < s.rng[0] || pos > s.rng[1])) c.push('dim');
+      return { item, hot: !!s.hi[pos], cls: c.join(' ') };
+    }), ptr, true);
+    $('aNote').textContent = s.rng ? `working on A[${s.rng[0]}..${s.rng[1]}]` : 'positions 1..n';
+    $('tree').style.gridTemplateColumns = `repeat(${n}, var(--tc))`;
+    $('tree').innerHTML = s.nodes.map(nd => `<div class="node ${nd.st}" style="grid-row:${nd.row};grid-column:${nd.p} / ${nd.r + 1}"><div class="rg">${nd.p === nd.r ? nd.p : nd.p + '..' + nd.r}</div><div class="vals">` +
+      nd.vals.map((it, x) => `<span class="${nd.piv && nd.p + x === nd.piv ? 'pv' : ''}">${fmt(it)}</span>`).join('') + `</div></div>`).join('');
+    $('stack').innerHTML = s.stack.map(f => `<li>${f}</li>`).join('');
+    $('stackEmpty').hidden = s.stack.length > 0;
+    const vk = Object.keys(s.vars);
+    $('vars').innerHTML = vk.length ? vk.map(k => `<div><dt>${k}</dt><dd>${s.vars[k]}</dd></div>`).join('')
+      : `<div><dt>n</dt><dd>${n}</dd></div>` + (SEL ? `<div><dt>k</dt><dd>${K}</dd></div>` : '');
+    $('stats').innerHTML = `<div><dt>comparisons</dt><dd>${s.cmp}</dd></div><div><dt>swaps</dt><dd>${s.sw}</dd></div><div><dt>max depth</dt><dd>${s.maxD}</dd></div>`;
+    $('statNote').textContent = SEL ? `Expected comparisons for quickselect are Θ(n), at most about 3.4n = ${Math.round(3.4 * n)}.`
+      : `Worst case n(n−1)/2 = ${n * (n - 1) / 2} comparisons; average about 1.39 n log₂ n ≈ ${Math.round(1.39 * n * Math.log2(n))}.`;
+    $('tbody').innerHTML = s.parts.length
+      ? s.parts.map((r, i) => `<tr class="${i === s.parts.length - 1 ? 'last' : ''}"><td>${i + 1}</td><td>(A, ${r.p}, ${r.r})</td><td>${r.piv}</td><td>${r.after}</td><td>${r.q}</td><td>${r.pc}</td><td>${r.ps}</td></tr>`).join('')
+      : `<tr class="tempty"><td colspan="7">Rows appear as partitions finish.</td></tr>`;
+  }
+
+  function legend() {
+    $('legend').innerHTML = `<span><i style="border-color:var(--src);background:color-mix(in oklab,var(--src) 16%,var(--surface))"></i>≤ pivot</span>` +
+      `<span><i style="border-color:var(--read);background:color-mix(in oklab,var(--read) 16%,var(--surface))"></i>${HOARE ? '≥' : '>'} pivot</span>` +
+      `<span><i style="border-color:var(--dec)"></i>pivot</span><span><i style="border-color:var(--accent)"></i>compared / just swapped</span>` +
+      `<span><i style="border-color:var(--inc)"></i>final position</span>`;
+  }
+
+  const player = Sim.start(render);
+  function syncFields() {
+    const sel = $('inMode').value === 'sel';
+    $('fK').hidden = !sel;
+    $('fPart').classList.toggle('off', sel); $('inPart').disabled = sel;
+    $('fSeed').hidden = $('inPiv').value !== 'rnd';
+  }
+  function load() {
+    syncFields();
+    $('code').innerHTML = codeLines();
+    $('qHead').textContent = HOARE ? 'Split at q' : 'q (pivot’s place)';
+    legend();
+    player.load(build());
+  }
+  $('setup').addEventListener('submit', e => {
+    e.preventDefault();
+    const r = Sim.parse($('inA').value, 16, -99, 99), err = m => { $('err').textContent = m; };
+    if (r.error) return err(r.error);
+    const sel = $('inMode').value === 'sel', k = Number($('inK').value), seed = Number($('inSeed').value);
+    if (sel && !(Number.isInteger(k) && k >= 1 && k <= r.arr.length)) return err(`k must be a whole number from 1 to ${r.arr.length}.`);
+    if ($('inPiv').value === 'rnd' && !(Number.isInteger(seed) && seed >= 1)) return err('The seed must be a whole number, 1 or more.');
+    err('');
+    A = r.arr; SEL = sel; K = k; HOARE = !sel && $('inPart').value === 'hoa'; RND = $('inPiv').value === 'rnd'; SEED = seed;
+    load();
+  });
+  $('bRand').onclick = () => {
+    const n = 7 + Math.floor(Math.random() * 6);
+    $('inA').value = Array.from({ length: n }, () => Math.floor(Math.random() * 20)).join(' ');
+    $('setup').requestSubmit();
+  };
+  $('bEx1').onclick = () => { $('inA').value = EX1.join(' '); $('setup').requestSubmit(); };
+  $('bEx2').onclick = () => { $('inA').value = '1 2 3 4 5 6 7 8 9 10'; $('inPiv').value = 'fix'; $('setup').requestSubmit(); };
+  $('bEx3').onclick = () => { $('inA').value = '5 5 5 5 5 5 5 5'; $('setup').requestSubmit(); };
+  ['inMode', 'inPart', 'inPiv'].forEach(id => $(id).onchange = () => $('setup').requestSubmit());
+  syncFields();
+  load();
+})();
+</script>
+</body>
+</html>

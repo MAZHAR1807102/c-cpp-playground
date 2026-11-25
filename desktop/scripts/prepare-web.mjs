@@ -1,6 +1,6 @@
 // Build desktop/web from the website in the repository root, with every CDN file replaced by a local copy
 // from node_modules, so that the app works with no internet connection.
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,7 +73,7 @@ for (const d of ['lib', 'mode/clike', 'mode/python', 'mode/markdown', 'addon/edi
 // fonts (Latin subsets), replacing the Google Fonts stylesheet
 const fonts = [
   ['Atkinson Hyperlegible', '@fontsource/atkinson-hyperlegible', 'atkinson-hyperlegible', [400, 700]],
-  ['Bricolage Grotesque', '@fontsource/bricolage-grotesque', 'bricolage-grotesque', [800]],
+  ['Bricolage Grotesque', '@fontsource/bricolage-grotesque', 'bricolage-grotesque', [600, 800]],
   ['JetBrains Mono', '@fontsource/jetbrains-mono', 'jetbrains-mono', [400, 600, 700]]
 ];
 mkdirSync(join(vendor, 'fonts'), { recursive: true });
@@ -95,6 +95,17 @@ const localPage = f => readFileSync(join(root, f), 'utf8')
 writeFileSync(join(web, 'index.html'), localPage('index.html'));
 writeFileSync(join(web, 'notebook.html'), localPage('notebook.html'));
 writeFileSync(join(web, 'stl.html'), localPage('stl.html'));
+writeFileSync(join(web, 'algorithms.html'), localPage('algorithms.html'));
+for (const f of ['algorithms.js', 'examples-algo.js']) cpSync(join(root, f), join(web, f));
+// the animated simulations (sims/, copied from the algorithm-simulations project by tools/sync-sims.mjs), with local fonts
+cpSync(join(root, 'sims'), join(web, 'sims'), { recursive: true });
+for (const d of readdirSync(join(web, 'sims'))) {
+  const f = d === 'index.html' ? join(web, 'sims', d) : join(web, 'sims', d, 'index.html');
+  if (!existsSync(f)) continue;
+  const fonts = d === 'index.html' ? '../vendor/fonts.css' : '../../vendor/fonts.css';
+  writeFileSync(f, readFileSync(f, 'utf8').replace(/<link rel="preconnect"[^>]*>\n?/g, '')
+    .replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^"]*">/, `<link rel="stylesheet" href="${fonts}">`));
+}
 for (const f of ['examples-c.js', 'examples-cpp.js', 'examples-java.js', 'examples-python.js', 'stl-data.js', 'stl.js']) cpSync(join(root, f), join(web, f));
 const pyLocal = "new URL('./vendor/pyodide/', self.location.href).href";
 let nbRunner = readFileSync(join(root, 'notebook-runner.js'), 'utf8')
@@ -114,7 +125,7 @@ cpSync(join(root, 'guide-more.js'), join(web, 'guide-more.js'));
 
 // every file the page loads must now be local: fail the build if a CDN address is left anywhere it would be fetched
 const problems = [];
-for (const f of ['index.html', 'notebook.html', 'stl.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
+for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
   const text = readFileSync(join(web, f), 'utf8');
   for (const m of text.matchAll(/(?:src|href)="(https?:[^"]+)"|import\s*\(?\s*['"](https?:[^'"]+)|=\s*'(https?:\/\/cdn[^']+)'/g)) {
     const url = m[1] || m[2] || m[3];
@@ -122,6 +133,10 @@ for (const f of ['index.html', 'notebook.html', 'stl.html', 'compiler.js', 'runn
     problems.push(`${f}: ${url}`);
   }
   for (const m of text.matchAll(/(?:src|href)="(vendor\/[^"]+)"/g)) if (!existsSync(join(web, m[1]))) problems.push(`${f}: missing ${m[1]}`);
+}
+for (const d of readdirSync(join(web, 'sims'))) {
+  const f = d === 'index.html' ? join(web, 'sims', d) : join(web, 'sims', d, 'index.html');
+  if (existsSync(f) && /googleapis|gstatic/.test(readFileSync(f, 'utf8'))) problems.push('sims/' + d + ': still loads fonts from the internet');
 }
 if (problems.length) { console.error('Still loads from the internet or missing:\n' + problems.join('\n')); process.exit(1); }
 console.log('web/ is ready (offline).');

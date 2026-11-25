@@ -184,6 +184,7 @@
   /* ---------- desktop app ---------- */
   if (D) {
     $('toEditor').onclick = e => { e.preventDefault(); D.go('editor'); };
+    $('toAlgo').onclick = e => { e.preventDefault(); D.go('algorithms'); };
     $('toNotebook').onclick = e => { e.preventDefault(); D.go('notebook'); };
     D.docState({ dirty: false, path: null, name: 'C++ STL' });
     D.onMenu(a => { if (a === 'run' && current) run(current); });
