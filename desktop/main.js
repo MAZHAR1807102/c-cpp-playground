@@ -8,7 +8,8 @@ const crypto = require('node:crypto');
 
 const WEB = path.join(__dirname, 'web');
 const NAME = 'Playground';
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.tar': 'application/x-tar', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.tar': 'application/x-tar', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.zip': 'application/zip', '.whl': 'application/zip' };
+const PAGES = { editor: 'index.html', notebook: 'notebook.html' };
 
 // keep settings (exam mode, saved code) in a folder with a specific name: "Playground" alone could clash with
 // another program's folder, and this is also where version 1.0.0 kept them
@@ -75,33 +76,42 @@ function buildMenu() {
       mac ? { role: 'close' } : { role: 'quit', label: 'Exit' }
     ] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
-    { label: 'Run', submenu: [{ label: 'Run now', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
+    { label: 'Run', submenu: [{ label: 'Run now / run cell', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
     { label: 'Guide', submenu: [{ label: 'Guide & help', accelerator: 'F1', click: send('guide') }] },
-    { label: 'View', submenu: [{ role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
+    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+2', click: () => go('notebook') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Exam', submenu: [
       { label: 'Start exam mode…', enabled: !exam, click: send('examOn') },
       { label: 'End exam mode…', enabled: exam, click: send('examOff') }
     ] },
-    ...(mac ? [] : [{ label: 'Help', submenu: [{ label: `About ${NAME}`, click: () => dialog.showMessageBox(win, { message: NAME, detail: `Version ${app.getVersion()}\nWrite C and C++ and see the output as you type. Works offline: Clang/LLVM 22 runs inside the app.\n\nMade by Mazharul Islam.` }) }] }])
+    ...(mac ? [] : [{ label: 'Help', submenu: [{ label: `About ${NAME}`, click: () => dialog.showMessageBox(win, { message: NAME, detail: `Version ${app.getVersion()}\nWrite C, C++, Java and Python and see the output as you type, or use the Python notebook with numpy, pandas, scikit-learn and matplotlib. Works offline: every compiler and library runs inside the app.\n\nMade by Mazharul Islam.` }) }] }])
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 /* ---------- messages from the page ---------- */
 const FILTERS = [{ name: 'Source files', extensions: ['c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'java', 'py'] }, { name: 'All files', extensions: ['*'] }];
+const NB_FILTERS = [{ name: 'Jupyter notebooks', extensions: ['ipynb'] }, { name: 'All files', extensions: ['*'] }];
+// switch between the code editor and the notebook (asks first if there are unsaved changes)
+function go(page) {
+  if (!win || !PAGES[page] || !askDiscard()) return;
+  doc = { dirty: false, path: null, name: 'Untitled' }; setTitle();
+  win.loadURL('app://playground/' + PAGES[page]);
+}
+ipcMain.on('go', (_, page) => go(page));
 ipcMain.on('doc-state', (_, s) => { doc = { dirty: !!s.dirty, path: s.path || null, name: String(s.name || 'Untitled') }; setTitle(); });
 ipcMain.handle('discard-ok', () => askDiscard());
-ipcMain.handle('open-file', async () => {
+ipcMain.handle('open-file', async (_, o) => {
   if (!askDiscard()) return null;
-  const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: FILTERS });
+  const nb = !!(o && o.kind === 'notebook');
+  const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: nb ? NB_FILTERS : FILTERS });
   if (r.canceled || !r.filePaths.length) return null;
   const p = r.filePaths[0];
-  if (fs.statSync(p).size > 2 * 1024 * 1024) { dialog.showErrorBox('File too large', 'This file is larger than 2 MB, so it is probably not a C or C++ source file.'); return null; }
+  if (fs.statSync(p).size > (nb ? 100 : 2) * 1024 * 1024) { dialog.showErrorBox('File too large', nb ? 'This notebook is larger than 100 MB.' : 'This file is larger than 2 MB, so it is probably not a source file.'); return null; }
   return { path: p, content: fs.readFileSync(p, 'utf8') };
 });
-ipcMain.handle('save-file', async (_, { path: p, content, suggested }) => {
+ipcMain.handle('save-file', async (_, { path: p, content, suggested, kind }) => {
   if (!p) {
-    const r = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), suggested || 'main.cpp'), filters: FILTERS });
+    const r = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), suggested || 'main.cpp'), filters: kind === 'notebook' ? NB_FILTERS : FILTERS });
     if (r.canceled || !r.filePath) return null;
     p = r.filePath;
   }
@@ -136,7 +146,8 @@ app.whenReady().then(() => {
     if (!file.startsWith(WEB + path.sep)) return new Response('Forbidden', { status: 403 });
     try {
       const data = await fs.promises.readFile(file);
-      return new Response(data, { headers: { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': String(data.length) } });
+      // cross-origin isolation lets the notebook stop a running cell without restarting Python (SharedArrayBuffer)
+      return new Response(data, { headers: { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': String(data.length), 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp', 'cross-origin-resource-policy': 'same-origin' } });
     } catch (_) { return new Response('Not found', { status: 404 }); }
   });
   // the app is fully offline: refuse anything that would go to the network

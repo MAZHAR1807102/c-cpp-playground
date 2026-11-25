@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Playground Notebook</title>
+<meta name="description" content="A Python notebook in the browser for data science and machine learning: numpy, pandas, scikit-learn, matplotlib and seaborn, with no installation.">
+<script>
+  try { const t = localStorage.getItem('ccp.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+<style>
+:root{
+  --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
+  --ok:#15803d; --warn:#b45309; --err:#be123c; --code-bg:#fbfcfd; --gutter:#f1f4f7;
+  --t-kw:#7c3aed; --t-type:#0a6f8c; --t-str:#b45309; --t-num:#15803d; --t-com:#7b8794; --t-meta:#be123c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--ink); font:15px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif; padding:0 16px}
+.top{position:sticky; top:0; z-index:20; background:var(--bg); padding:10px 0 10px; display:flex; flex-direction:column; gap:10px}
+header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 20px}
+.hright{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
+h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
+.modes{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.modes a{font:700 .88rem "Atkinson Hyperlegible",sans-serif; color:var(--ink); background:var(--surface); padding:7px 14px; text-decoration:none}
+.modes a[aria-current="page"]{background:var(--accent); color:var(--accent-ink)}
+.bar{display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:8px 10px}
+.grp{display:inline-flex; gap:6px; align-items:center}
+.grp[hidden]{display:none}
+label.f{display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted)}
+label.f[hidden]{display:none}
+select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; max-width:190px}
+.btn{font:700 .88rem "Atkinson Hyperlegible",sans-serif; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:6px 12px; cursor:pointer; white-space:nowrap}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45; cursor:default}
+.spacer{flex:1}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.status{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted); min-width:0}
+.status #kstat{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px}
+.dot{width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none}
+.dot.busy{background:var(--warn); animation:pulse 1s infinite} .dot.ok{background:var(--ok)} .dot.err{background:var(--err)}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){ .dot.busy{animation:none} }
+.nbname{font:600 .85rem "JetBrains Mono",monospace; color:var(--muted)}
+
+/* cells */
+.nb{max-width:1180px; margin:4px auto 0; display:flex; flex-direction:column; gap:10px; padding-bottom:30px}
+.cell{display:grid; grid-template-columns:62px minmax(0,1fr); gap:0 6px; border:1px solid transparent; border-radius:10px; padding:6px 6px 6px 0; position:relative}
+.cell.sel{border-color:var(--line); background:color-mix(in oklab,var(--surface) 55%,transparent); box-shadow:inset 3px 0 0 var(--accent)}
+.cgut{display:flex; flex-direction:column; align-items:flex-end; gap:4px; padding-top:4px}
+.crun{width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--accent); cursor:pointer; display:grid; place-items:center; padding:0}
+.crun:hover{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.crun svg{width:12px; height:12px; fill:currentColor}
+.cnum{font:600 .75rem "JetBrains Mono",monospace; color:var(--muted); white-space:nowrap}
+.cnum.run{color:var(--warn)}
+.cmain{min-width:0}
+.cedit{border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--code-bg)}
+.cell.sel .cedit{border-color:color-mix(in oklab,var(--accent) 55%,var(--line))}
+.CodeMirror{height:auto; font:14px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace; background:var(--code-bg); color:var(--ink)}
+.CodeMirror-scroll{min-height:2.6em}
+.CodeMirror-gutters{background:var(--gutter); border-right:1px solid var(--line)}
+.CodeMirror-linenumber{color:var(--muted); min-width:18px}
+.CodeMirror-cursor{border-left:2px solid var(--accent)}
+.CodeMirror-selected,.CodeMirror-focused .CodeMirror-selected{background:color-mix(in oklab,var(--accent) 22%,transparent)}
+.CodeMirror-matchingbracket{color:var(--ink)!important; background:color-mix(in oklab,var(--accent) 25%,transparent); outline:1px solid var(--accent)}
+.cm-s-default .cm-keyword{color:var(--t-kw); font-weight:600} .cm-s-default .cm-builtin,.cm-s-default .cm-variable-3{color:var(--t-type)} .cm-s-default .cm-string,.cm-s-default .cm-string-2{color:var(--t-str)}
+.cm-s-default .cm-number,.cm-s-default .cm-atom{color:var(--t-num)} .cm-s-default .cm-comment{color:var(--t-com); font-style:italic} .cm-s-default .cm-meta{color:var(--t-meta)} .cm-s-default .cm-def{color:var(--ink); font-weight:600}
+.cm-s-default .cm-variable,.cm-s-default .cm-variable-2,.cm-s-default .cm-property,.cm-s-default .cm-operator,.cm-s-default .cm-punctuation,.cm-s-default .cm-qualifier{color:var(--ink)}
+.cm-s-default .cm-header{color:var(--accent)} .cm-s-default .cm-strong{font-weight:700} .cm-s-default .cm-em{font-style:italic}
+.errline{background:color-mix(in oklab,var(--err) 14%,transparent)}
+.CodeMirror-hints{z-index:30; background:var(--surface); border:1px solid var(--line); border-radius:7px; box-shadow:0 6px 20px rgba(0,0,0,.18); font:13px/1.4 "JetBrains Mono",monospace; padding:3px; max-height:16em}
+.CodeMirror-hint{color:var(--ink); padding:2px 8px; border-radius:4px}
+li.CodeMirror-hint-active{background:var(--accent); color:var(--accent-ink)}
+.ctools{position:absolute; top:-12px; right:8px; display:none; gap:2px; background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:2px; z-index:5; box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.cell.sel .ctools,.cell:hover .ctools{display:flex}
+.ctools button{font:600 .78rem "Atkinson Hyperlegible",sans-serif; border:0; background:none; color:var(--muted); padding:3px 7px; border-radius:5px; cursor:pointer}
+.ctools button:hover{background:var(--bg); color:var(--ink)}
+.ctools button.del:hover{color:var(--err)}
+
+/* text (Markdown) cells */
+.mdview{padding:4px 12px; min-height:2em; cursor:default; overflow-wrap:anywhere}
+.mdview:empty::before{content:"Empty text cell: double-click to write"; color:var(--muted); font-style:italic}
+.mdview h1,.mdview h2,.mdview h3,.mdview h4{font-family:"Bricolage Grotesque",system-ui,sans-serif; font-weight:800; line-height:1.2; margin:.5em 0 .3em}
+.mdview h1{font-size:1.7rem} .mdview h2{font-size:1.35rem} .mdview h3{font-size:1.12rem}
+.mdview p{margin:.4em 0} .mdview ul,.mdview ol{margin:.3em 0; padding-left:1.4em}
+.mdview code,.o-md code{font:600 .9em "JetBrains Mono",monospace; background:color-mix(in oklab,var(--ink) 8%,transparent); padding:0 4px; border-radius:4px}
+.mdview pre,.o-md pre{background:var(--code-bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; overflow:auto}
+.mdview pre code{background:none; padding:0; font-weight:400}
+.mdview blockquote{margin:.4em 0; padding:2px 12px; border-left:3px solid var(--line); color:var(--muted)}
+.mdview a,.o-md a{color:var(--accent)}
+.cell.md .cgut .crun{opacity:0} .cell.md.editing .cgut .crun{opacity:1}
+
+/* outputs */
+.cout{display:flex; flex-direction:column; gap:6px; margin-top:6px; min-width:0}
+.cout:empty{display:none}
+.cout pre{margin:0; font:13.5px/1.5 "JetBrains Mono",ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; max-height:480px; overflow:auto; padding:2px 4px}
+.o-err{color:var(--err); background:color-mix(in oklab,var(--err) 7%,transparent); border-radius:6px; padding:6px 8px!important}
+.o-stderr{color:var(--warn)}
+.o-note{font:13px "JetBrains Mono",monospace; color:var(--muted); font-style:italic; padding:0 4px}
+.o-res{display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:start}
+.o-res > .olab{font:600 .75rem "JetBrains Mono",monospace; color:var(--err); opacity:.8; padding-top:3px}
+.o-html{overflow:auto; max-height:560px; font-size:.88rem}
+.o-html table{border-collapse:collapse; font:12.5px/1.4 "JetBrains Mono",monospace}
+.o-html th,.o-html td{padding:4px 10px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap}
+.o-html thead th{border-bottom:2px solid var(--line); position:sticky; top:0; background:var(--bg)}
+.o-html tbody tr:nth-child(odd){background:color-mix(in oklab,var(--surface) 60%,transparent)}
+.o-html tbody th{color:var(--muted)}
+.o-img img{max-width:100%; height:auto; background:#fff; border-radius:6px; display:block}
+.o-hint{white-space:normal; padding:7px 10px; border-left:3px solid var(--accent); background:color-mix(in oklab,var(--accent) 9%,transparent); border-radius:0 6px 6px 0; font-size:.92rem}
+.o-hint code{font:600 .9em "JetBrains Mono",monospace; background:color-mix(in oklab,var(--ink) 8%,transparent); padding:0 4px; border-radius:4px}
+.fix{font:700 12px "Atkinson Hyperlegible",sans-serif; margin:4px 6px 0 0; padding:3px 10px; border-radius:6px; border:1px solid var(--accent); background:var(--surface); color:var(--accent); cursor:pointer}
+.fix:hover{background:var(--accent); color:var(--accent-ink)}
+.ctime{font:600 .72rem "JetBrains Mono",monospace; color:var(--muted); margin-top:3px}
+.addrow{max-width:1180px; margin:0 auto 40px; display:flex; justify-content:center; gap:8px; padding-left:68px}
+.addrow .btn{border-style:dashed; color:var(--muted)}
+
+/* dialogs */
+dialog{border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); padding:20px 22px; width:min(560px,calc(100vw - 32px)); max-height:calc(100dvh - 40px)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog h3{margin:0 0 6px; font:800 1.25rem "Bricolage Grotesque",system-ui,sans-serif}
+dialog p{margin:0 0 12px; color:var(--muted); font-size:.92rem}
+dialog.wide{width:min(760px,calc(100vw - 32px))}
+.dfoot{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px}
+.chip{font:600 .8rem "JetBrains Mono",monospace; border:1px solid var(--line); border-radius:999px; padding:3px 10px; background:var(--bg); color:var(--ink); cursor:pointer}
+.chip.on{border-color:var(--ok); color:var(--ok); cursor:default}
+.chip.off{opacity:.5; cursor:not-allowed}
+.row{display:flex; gap:8px; align-items:center}
+.row input[type=text]{flex:1; font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:7px 10px}
+.plog{margin:10px 0 0; max-height:160px; overflow:auto; font:12.5px/1.45 "JetBrains Mono",monospace; white-space:pre-wrap; color:var(--muted)}
+.plog:empty{display:none}
+.flist{list-style:none; margin:8px 0; padding:0; border:1px solid var(--line); border-radius:8px; max-height:300px; overflow:auto}
+.flist li{display:flex; align-items:center; gap:10px; padding:6px 10px; border-top:1px solid var(--line); font:13px "JetBrains Mono",monospace}
+.flist li:first-child{border-top:0}
+.flist li .n{flex:1; overflow-wrap:anywhere} .flist li .s{color:var(--muted)}
+.flist li.empty{color:var(--muted); font-style:italic; font-family:"Atkinson Hyperlegible",sans-serif}
+.drop{border:2px dashed var(--line); border-radius:10px; padding:16px; text-align:center; color:var(--muted); font-size:.9rem}
+.drop.over{border-color:var(--accent); color:var(--accent)}
+.help ul{margin:0 0 10px; padding-left:1.2em; font-size:.92rem} .help li{margin:3px 0}
+.help h4{margin:12px 0 4px; font-size:.95rem}
+kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; background:var(--surface)}
+.toast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; font-size:.9rem; display:flex; gap:12px; align-items:center; z-index:50; box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast[hidden]{display:none}
+.toast button{font:700 .85rem "Atkinson Hyperlegible",sans-serif; background:none; border:0; color:var(--accent); cursor:pointer}
+.exambadge{display:inline-block; vertical-align:middle; margin-left:10px; font:700 .8rem/1 "JetBrains Mono",monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--err); padding:6px 10px; border-radius:6px}
+.exambadge[hidden]{display:none}
+.exam #exlabel{display:none}
+.pwf{display:flex; flex-direction:column; gap:4px; margin:0 0 10px; font-size:.88rem; color:var(--muted)}
+.pwf input{font:15px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px}
+.pwf[hidden]{display:none}
+.pwerr{color:var(--err)!important; min-height:1.2em; margin:0 0 8px!important}
+@media (max-width:700px){ .cell{grid-template-columns:40px minmax(0,1fr)} .crun{width:26px; height:26px} .addrow{padding-left:0} .top{position:static} }
+</style>
+</head>
+<body>
+<div class="top">
+  <header>
+    <div class="brand">
+      <h1>Playground <span class="exambadge" id="exambadge" hidden>Exam mode</span></h1>
+      <p class="byline">by MAZHAR</p>
+    </div>
+    <div class="hright">
+      <nav class="modes" aria-label="Mode"><a href="index.html" id="toEditor">Code editor</a><a href="notebook.html" aria-current="page">Notebook</a></nav>
+      <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <button class="btn" type="button" id="helpBtn" aria-haspopup="dialog">Help</button>
+    </div>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Notebook">
+    <span class="grp"><button class="btn" type="button" id="newBtn" title="New notebook">New</button><button class="btn" type="button" id="openBtn" title="Open a Jupyter notebook (.ipynb)">Open…</button><button class="btn" type="button" id="saveBtn" title="Save as a Jupyter notebook (.ipynb)">Save</button></span>
+    <label class="f" id="exlabel"><select id="ex" aria-label="Open an example notebook"></select></label>
+    <span class="grp"><button class="btn" type="button" id="addCode" title="Add a code cell below the selected one (B)">+ Code</button><button class="btn" type="button" id="addText" title="Add a text (Markdown) cell below the selected one">+ Text</button></span>
+    <label class="f" title="Suggest names while you type (also Ctrl + Space)"><input type="checkbox" id="sugg" checked> Suggestions</label>
+    <span class="spacer"></span>
+    <span class="status"><span class="dot" id="kdot"></span><span id="kstat">Starting…</span></span>
+    <span class="grp">
+      <button class="btn" type="button" id="filesBtn" title="Data files the notebook can read, such as CSV files">Files</button>
+      <button class="btn" type="button" id="pkgBtn" title="Install libraries">Packages</button>
+      <button class="btn" type="button" id="stopBtn" title="Stop the running cell" disabled>Stop</button>
+      <button class="btn" type="button" id="restartBtn" title="Restart Python: clears every variable">Restart</button>
+      <button class="btn primary" type="button" id="runAllBtn" title="Run every cell from the top">Run all</button>
+    </span>
+  </div>
+</div>
+
+<main class="nb" id="nb" aria-label="Notebook cells"></main>
+<div class="addrow"><button class="btn" type="button" id="addCode2">+ Code</button><button class="btn" type="button" id="addText2">+ Text</button></div>
+
+<input type="file" id="openInput" accept=".ipynb,application/x-ipynb+json,application/json" hidden>
+<input type="file" id="fileInput" multiple hidden>
+
+<dialog id="helpDlg" class="wide" aria-labelledby="helpTitle">
+  <div class="help">
+    <h3 id="helpTitle">Using the notebook</h3>
+    <ul>
+      <li>A notebook is a list of <b>cells</b>. Code cells run Python; text cells hold notes written in Markdown (<code>#</code> headings, <code>**bold**</code>, <code>- lists</code>).</li>
+      <li>All cells share the same variables, so a cell can use what an earlier cell made. Run cells from top to bottom, or press <b>Run all</b>.</li>
+      <li>The last line of a code cell is shown if it is a value: a number, a list, a pandas table. End it with <code>;</code> to hide it. <code>display(x)</code> shows something from the middle of a cell.</li>
+      <li>Plots made with matplotlib or seaborn appear under the cell.</li>
+    </ul>
+    <h4>Keys</h4>
+    <ul>
+      <li><kbd>Shift</kbd> + <kbd>Enter</kbd> run the cell and go to the next · <kbd>Ctrl</kbd> + <kbd>Enter</kbd> run and stay · <kbd>Alt</kbd> + <kbd>Enter</kbd> run and add a cell below</li>
+      <li><kbd>Ctrl</kbd> + <kbd>Space</kbd> suggestions, including the methods of your variables (type <code>df.</code>) · <kbd>↑</kbd> / <kbd>↓</kbd> at the edge of a cell moves to the next cell</li>
+    </ul>
+    <h4>Libraries and data</h4>
+    <ul>
+      <li>numpy, pandas, scipy, scikit-learn, matplotlib and seaborn are loaded automatically the first time a cell imports them.</li>
+      <li id="helpPkgs">Other libraries: <b>Packages</b> in the toolbar, or a cell with <code>%pip install name</code>. Most libraries in the Pyodide collection work (statsmodels, sympy, networkx…), as do pure-Python libraries from PyPI.</li>
+      <li>Use <b>Files</b> to add your own data (CSV, Excel, text) and read it with <code>pd.read_csv("data.csv")</code>. Files your code writes can be downloaded from there too.</li>
+    </ul>
+    <h4>Limits</h4>
+    <ul>
+      <li>Python runs inside the page (WebAssembly), on one processor core, with no GPU. Classic machine learning and small neural networks run well; large models are slow.</li>
+      <li><b>PyTorch and TensorFlow are not available</b>: they do not run in WebAssembly. Neural networks can be built with NumPy or scikit-learn's <code>MLPClassifier</code> / <code>MLPRegressor</code>.</li>
+      <li><code>input()</code> and internet access from Python are not available.</li>
+      <li id="helpStop">Stop restarts Python, which clears the variables (the browser cannot pause Python in the middle of a cell). The desktop app can stop a cell and keep them.</li>
+    </ul>
+    <h4>Saving</h4>
+    <ul><li>Your notebook is kept in this browser automatically. <b>Save</b> downloads it as a Jupyter notebook (<code>.ipynb</code>) that Jupyter, VS Code and Google Colab can open; <b>Open</b> loads one.</li></ul>
+  </div>
+  <div class="dfoot"><button class="btn primary" type="button" data-close>Close</button></div>
+</dialog>
+
+<dialog id="pkgDlg" aria-labelledby="pkgTitle">
+  <h3 id="pkgTitle">Packages</h3>
+  <p id="pkgNote">Importing a library in a cell loads it automatically. You can also install one here.</p>
+  <div class="chips" id="chips"></div>
+  <form class="row" id="pkgForm"><input type="text" id="pkgName" placeholder="Package name, e.g. statsmodels" autocomplete="off" spellcheck="false" aria-label="Package name"><button class="btn primary" type="submit">Install</button></form>
+  <pre class="plog" id="plog"></pre>
+  <div class="dfoot"><button class="btn" type="button" data-close>Close</button></div>
+</dialog>
+
+<dialog id="filesDlg" aria-labelledby="filesTitle">
+  <h3 id="filesTitle">Files</h3>
+  <p>Files here can be read by the notebook by name, for example <code>pd.read_csv("marks.csv")</code>. Files the code saves appear here too.</p>
+  <div class="drop" id="drop">Drop files here, or <button class="btn" type="button" id="addFiles">Add files…</button></div>
+  <ul class="flist" id="flist"></ul>
+  <div class="dfoot"><button class="btn" type="button" data-close>Close</button></div>
+</dialog>
+
+<dialog id="pwdlg" aria-labelledby="pwtitle">
+  <form id="pwform">
+    <h3 id="pwtitle">Start exam mode</h3>
+    <p id="pwtext"></p>
+    <label class="pwf">Password <input type="password" id="pw1" autocomplete="off"></label>
+    <label class="pwf" id="pw2row">Repeat the password <input type="password" id="pw2" autocomplete="off"></label>
+    <p class="pwerr" id="pwerr" role="alert"></p>
+    <div class="dfoot"><button class="btn" type="button" id="pwcancel">Cancel</button><button class="btn primary" type="submit">OK</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="toastBtn"></button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+<script src="notebook-examples.js"></script>
+<script src="notebook.js"></script>
+</body>
+</html>

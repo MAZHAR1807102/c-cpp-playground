@@ -26,13 +26,27 @@ Everything runs in the browser; nothing is sent to a server. Each language's too
 
 Below the editor, a searchable guide lists the common headers and libraries — 10 for C, 19 for C++, 12 for Java, 12 for Python: what each is for, its main functions with their syntax and meaning, and a runnable example that **Load into editor** opens in the editor. It follows the language switch. The data is in `guide.js` (C, C++) and `guide-more.js` (Java, Python).
 
+## Notebook (Python for data science and machine learning)
+
+**Notebook** at the top of the page (`notebook.html`) is a Jupyter-style notebook for Python: code cells and Markdown text cells, variables shared between cells, tables and plots shown under each cell.
+
+- **Libraries:** numpy, pandas, scipy, scikit-learn, matplotlib and seaborn load automatically the first time a cell imports them. Others can be added with **Packages** or a `%pip install name` line: most of the [Pyodide package collection](https://pyodide.org/en/stable/usage/packages-in-pyodide.html) (statsmodels, sympy, networkx…) and pure-Python packages from PyPI.
+- **Data:** **Files** adds CSV, Excel or text files that the code reads by name (`pd.read_csv("data.csv")`); files the code writes can be downloaded from there.
+- **Examples:** NumPy, pandas, plotting, linear regression (with gradient descent), classification, k-means, a neural network written from scratch in NumPy, and handwritten-digit recognition with an MLP.
+- **Saving:** kept in the browser automatically; **Download** / **Open** use the Jupyter `.ipynb` format, so notebooks move to and from Jupyter, VS Code and Google Colab.
+- Suggestions come from the live variables (type `df.` and press <kbd>Ctrl</kbd>+<kbd>Space</kbd>), and common errors get a hint, for example a variable from a cell that has not run yet, or a library that is not installed (with an **Install** button).
+- **Limits:** Python runs in WebAssembly on one core with no GPU. PyTorch and TensorFlow do not run in WebAssembly, so deep learning is limited to small networks (NumPy, scikit-learn's `MLPClassifier`). On the website, **Stop** has to restart Python (clearing variables); the desktop app stops just the cell.
+
+The kernel is `notebook-runner.js` (Pyodide in a worker); the page is `notebook.js`, and the examples are in `notebook-examples.js`.
+
 ## Desktop app (offline, with exam mode)
 
 For computers with no internet, such as an exam hall, the playground is also a desktop app called **Playground** for **Windows** and **macOS** (Apple Silicon and Intel). All four languages, the editor, fonts, examples and the guide are inside it, and it never uses the network. **Download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest).**
 
 - **Windows:** `…-Windows-Setup.exe` installs it; `…-Windows-Portable.exe` runs without installing (for example from a USB stick). The first time, Windows may show "Windows protected your PC": click **More info → Run anyway**.
 - **Mac:** open the `.dmg` and drag the app to Applications. The first time, macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway**. If it says the app "is damaged", run `xattr -cr /Applications/Playground.app` once in Terminal.
-- **Files:** New, Open… and Save (Ctrl/Cmd + N, O, S) work with `.c`, `.cpp`, `.java` and `.py` files. Closing with unsaved changes asks first.
+- **Files:** New, Open… and Save (Ctrl/Cmd + N, O, S) work with `.c`, `.cpp`, `.java` and `.py` files, and with `.ipynb` notebooks in the notebook. Closing with unsaved changes asks first.
+- **Notebook:** **View → Notebook** (Ctrl/Cmd + 2; **View → Code editor** is Ctrl/Cmd + 1). The app carries numpy, pandas, scipy, scikit-learn, matplotlib, seaborn, statsmodels, sympy, networkx and openpyxl, so the notebook works offline; other libraries need the website.
 - **Exam mode:** **Exam → Start exam mode…** and choose a password. Suggestions, error hints, the examples and the guide are turned off, links are blocked and an "Exam mode" badge is shown. It stays on after the app restarts until **Exam → End exam mode…** with the same password. (The password is stored hashed in the app's settings file; it stops students from switching the aids back on in the app, but it is not protection against someone who edits files on the computer.)
 
 The app's source is in [`desktop/`](desktop/). Pushing a tag such as `desktop-v1.0.2` makes GitHub Actions build both versions and publish them as a release.
@@ -40,7 +54,7 @@ The app's source is in [`desktop/`](desktop/). Pushing a tag such as `desktop-v1
 ## Not supported
 
 - C++ exceptions (`throw`, `try`): the bundled libc++ is built without exception support, so C++ is compiled with `-fno-exceptions`.
-- Python packages outside the standard library (numpy, pandas…).
+- Python packages in the code editor (use the notebook for numpy, pandas and the rest); PyTorch and TensorFlow anywhere.
 - Java: classes that TeaVM's library does not implement; catching an out-of-bounds array access (it stops the program); output while a Java program is still running (it appears when the program finishes). A Java run, compiling included, is stopped after 10 seconds.
 - Threads, sockets, and interactive input while the program is running.
 

@@ -40,6 +40,9 @@ header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-b
 .hright{display:flex; align-items:center; gap:12px}
 h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
 .byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
+.modes{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.modes a{font:700 .88rem "Atkinson Hyperlegible",sans-serif; color:var(--ink); background:var(--surface); padding:7px 14px; text-decoration:none}
+.modes a[aria-current="page"]{background:var(--accent); color:var(--accent-ink)}
 .bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
 .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
 .seg button{font:700 .9rem "JetBrains Mono",monospace; border:0; background:var(--surface); color:var(--ink); padding:7px 14px; cursor:pointer}
@@ -160,6 +163,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <p class="byline">by MAZHAR</p>
     </div>
     <div class="hright">
+      <nav class="modes" aria-label="Mode"><a href="index.html" aria-current="page">Code editor</a><a href="notebook.html" id="toNotebook" title="Python notebook for data science and machine learning">Notebook</a></nav>
       <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button class="btn" type="button" id="menuBtn" aria-haspopup="dialog" title="Header and library guide, how it works">Guide &amp; help</button>
     </div>
@@ -215,7 +219,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <ul>
         <li>Everything runs in your browser; nothing is sent to a server. Each language's tools download the first time you use that language and are cached after that.</li>
         <li><b>C and C++:</b> Clang/LLVM 22 compiled to WebAssembly (the <a href="https://yowasp.org/">YoWASP</a> build), about 100 MB. Programs run as WebAssembly (WASI) with <a href="https://github.com/bjorn3/browser_wasi_shim">browser_wasi_shim</a> in a separate worker.</li>
-        <li><b>Python:</b> CPython 3.14 compiled to WebAssembly (<a href="https://pyodide.org/">Pyodide</a>), about 14 MB, with the whole standard library (math, random, collections and so on). Packages such as numpy are not included.</li>
+        <li><b>Python:</b> CPython 3.14 compiled to WebAssembly (<a href="https://pyodide.org/">Pyodide</a>), about 14 MB, with the whole standard library (math, random, collections and so on). For numpy, pandas, scikit-learn and plots, use the <b>Notebook</b> (switch at the top).</li>
         <li><b>Java:</b> OpenJDK's <code>javac</code> and the <a href="https://teavm.org/">TeaVM</a> compiler running in the browser (<a href="https://github.com/live-codes/java">LiveCodes java-wasm</a>), about 8 MB. It understands modern Java (records, switch expressions, text blocks) and runs programs on TeaVM's version of the standard library, which covers the common classes (Scanner, String, Math, ArrayList, HashMap, streams…) but not all of them. An out-of-bounds array access stops the program even inside <code>try</code>/<code>catch</code>; output appears when the program finishes; a run, compiling included, is stopped after 10 seconds.</li>
         <li>Standard input is the text in the Input box, read all at once. A program that waits for more input than you gave sees end-of-file.</li>
         <li><code>#include &lt;bits/stdc++.h&gt;</code> works in C++: it includes every standard header (except <code>&lt;csetjmp&gt;</code> and <code>&lt;csignal&gt;</code>, which WebAssembly cannot support). It makes compiling take a second or so longer.</li>
@@ -1286,6 +1290,7 @@ print("best:", best[0])
   const D = window.desktop;
   if (D) {
     $('filebtns').hidden = false;
+    $('toNotebook').onclick = e => { e.preventDefault(); D.go('notebook'); };
     let path = null, saved = cm.getValue();
     const base = f => f.split(/[\\/]/).pop();
     const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;

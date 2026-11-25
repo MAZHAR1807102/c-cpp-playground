@@ -4,7 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
   docState: s => ipcRenderer.send('doc-state', s),
   discardOk: () => ipcRenderer.invoke('discard-ok'),
-  openFile: () => ipcRenderer.invoke('open-file'),
+  openFile: o => ipcRenderer.invoke('open-file', o),
+  go: page => ipcRenderer.send('go', page),
   saveFile: o => ipcRenderer.invoke('save-file', o),
   closeNow: () => ipcRenderer.send('close-now'),
   examState: () => ipcRenderer.invoke('exam-state'),
