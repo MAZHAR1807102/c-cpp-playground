@@ -15,6 +15,7 @@ Write C or C++ in the browser and see the output beside the editor. There is no 
 - C (C89 to C23) and C++ (C++11 to C++23), `-O0` to `-O2`, warnings with `-Wall -Wextra`.
 - Standard input from the Input box (read all at once; end-of-file after that).
 - Compile errors and warnings are listed with clickable line numbers and highlighted in the editor.
+- **Suggestions** (on by default, untick to turn off): while you type, a list offers keywords, library names (with the header they come from), names from your own code, `#include` headers and preprocessor directives (<kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it any time). Each error gets a plain-English hint under the line, and a button that applies the fix when there is an obvious one: Clang's own fix-its (missing `;`, `==` for `=`, wrong `%` code), a missing `#include`, `std::`, or a misspelt keyword such as `retrun` → `return`.
 
 ## Not supported
 

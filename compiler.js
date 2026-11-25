@@ -23,7 +23,7 @@ onmessage = async ({ data }) => {
   if (data.type !== 'compile') return;
   const { id, lang, source, std, opt } = data;
   const file = lang === 'c' ? 'main.c' : 'main.cpp';
-  const args = [file, '-o', 'main.wasm', `-${opt}`, `-std=${std}`, '-Wall', '-Wextra', '-fno-color-diagnostics', '-fmessage-length=0'];
+  const args = [file, '-o', 'main.wasm', `-${opt}`, `-std=${std}`, '-Wall', '-Wextra', '-fno-color-diagnostics', '-fmessage-length=0', '-fdiagnostics-parseable-fixits'];
   if (lang === 'cpp') args.push('-fno-exceptions');   // the bundled libc++ is built without exception support
   if (lang === 'c') args.push('-lm');
   let diag = '';

@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
 <style>
 :root{
   --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
@@ -67,6 +68,18 @@ select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--
 .out{flex:1; margin:0; padding:12px 14px; overflow:auto; font:14px/1.5 "JetBrains Mono",ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; min-height:260px; background:var(--code-bg)}
 .out .e{color:var(--err)} .out .w{color:var(--warn)} .out .m{color:var(--muted); font-style:italic} .out .d{color:var(--muted)}
 .out .ln{cursor:pointer; text-decoration:underline dotted}
+.hint{display:block; white-space:normal; margin:4px 0 10px; padding:7px 10px; border-left:3px solid var(--accent); background:color-mix(in oklab,var(--accent) 9%,transparent); border-radius:0 6px 6px 0; font:14px/1.45 "Atkinson Hyperlegible",system-ui,sans-serif; color:var(--ink)}
+.hint b{color:var(--accent)}
+.hint code,.hintw code{font:600 .9em "JetBrains Mono",monospace; background:color-mix(in oklab,var(--ink) 8%,transparent); padding:0 4px; border-radius:4px}
+.hintw{margin:2px 0 6px 4px; padding:5px 10px; border-left:3px solid var(--err); background:color-mix(in oklab,var(--err) 9%,transparent); border-radius:0 6px 6px 0; font:13px/1.45 "Atkinson Hyperlegible",system-ui,sans-serif; color:var(--ink); white-space:normal}
+.hintw b{color:var(--err)}
+.fix{font:700 12px "Atkinson Hyperlegible",sans-serif; margin:4px 6px 0 0; padding:3px 10px; border-radius:6px; border:1px solid var(--accent); background:var(--surface); color:var(--accent); cursor:pointer}
+.fix:hover{background:var(--accent); color:var(--accent-ink)}
+.fix:disabled{opacity:.45; cursor:default; background:var(--surface); color:var(--accent)}
+.CodeMirror-hints{z-index:30; background:var(--surface); border:1px solid var(--line); border-radius:7px; box-shadow:0 6px 20px rgba(0,0,0,.18); font:13px/1.4 "JetBrains Mono",monospace; padding:3px; max-height:16em}
+.CodeMirror-hint{color:var(--ink); padding:2px 8px; border-radius:4px; display:flex; gap:16px; justify-content:space-between}
+li.CodeMirror-hint-active{background:var(--accent); color:var(--accent-ink)}
+.CodeMirror-hint .hk{color:var(--muted); font-size:11px} li.CodeMirror-hint-active .hk{color:inherit; opacity:.8}
 textarea.stdin{border:0; resize:vertical; min-height:90px; padding:10px 14px; font:14px/1.5 "JetBrains Mono",monospace; background:var(--code-bg); color:var(--ink); outline:none}
 .status{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted)}
 .dot{width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none}
@@ -100,6 +113,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     <label class="f">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
     <label class="f">Example <select id="ex"></select></label>
     <label class="f"><input type="checkbox" id="auto" checked> Run as I type</label>
+    <label class="f" title="Keyword suggestions while you type, and hints with fixes for errors"><input type="checkbox" id="sugg" checked> Suggestions</label>
     <span class="spacer"></span>
     <button class="btn primary" type="button" id="run" title="Ctrl + Enter">Run now</button>
   </div>
@@ -129,6 +143,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
       <li>Standard input is the text in the Input box, read all at once. A program that waits for more input than you gave sees end-of-file.</li>
       <li>C++ is compiled with <code>-fno-exceptions</code>: <code>throw</code> and <code>try</code> are not available. Threads, networking and files outside the program are not available either.</li>
       <li>A run is stopped after 5 seconds, so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
+      <li>With <b>Suggestions</b> on, a list of keywords, library names and names from your code appears as you type (pick with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Esc</kbd>, open it any time with <kbd>Ctrl</kbd> + <kbd>Space</kbd>). Errors get a short explanation and, when there is an obvious fix, a button that applies it. Untick Suggestions to turn both off.</li>
       <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs immediately. Click a line number in an error message to jump to it. Your code is kept in this browser.</li>
     </ul>
   </details>
@@ -139,6 +154,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -193,27 +209,266 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
   function status(kind, text) { $('dot').className = 'dot ' + kind; $('stat').textContent = text; }
   function exitBadge(code) { const e = $('exit'); if (code == null) { e.hidden = true; return; } e.hidden = false; e.textContent = typeof code === 'number' ? `exit ${code}` : code; e.className = 'exit ' + (code === 0 ? 'ok' : 'bad'); }
 
-  /* ---------- output ---------- */
+  /* ---------- suggestions: words the completion list offers ---------- */
+  const KW = {
+    c: 'auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while main'.split(' '),
+    cpp: 'alignas alignof auto bool break case catch char class const constexpr const_cast continue decltype default delete do double dynamic_cast else enum explicit extern false final float for friend goto if inline int long mutable namespace new noexcept nullptr operator override private protected public register reinterpret_cast return short signed sizeof static static_assert static_cast struct switch template this throw true try typedef typename union unsigned using virtual void volatile while main std'.split(' ')
+  };
+  const LIB = {
+    c: {
+      'stdio.h': 'printf scanf puts getchar putchar fprintf sprintf snprintf sscanf fgets fputs stdin stdout stderr EOF FILE NULL',
+      'stdlib.h': 'malloc calloc realloc free exit abs rand srand atoi atof qsort RAND_MAX EXIT_SUCCESS EXIT_FAILURE',
+      'string.h': 'strlen strcpy strncpy strcat strcmp strncmp strchr strstr memset memcpy memcmp',
+      'math.h': 'sqrt pow sin cos tan atan atan2 exp log log10 fabs floor ceil round fmod hypot',
+      'ctype.h': 'isdigit isalpha isalnum isspace isupper islower toupper tolower',
+      'stdbool.h': 'bool true false',
+      'limits.h': 'INT_MAX INT_MIN LLONG_MAX LLONG_MIN UINT_MAX CHAR_MAX',
+      'stdint.h': 'int64_t uint64_t int32_t uint32_t uint8_t',
+      'time.h': 'time clock CLOCKS_PER_SEC',
+      'assert.h': 'assert'
+    },
+    cpp: {
+      'iostream': 'cout cin cerr endl', 'string': 'string getline to_string stoi stoll stod',
+      'vector': 'vector', 'map': 'map multimap', 'set': 'set multiset', 'unordered_map': 'unordered_map', 'unordered_set': 'unordered_set',
+      'queue': 'queue priority_queue', 'stack': 'stack', 'deque': 'deque', 'list': 'list', 'array': 'array', 'bitset': 'bitset',
+      'algorithm': 'sort stable_sort reverse max min swap max_element min_element find count count_if binary_search lower_bound upper_bound fill unique next_permutation all_of any_of',
+      'numeric': 'accumulate iota gcd lcm', 'iomanip': 'setw setprecision setfill fixed', 'utility': 'pair make_pair',
+      'sstream': 'stringstream istringstream ostringstream', 'functional': 'function greater less', 'memory': 'unique_ptr shared_ptr make_unique make_shared',
+      'tuple': 'tuple make_tuple tie',
+      'cmath': 'sqrt pow abs sin cos tan floor ceil round log exp fabs hypot', 'cstdio': 'printf scanf puts', 'cstring': 'strlen strcpy strcmp memset',
+      'cstdlib': 'rand srand exit malloc free', 'climits': 'INT_MAX INT_MIN LLONG_MAX LLONG_MIN', 'cassert': 'assert'
+    }
+  };
+  const NOT_STD = new Set(['cmath', 'cstdio', 'cstring', 'cstdlib', 'climits', 'cassert']);   // these names also work without std::
+  const HEADER_OF = {}, POOL = {};
+  for (const l of ['c', 'cpp']) {
+    HEADER_OF[l] = {};
+    for (const [h, names] of Object.entries(LIB[l])) for (const n of names.split(' ')) if (!HEADER_OF[l][n]) HEADER_OF[l][n] = h;
+    POOL[l] = [...KW[l].map(t => ({ text: t, tag: 'keyword' })), ...Object.entries(HEADER_OF[l]).filter(([n]) => !KW[l].includes(n)).map(([n, h]) => ({ text: n, tag: '<' + h + '>' }))];
+  }
+  const HEADERS = { c: [...Object.keys(LIB.c), 'stddef.h', 'stdarg.h', 'float.h', 'errno.h'], cpp: Object.keys(LIB.cpp) };
+  const DIRECTIVES = ['include', 'define', 'undef', 'ifdef', 'ifndef', 'if', 'else', 'elif', 'endif', 'pragma'];
+  const suggOn = () => $('sugg').checked;
+
+  function completions(c) {
+    const cur = c.getCursor(), line = c.getLine(cur.line), before = line.slice(0, cur.ch);
+    let m, list, from;
+    const pick = (cands, word) => cands.filter(x => x.text !== word && x.text.toLowerCase().startsWith(word.toLowerCase()))
+      .sort((a, b) => (b.text.startsWith(word) - a.text.startsWith(word)) || rank(a) - rank(b) || a.text.length - b.text.length || a.text.localeCompare(b.text)).slice(0, 40);
+    const rank = x => x.tag === 'in your code' ? 0 : x.tag === 'keyword' ? 1 : 2;
+    if ((m = before.match(/^\s*#\s*include\s*<([\w./+]*)$/))) {
+      const close = line.slice(cur.ch).startsWith('>') ? '' : '>';
+      list = pick(HEADERS[lang].map(h => ({ text: h, tag: 'header' })), m[1]).map(x => ({ ...x, text: x.text + close, shown: x.text }));
+      from = cur.ch - m[1].length;
+    } else if ((m = before.match(/^\s*#\s*(\w*)$/))) {
+      list = pick(DIRECTIVES.map(d => ({ text: d, tag: 'directive' })), m[1]); from = cur.ch - m[1].length;
+    } else {
+      const tok = c.getTokenAt(cur);
+      if (tok.type && /string|comment|meta/.test(tok.type)) return null;
+      if (!(m = before.match(/(?:^|[^\w])([A-Za-z_]\w*)$/))) return null;
+      const word = m[1], src = c.getValue(), pos = c.indexFromPos(cur), mine = new Map();
+      for (const id of src.matchAll(/[A-Za-z_]\w{2,}/g)) if (id.index + id[0].length !== pos && !mine.has(id[0])) mine.set(id[0], { text: id[0], tag: 'in your code' });
+      const seen = new Set(), all = [];
+      for (const x of [...POOL[lang], ...mine.values()]) if (!seen.has(x.text)) { seen.add(x.text); all.push(x); }
+      list = pick(all, word); from = cur.ch - word.length;
+    }
+    if (!list.length) return null;
+    const to = cur.ch + (line.slice(cur.ch).match(/^\w*/)[0].length);
+    return {
+      list: list.map(x => ({ text: x.text, render(el) { el.innerHTML = `<span>${esc(x.shown || x.text)}</span><span class="hk">${esc(x.tag)}</span>`; } })),
+      from: CodeMirror.Pos(cur.line, from), to: CodeMirror.Pos(cur.line, to)
+    };
+  }
+  const HINT_OPTS = { hint: completions, completeSingle: false, closeCharacters: /[\s()\[\]{};:,=+\-*\/%&|!?."'>]/ };
+  cm.setOption('extraKeys', { ...cm.getOption('extraKeys'), 'Ctrl-Space': c => c.showHint(HINT_OPTS) });
+  cm.on('inputRead', (c, ch) => {
+    if (!suggOn() || c.state.completionActive || ch.origin !== '+input' || ch.text.length !== 1 || ch.text[0].length !== 1) return;
+    const before = c.getLine(c.getCursor().line).slice(0, c.getCursor().ch);
+    if (/^\s*#\s*include\s*<[\w./]*$/.test(before) || /^\s*#\w*$/.test(before) || /(?:^|[^\w])[A-Za-z_]\w+$/.test(before)) c.showHint(HINT_OPTS);
+  });
+
+  /* ---------- error hints: a plain explanation and, when possible, a fix ---------- */
   const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  let marks = [];
-  function clearMarks() { marks.forEach(([l, c]) => cm.removeLineClass(l, 'background', c)); marks = []; }
-  function showDiag(diag) {
-    clearMarks();
-    if (!diag.trim()) return '';
-    const re = /^(main\.cc?p?p?):(\d+):(\d+): (fatal error|error|warning|note): /;
-    return diag.split('\n').map(line => {
-      const m = line.match(re);
-      if (!m) return `<span class="d">${esc(line)}</span>`;
-      const ln = +m[2] - 1, kind = m[4].includes('error') ? 'e' : m[4] === 'warning' ? 'w' : 'd';
-      if (kind !== 'd' && ln < cm.lineCount()) { const c = kind === 'e' ? 'errline' : 'warnline'; cm.addLineClass(ln, 'background', c); marks.push([ln, c]); }
-      return `<span class="${kind}"><span class="ln" data-line="${ln}" data-col="${+m[3] - 1}">${esc(m[1])}:${m[2]}:${m[3]}</span>${esc(line.slice(m[1].length + m[2].length + m[3].length + 2))}</span>`;
+  const T = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+  function distance(a, b) {   // edit distance, counting a swap of neighbours as one edit
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+    return d[a.length][b.length];
+  }
+  function closest(word, cands) {
+    if (word.length < 3) return null;
+    let best = null, bd = word.length <= 4 ? 1 : 2;
+    for (const c of cands) { const k = distance(word, c) - (c.toLowerCase() === word.toLowerCase() ? .5 : 0); if (k <= bd && (best == null || k < bd)) { best = c; bd = k; } }
+    return best;
+  }
+  const CPP_ONLY = { cout: 'In C, print with `printf("...")` from `<stdio.h>`.', cin: 'In C, read input with `scanf` from `<stdio.h>`.', endl: 'In C, end a line with `"\\n"` inside the printf string.', string: 'C has no string type; use a char array such as `char s[100];`.', vector: 'C has no vector; use an array such as `int a[100];`.' };
+  const SIMPLE = [
+    [/^expected ';' after (struct|class|union)/, 'A struct or class definition ends with `};`: put a semicolon after its closing brace.'],
+    [/^expected ';'/, 'Every statement ends with a semicolon `;`. It is usually missing at the end of the line before the marked spot.'],
+    [/^expected '\}'/, 'A `{` is never closed. Add `}` where the block should end; the note below shows where the `{` opened.'],
+    [/^expected '\)'/, 'A `(` is not closed. Add the missing `)`.'],
+    [/^expected '\]'/, 'A `[` is not closed. Add the missing `]`.'],
+    [/^extraneous closing brace/, 'There is one `}` too many here. Remove it, or check that the braces above are balanced.'],
+    [/^expected '\(' after '(if|while|for|switch)'/, 'Put the condition in parentheses, for example `if (x > 0) { ... }`.'],
+    [/^expected expression/, 'Clang expected a value here. Look for a missing operand (like `a + ;`), an extra symbol, or an unfinished line.'],
+    [/^expected unqualified-id|^expected identifier or '\('/, 'Something is out of place. Often a `}` closed a function too early, or a statement is outside any function.'],
+    [/^expected member name or ';' after declaration specifiers|^declaration does not declare anything/, 'A declaration is missing its variable name, e.g. `int count;`.'],
+    [/^missing terminating " character/, 'A string is not closed. Add the closing `"` on the same line.'],
+    [/^missing terminating ' character/, 'A character literal is not closed. A single character is written `\'a\'`; text uses double quotes: `"text"`.'],
+    [/^format specifies type/, 'The `%` code does not match the value: `%d` int, `%ld` long, `%lld` long long, `%f` double (printf), `%lf` double (scanf), `%c` char, `%s` string.'],
+    [/more '%' conversions than data arguments|data argument not used by format string/, 'The number of `%` codes in the format string does not match the number of values after it.'],
+    [/^format string is not a string literal/, 'Pass the text as the format: `printf("%s", s)` instead of `printf(s)`.'],
+    [/using the result of an assignment as a condition/, '`=` stores a value and `==` compares two values. In a condition you almost always want `==`.'],
+    [/equality comparison result unused/, '`==` only compares. To store a value, use `=`.'],
+    [/is uninitialized when used|may be uninitialized when used/, 'This variable is used before it is given a value, so it holds garbage. Give it a starting value, e.g. `= 0`.'],
+    [/^unused variable/, 'This variable is declared but never used. Use it or delete it.'],
+    [/^unused parameter/, 'This parameter is never used inside the function.'],
+    [/non-void function does not return a value|control reaches end of non-void function|should return a value/, 'This function promises to return a value but can reach its end without `return`. Add a `return` statement.'],
+    [/^redefinition of/, 'This name is declared twice in the same scope. Rename one, or to change the value write `x = ...` without the type.'],
+    [/^no matching function for call/, 'No version of this function takes these arguments. Check how many arguments you pass and their types (see the notes).'],
+    [/^too few arguments to function call/, 'The call passes fewer arguments than the function needs (the note shows its definition).'],
+    [/^too many arguments to function call/, 'The call passes more arguments than the function takes (the note shows its definition).'],
+    [/comparison of integers of different signs/, 'One side is unsigned (for example `v.size()`) and the other is signed. Use `size_t` for the loop variable, or compare with `(int)v.size()`.'],
+    [/^array index .* is past the end of the array/, 'An array of size n has valid indexes 0 to n - 1 only.'],
+    [/^invalid operands to binary expression/, 'This operator cannot be used with these two types (shown in the brackets).'],
+    [/^(cannot initialize|assigning to|incompatible)/, 'The value has a different type from the variable it is stored in.'],
+    [/^member reference type .* is a pointer/, 'Use `->` to reach a member through a pointer, e.g. `p->name`.'],
+    [/^member reference type .* is not a pointer/, 'Use `.` (not `->`) for a variable that is not a pointer.'],
+    [/^'main' must return 'int'/, 'Write `int main()` and end it with `return 0;`.'],
+    [/is a private member of/, 'Private members can be used only inside the class. Make it `public:`, or add a public function that returns it.'],
+    [/^division by zero/, 'Dividing by zero is undefined. Check the divisor.'],
+    [/^implicit conversion .* changes value/, 'The value changes when converted (for example 3.7 becomes 3 in an int). Use a `double` variable, or round on purpose.'],
+    [/expression result unused/, 'This line computes a value and then throws it away. Did you mean to assign it, print it, or use `==`/`=` differently?'],
+    [/^switch case is in protected scope|^cannot jump from switch statement/, 'A variable declared inside a `case` needs its own block: wrap that case in `{ ... }`.'],
+    [/^case value is not a constant expression/, 'A `case` label must be a constant, like `case 1:` or `case \'a\':`.']
+  ];
+  function explain(p, src) {
+    const L = src.split('\n'), msg = p.msg;
+    const at = (n) => (L[p.line] || '').substr(p.col, n.length) === n;
+    const swap = (n, to) => at(n) ? { label: `Change to ${to}`, edits: [{ l1: p.line, c1: p.col, l2: p.line, c2: p.col + n.length, text: to }] } : null;
+    let m;
+    if ((m = msg.match(/^'([^']+)' file not found/))) {
+      if (m[1].startsWith('bits/')) return { text: '`<bits/stdc++.h>` exists only in GCC. Include the headers you use instead, such as `<iostream>`, `<vector>`, `<algorithm>` and `<string>`.', fix: L[p.line] != null ? { label: 'Use the common headers', edits: [{ l1: p.line, c1: 0, l2: p.line, c2: L[p.line].length, text: '#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <string>' }] } : null };
+      const c = closest(m[1], HEADERS[lang]), k = (L[p.line] || '').indexOf(m[1]);
+      if (lang === 'c' && LIB.cpp[m[1]] != null) return { text: `\`<${m[1]}>\` is a C++ header, but the language is set to C. Switch to C++, or use C headers such as \`<stdio.h>\`.` };
+      return { text: c ? `There is no header \`<${m[1]}>\`. Did you mean \`<${c}>\`?` : `There is no header \`<${m[1]}>\`. Check the spelling.`, fix: c && k >= 0 ? { label: `Change to <${c}>`, edits: [{ l1: p.line, c1: k, l2: p.line, c2: k + m[1].length, text: c }] } : null };
+    }
+    if ((m = msg.match(/^(use of undeclared identifier|unknown type name|call to undeclared (?:library )?function|implicitly declaring library function|no (?:member|type|template) named) '(\w+)'/))) {
+      const name = m[2], isType = /type|template/.test(m[1]), isFn = /function/.test(m[1]);
+      const dym = msg.match(/did you mean '([^']+)'/);
+      if (dym && dym[1] === 'std::' + name) return { text: `\`${name}\` is in the \`std\` namespace. Write \`std::${name}\`, or add \`using namespace std;\` after the includes.` };
+      if (dym) return { text: `Did you mean \`${dym[1]}\`? Names must be spelled exactly, and upper and lower case are different.` };
+      if (/did you mean/.test(msg)) return { text: 'Clang found a similar name. Check the spelling: names are case-sensitive.' };
+      if (lang === 'c' && CPP_ONLY[name]) return { text: `\`${name}\` is C++, but the language is set to C. ${CPP_ONLY[name]} Or switch the language to C++.` };
+      if (name === 'std') return { text: '`std` is the C++ standard library. Include the header you need first, e.g. `#include <iostream>`.' };
+      const h = HEADER_OF[lang][name];
+      if (h) {
+        const included = new RegExp('#\\s*include\\s*<' + h.replace(/[.+]/g, '\\$&') + '>').test(src);
+        const needStd = lang === 'cpp' && !NOT_STD.has(h) && !/using\s+namespace\s+std\s*;/.test(src) && !(L[p.line] || '').slice(0, p.col).endsWith('std::');
+        if (!included) {
+          let at = -1; L.forEach((l, i) => { if (/^\s*#\s*include\b/.test(l)) at = i; });
+          return { text: `\`${name}\` comes from \`<${h}>\`. Add \`#include <${h}>\` at the top of the file.` + (needStd ? ` Then write \`std::${name}\`, or add \`using namespace std;\` after the includes.` : ''), fix: { label: `Add #include <${h}>`, edits: [{ l1: at + 1, c1: 0, l2: at + 1, c2: 0, text: `#include <${h}>\n` }] } };
+        }
+        if (needStd) return { text: `\`${name}\` is in the \`std\` namespace. Write \`std::${name}\`, or add \`using namespace std;\` after the includes.`, fix: swap(name, 'std::' + name) };
+      }
+      const c = closest(name, [...KW[lang], ...Object.keys(HEADER_OF[lang])]);
+      if (c) return { text: `Did you mean ${KW[lang].includes(c) ? 'the keyword ' : ''}\`${c}\`? Names must be spelled exactly, and upper and lower case are different.`, fix: swap(name, c) };
+      if (isType) return { text: `\`${name}\` is not a type Clang knows. Check the spelling, include the header that defines it, or define it (for example as a struct) above this line.` };
+      if (isFn) return { text: `There is no function \`${name}\` above this line. Define it, or write its prototype above \`main\`, and check the spelling.` };
+      return { text: `\`${name}\` has not been declared. Declare it before using it (for example \`int ${name} = 0;\`) and check the spelling: names are case-sensitive.` };
+    }
+    if (/(if statement|for loop|while loop) has empty body/.test(msg))
+      return { text: 'There is a `;` right after the condition, so the body is empty and the next lines are not part of it. Remove that `;`.', fix: at(';') ? { label: 'Remove the ;', edits: [{ l1: p.line, c1: p.col, l2: p.line, c2: p.col + 1, text: '' }] } : null };
+    for (const [re, text] of SIMPLE) if (re.test(msg)) return { text };
+    return null;
+  }
+  const unC = s => s.replace(/\\(?:([0-7]{1,3})|(.))/g, (_, o, c) => o ? String.fromCharCode(parseInt(o, 8)) : ({ n: '\n', t: '\t' }[c] || c));
+  function describe(edits, src) {
+    const L = src.split('\n'), q = s => '"' + s.replace(/\n/g, '⏎') + '"';
+    return edits.map(e => {
+      const old = e.l1 === e.l2 ? (L[e.l1] || '').slice(e.c1, e.c2) : '…';
+      return !old ? `Insert ${q(e.text)}` : !e.text ? `Remove ${q(old)}` : `Change ${q(old)} to ${q(e.text)}`;
+    }).join(', ');
+  }
+  // Group clang's output: each error or warning with its notes, source excerpt and fix-its.
+  function parseDiag(diag) {
+    const head = /^(main\.cc?p?p?):(\d+):(\d+): (fatal error|error|warning|note): (.*)$/, fixit = /^fix-it:"[^"]*":\{(\d+):(\d+)-(\d+):(\d+)\}:"(.*)"$/;
+    const groups = []; let cur = null, item = null;
+    for (const line of diag.replace(/\n$/, '').split('\n')) {
+      const f = line.match(fixit);
+      if (f) { if (item) item.edits.push({ l1: f[1] - 1, c1: f[2] - 1, l2: f[3] - 1, c2: f[4] - 1, text: unC(f[5]) }); continue; }
+      const m = line.match(head);
+      if (m) {
+        item = { file: m[1], line: m[2] - 1, col: m[3] - 1, kind: m[4], msg: m[5], lines: [line], edits: [] };
+        if (m[4] === 'note' && cur) cur.notes.push(item); else { cur = { main: item, notes: [] }; groups.push(cur); }
+      } else if (item) item.lines.push(line);
+      else groups.push({ main: { lines: [line], edits: [] }, notes: [] });
+    }
+    return groups;
+  }
+
+  /* ---------- output ---------- */
+  let marks = [], widgets = [], fixes = [], compiledSrc = '';
+  function clearMarks() { marks.forEach(([l, c]) => cm.removeLineClass(l, 'background', c)); marks = []; clearWidgets(); }
+  function clearWidgets() { widgets.forEach(w => w.clear()); widgets = []; }
+  function itemHtml(it) {
+    return it.lines.map((line, i) => {
+      if (i || !it.kind) return `<span class="d">${esc(line)}</span>`;
+      const kind = it.kind.includes('error') ? 'e' : it.kind === 'warning' ? 'w' : 'd';
+      if (kind !== 'd' && it.line < cm.lineCount()) { const c = kind === 'e' ? 'errline' : 'warnline'; cm.addLineClass(it.line, 'background', c); marks.push([it.line, c]); }
+      return `<span class="${kind}"><span class="ln" data-line="${it.line}" data-col="${it.col}">${esc(it.file)}:${it.line + 1}:${it.col + 1}</span>${esc(line.slice(it.file.length + String(it.line + 1).length + String(it.col + 1).length + 2))}</span>`;
     }).join('\n') + '\n';
   }
+  function showDiag(diag) {
+    clearMarks(); fixes = [];
+    if (!diag.trim()) return '';
+    let html = '';
+    const onLine = new Set(), stale = cm.getValue() !== compiledSrc;
+    for (const g of parseDiag(diag)) {
+      html += itemHtml(g.main) + g.notes.map(itemHtml).join('');
+      if (!suggOn() || !g.main.kind || g.main.kind === 'note') continue;
+      const ex = explain(g.main, compiledSrc) || {};
+      const opts = [];
+      if (g.main.edits.length) opts.push({ label: describe(g.main.edits, compiledSrc), edits: g.main.edits });
+      for (const n of g.notes) if (n.edits.length && !/to silence this warning$/.test(n.msg) || /^initialize the variable/.test(n.msg) && n.edits.length) opts.push({ label: /^did you mean '([^']+)'/.test(n.msg) ? 'Change to ' + n.msg.match(/'([^']+)'/)[1] : n.msg[0].toUpperCase() + n.msg.slice(1), edits: n.edits });
+      if (!opts.length && ex.fix) opts.push(ex.fix);
+      if (!ex.text && !opts.length) continue;
+      const buttons = opts.slice(0, 2).map(o => { fixes.push(o); return `<button type="button" class="fix" data-fix="${fixes.length - 1}"${stale ? ' disabled' : ''}>${esc(o.label)}</button>`; }).join('');
+      const body = (ex.text ? T(ex.text) : 'Clang suggests a fix:') + (buttons ? '<br>' + buttons : '');
+      html += `<span class="hint"><b>Hint:</b> ${body}</span>`;
+      if (!stale && g.main.kind.includes('error') && widgets.length < 3 && !onLine.has(g.main.line) && g.main.line < cm.lineCount()) {
+        onLine.add(g.main.line);
+        const node = document.createElement('div');
+        node.className = 'hintw';
+        node.innerHTML = `<b>${esc(g.main.msg.split(';')[0])}</b><br>${body}`;
+        widgets.push(cm.addLineWidget(g.main.line, node, { noHScroll: true }));
+      }
+    }
+    return html;
+  }
+  function applyFix(i) {
+    const f = fixes[i];
+    if (!f) return;
+    if (cm.getValue() !== compiledSrc) { status('busy', 'The code changed since this hint; waiting for the next run'); schedule(0); return; }
+    const P = (l, c) => CodeMirror.Pos(l, c);
+    cm.operation(() => [...f.edits].sort((a, b) => b.l1 - a.l1 || b.c1 - a.c1).forEach(e => cm.replaceRange(e.text, P(e.l1, e.c1), P(e.l2, e.c2))));
+    const e = f.edits[0]; cm.focus(); cm.setCursor(P(e.l1, e.c1 + e.text.length));
+    if (!$('auto').checked) runNow();
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('.fix'); if (b && !b.disabled) applyFix(+b.dataset.fix); });
   $('out').addEventListener('click', e => { const t = e.target.closest('.ln'); if (!t) return; cm.focus(); cm.setCursor({ line: +t.dataset.line, ch: +t.dataset.col }); cm.scrollIntoView(null, 80); });
+  // once the code is edited, the hints refer to old positions: hide the editor hints and disable the buttons
+  cm.on('changes', () => { clearWidgets(); document.querySelectorAll('#out .fix').forEach(b => b.disabled = true); });
+  $('sugg').checked = store.get('sugg') !== '0';
+  $('sugg').onchange = () => { store.set('sugg', $('sugg').checked ? '1' : '0'); if (!$('sugg').checked && cm.state.completionActive) cm.state.completionActive.close(); runNow(); };
 
   /* ---------- compiler worker ---------- */
   const compiler = new Worker('compiler.js', { type: 'module' });
-  let ready = false, compiling = false, pending = false, reqId = 0, timer = null;
+  let ready = false, compiling = false, pending = false, reqId = 0, timer = null, reqSrc = '';
   compiler.onmessage = ({ data }) => {
     if (data.type === 'progress') { $('meter').hidden = false; $('bar').style.width = (100 * data.done / data.total).toFixed(1) + '%'; status('busy', `Downloading the compiler… ${Math.round(100 * data.done / data.total)}% of ${(data.total / 1048576).toFixed(0)} MB`); }
     else if (data.type === 'ready') { ready = true; $('meter').hidden = true; status('ok', 'Compiler ready'); runNow(); }
@@ -228,14 +483,15 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     clearTimeout(timer);
     if (!ready) return;
     if (compiling) { pending = true; return; }
-    compiling = true; pending = false; reqId++;
+    compiling = true; pending = false; reqId++; reqSrc = cm.getValue();
     status('busy', 'Compiling…'); exitBadge(null);
-    compiler.postMessage({ type: 'compile', id: reqId, lang, source: cm.getValue(), std: $('std').value, opt: $('opt').value });
+    compiler.postMessage({ type: 'compile', id: reqId, lang, source: reqSrc, std: $('std').value, opt: $('opt').value });
   }
   let runner = null, killTimer = null, lastDiag = '';
   function onCompiled(r) {
     compiling = false;
     if (pending) { runNow(); return; }   // the code changed while compiling: this result is already stale
+    compiledSrc = reqSrc;
     lastDiag = showDiag(r.diag);
     if (!r.ok) { status('err', `Compile error (${(r.ms / 1000).toFixed(1)} s)`); exitBadge(null); $('out').innerHTML = lastDiag || '<span class="e">Compilation failed.</span>'; return; }
     startRun(r.wasm, r.ms);
