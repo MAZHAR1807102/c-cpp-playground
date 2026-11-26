@@ -18,6 +18,7 @@
   "description": "Write C, C++, Java and Python and see the output as you type. Works offline: the compilers run inside the app.",
   "author": "Mazharul Islam",
   "license": "MIT",
+  "homepage": "https://mazhar1807102.github.io/c-cpp-playground/",
   "main": "main.js",
   "scripts": {
     "prepare-web": "node scripts/prepare-web.mjs",
