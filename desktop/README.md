@@ -16,6 +16,7 @@ npm ci                 # once
 npm start              # run the app from source
 npm run dist:win       # Windows: dist/…-Windows-Setup.exe and …-Windows-Portable.exe
 npm run dist:mac       # macOS (must run on a Mac): dist/…-Mac.dmg, universal (Apple Silicon + Intel)
+npm run dist:linux     # Linux (run on Linux or WSL): dist/…-Linux-amd64.deb and …-Linux-x86_64.AppImage
 ```
 
 To publish a release, raise `version` in `package.json`, commit, and push a tag: `git tag desktop-v1.0.1 && git push origin desktop-v1.0.1`. The workflow `.github/workflows/desktop.yml` builds both platforms and attaches the files to a GitHub release.

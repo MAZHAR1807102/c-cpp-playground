@@ -1,7 +1,7 @@
 {
   "name": "c-cpp-playground",
   "productName": "Playground",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "devDependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
@@ -23,7 +23,8 @@
     "prepare-web": "node scripts/prepare-web.mjs",
     "start": "npm run prepare-web && electron .",
     "dist:win": "npm run prepare-web && electron-builder --win --publish never",
-    "dist:mac": "npm run prepare-web && electron-builder --mac --publish never"
+    "dist:mac": "npm run prepare-web && electron-builder --mac --publish never",
+    "dist:linux": "npm run prepare-web && electron-builder --linux --publish never"
   },
   "build": {
     "appId": "io.github.mazhar1807102.cppplayground",
@@ -85,6 +86,39 @@
     },
     "dmg": {
       "title": "Playground"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "executableName": "playground",
+      "synopsis": "Write and run C, C++, Java and Python offline",
+      "maintainer": "Mazharul Islam <MAZHAR1807102@users.noreply.github.com>",
+      "desktop": {
+        "entry": {
+          "Name": "Playground",
+          "Keywords": "C;C++;Java;Python;compiler;programming;"
+        }
+      }
+    },
+    "deb": {
+      "artifactName": "Playground-${version}-Linux-amd64.${ext}"
+    },
+    "appImage": {
+      "artifactName": "Playground-${version}-Linux-x86_64.${ext}"
     },
     "afterPack": "scripts/after-pack.cjs"
   }

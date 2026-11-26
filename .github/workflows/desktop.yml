@@ -1,5 +1,5 @@
-# Builds the offline desktop app for Windows and macOS.
-# Push a tag such as desktop-v1.0.0 to build both and publish them on the Releases page;
+# Builds the offline desktop app for Windows, macOS and Linux.
+# Push a tag such as desktop-v1.0.0 to build all three and publish them on the Releases page;
 # "Run workflow" on the Actions tab builds them without publishing (download from the run's artifacts).
 name: Desktop app
 
@@ -30,6 +30,11 @@ jobs:
             script: dist:mac
             files: |
               desktop/dist/*.dmg
+          - os: ubuntu-latest
+            script: dist:linux
+            files: |
+              desktop/dist/*.deb
+              desktop/dist/*.AppImage
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -82,5 +87,9 @@ jobs:
             - `Playground-…-Mac.dmg`: open it and drag the app to Applications.
             - The first time, macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway** next to the message about the app.
             - If macOS says the app "is damaged", run this once in Terminal: `xattr -cr "/Applications/Playground.app"`
+
+            **Linux** (Ubuntu, Debian, Mint and other 64-bit Intel/AMD systems)
+            - `Playground-…-Linux-amd64.deb` (Ubuntu/Debian, recommended): run `sudo apt install ./Playground-*-Linux-amd64.deb` in the folder you downloaded it to, then open **Playground** from the app menu.
+            - `Playground-…-Linux-x86_64.AppImage` (any distribution, no install): run `chmod +x Playground-*.AppImage` and then `./Playground-*.AppImage`. If it says FUSE is missing, install it once: `sudo apt install libfuse2t64` (Ubuntu 24.04 and newer) or `sudo apt install libfuse2` (Ubuntu 22.04).
 
             **Exam mode:** menu **Exam → Start exam mode…**, choose a password. Suggestions, error hints, examples and the header guide are turned off until the password is entered again (**Exam → End exam mode…**), even after a restart.

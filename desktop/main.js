@@ -18,6 +18,12 @@ let tabsHidden = [];
 // another program's folder, and this is also where version 1.0.0 kept them
 app.setPath('userData', path.join(app.getPath('appData'), 'C and C++ Playground'));
 
+// Linux AppImage: Chromium's sandbox needs either a setuid helper (an AppImage can't have one) or unprivileged
+// user namespaces, which Ubuntu 23.10+ blocks with AppArmor, so the app would close at once. It only loads its
+// own bundled files (http/https is blocked below), so start the AppImage without that sandbox.
+// The .deb package installs the setuid helper and keeps the sandbox.
+if (process.platform === 'linux' && process.env.APPIMAGE) app.commandLine.appendSwitch('no-sandbox');
+
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 if (!app.requestSingleInstanceLock()) app.quit();
 

@@ -73,10 +73,11 @@ The kernel is `notebook-runner.js` (Pyodide in a worker); the page is `notebook.
 
 ## Desktop app (offline, with exam mode)
 
-For computers with no internet, such as an exam hall, the playground is also a desktop app called **Playground** for **Windows** and **macOS** (Apple Silicon and Intel). All four languages, the editor, fonts, examples and the guide are inside it, and it never uses the network. **Download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest).**
+For computers with no internet, such as an exam hall, the playground is also a desktop app called **Playground** for **Windows**, **macOS** (Apple Silicon and Intel) and **Linux** (64-bit, such as Ubuntu). All four languages, the editor, fonts, examples and the guide are inside it, and it never uses the network. **Download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest).**
 
 - **Windows:** `…-Windows-Setup.exe` installs it; `…-Windows-Portable.exe` runs without installing (for example from a USB stick). The first time, Windows may show "Windows protected your PC": click **More info → Run anyway**.
 - **Mac:** open the `.dmg` and drag the app to Applications. The first time, macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway**. If it says the app "is damaged", run `xattr -cr /Applications/Playground.app` once in Terminal.
+- **Linux (Ubuntu/Debian):** download `…-Linux-amd64.deb` and run `sudo apt install ./Playground-*-Linux-amd64.deb`, then open **Playground** from the app menu. On other distributions use `…-Linux-x86_64.AppImage`: `chmod +x Playground-*.AppImage`, then run it (if FUSE is missing: `sudo apt install libfuse2t64`, or `libfuse2` on Ubuntu 22.04).
 - **Files:** New, Open… and Save (Ctrl/Cmd + N, O, S) work with `.c`, `.cpp`, `.java` and `.py` files, and with `.ipynb` notebooks in the notebook. Closing with unsaved changes asks first.
 - **Pages:** **View → Code editor** (Ctrl/Cmd + 1), **Algorithm animations** (Ctrl/Cmd + 2), **C++ STL guide** (Ctrl/Cmd + 3) and **Notebook** (Ctrl/Cmd + 4) and **Practice** (Ctrl/Cmd + 5); **Window** chooses which tabs are shown. Exam mode hides the animations, the STL guide and Practice along with the other aids.
 - **Notebook:** The app carries numpy, pandas, scipy, scikit-learn, matplotlib, seaborn, statsmodels, sympy, networkx and openpyxl, so the notebook works offline; other libraries need the website.
