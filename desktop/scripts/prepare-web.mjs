@@ -144,6 +144,8 @@ for (const f of ['algorithms.js', 'examples-algo.js']) cpSync(join(root, f), joi
 // the shared tab bar and the Practice page (its problem list is a saved copy; links open in the browser)
 writeFileSync(join(web, 'practice.html'), localPage('practice.html'));
 writeFileSync(join(web, 'verilog.html'), localPage('verilog.html'));
+cpSync(join(desk, 'splash.html'), join(web, 'splash.html'));
+cpSync(join(root, 'favicon.svg'), join(web, 'favicon.svg'));   // the start-up card (desktop only)
 for (const f of ['shell.js', 'shell.css', 'split.js', 'practice.js', 'practice-hints.js', 'practice-data.js']) cpSync(join(root, f), join(web, f));
 // the animated simulations (sims/, copied from the algorithm-simulations project by tools/sync-sims.mjs), with local fonts
 cpSync(join(root, 'sims'), join(web, 'sims'), { recursive: true });

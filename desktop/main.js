@@ -36,6 +36,38 @@ const examOn = () => !!readConfig().exam;
 
 /* ---------- window and document state ---------- */
 let win = null, doc = { dirty: false, path: null, name: 'Untitled' }, closing = false;
+
+/* ---------- the start-up card: shown at once, fades out when the main window is ready ---------- */
+let splash = null, splashAt = 0;
+const SPLASH_MIN = 1600;   // ms the card stays at least, so it is seen rather than flickering
+function showSplash() {
+  const flat = process.platform === 'linux';   // transparent windows are unreliable there: a plain rectangle instead
+  splash = new BrowserWindow({
+    width: flat ? 500 : 560, height: flat ? 300 : 360, frame: false, transparent: !flat, resizable: false, maximizable: false, minimizable: false, fullscreenable: false,
+    skipTaskbar: true, alwaysOnTop: true, center: true, show: false, hasShadow: flat, backgroundColor: flat ? '#0d6c88' : '#00000000', title: NAME,
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: false, spellcheck: false }
+  });
+  splash.loadURL(`app://playground/splash.html?v=${encodeURIComponent(app.getVersion())}${flat ? '&flat=1' : ''}`);
+  splash.once('ready-to-show', () => { if (splash) { splash.show(); splashAt = Date.now(); } });
+  splash.on('closed', () => { splash = null; });
+  setTimeout(closeSplash, 20000);   // never left behind
+  splashAt = Date.now();
+}
+function closeSplash() {
+  if (!splash || splash.isDestroyed()) return;
+  const s = splash;
+  s.webContents.executeJavaScript("document.body.classList.add('out')").catch(() => {});
+  setTimeout(() => { if (!s.isDestroyed()) s.destroy(); }, 450);
+}
+function revealMain() {
+  const wait = splash ? Math.max(0, SPLASH_MIN - (Date.now() - splashAt)) : 0;
+  setTimeout(() => {
+    if (!win) return;
+    win.show();
+    closeSplash();
+    setTimeout(() => { if (win && !win.isDestroyed()) win.focus(); }, 470);
+  }, wait);
+}
 function setTitle() {
   if (!win) return;
   win.setTitle(`${doc.dirty ? '• ' : ''}${doc.name} — ${NAME}${examOn() ? ' (exam mode)' : ''}`);
@@ -52,7 +84,7 @@ function createWindow() {
     width: 1400, height: 900, minWidth: 760, minHeight: 560, title: NAME, backgroundColor: nativeTheme.shouldUseDarkColors ? '#0e1318' : '#eef2f5', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: !app.isPackaged, spellcheck: false }
   });
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', revealMain);
   win.on('page-title-updated', e => e.preventDefault());   // the window title is set by setTitle(), not by the page
   win.loadURL('app://playground/index.html');
   // links never navigate the app window; outside exam mode they open in the normal browser
@@ -189,6 +221,7 @@ app.whenReady().then(() => {
   });
   session.defaultSession.setPermissionRequestHandler((_, __, cb) => cb(false));
   buildMenu();
+  showSplash();
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());

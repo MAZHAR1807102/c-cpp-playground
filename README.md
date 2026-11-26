@@ -111,6 +111,9 @@ The kernel is `notebook-runner.js` (Pyodide in a worker); the page is `notebook.
 
 ## Desktop app (offline, with exam mode)
 
+When the app starts, a small card ("PLAYGROUND by Mazhar") shows at once while the editor loads, then fades away. The icon is a pair of code brackets around a play button: write code, run it.
+
+
 For computers with no internet, such as an exam hall, the playground is also a desktop app called **Playground** for **Windows**, **macOS** (Apple Silicon and Intel) and **Linux** (64-bit, such as Ubuntu). All four languages, the editor, fonts, examples and the guide are inside it, and it never uses the network. **Download it from the [Releases page](https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest).**
 
 - **Windows:** `…-Windows-Setup.exe` installs it; `…-Windows-Portable.exe` runs without installing (for example from a USB stick). The first time, Windows may show "Windows protected your PC": click **More info → Run anyway**.
