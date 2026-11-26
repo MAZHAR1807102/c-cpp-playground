@@ -88,8 +88,30 @@ writeFileSync(join(web, 'visualize.js'), readFileSync(join(root, 'visualize.js')
 for (const f of ['flowchart.js', 'instrument.js', 'visualize.css']) cpSync(join(root, f), join(web, f));
 writeFileSync(join(web, 'python-tracer.js'), readFileSync(join(root, 'python-tracer.js'), 'utf8').replace(/^const PYODIDE = .*$/m, "const PYODIDE = new URL('./vendor/pyodide/', self.location.href).href;"));
 
+// Verilog page: Icarus Verilog (GPL-2.0-or-later; its licence and source note go with it), Yosys, and the
+// single-file libraries netlistsvg (+ its symbol set), ELK and JSZip, downloaded and checked by sha256
+mkdirSync(join(vendor, 'iverilog'), { recursive: true });
+cpSync(join(nm, '@veriflow/iverilog-wasm/dist/runtime'), join(vendor, 'iverilog'), { recursive: true });
+for (const f of ['LICENSE', 'dist/SOURCE.md']) cpSync(join(nm, '@veriflow/iverilog-wasm', f), join(vendor, 'iverilog', f.split('/').pop()));
+cpSync(join(nm, '@yowasp/yosys/gen'), join(vendor, 'yosys'), { recursive: true });
+const SINGLE = {
+  'netlistsvg@1.0.2/built/netlistsvg.bundle.js': ['netlistsvg.bundle.js', 'a6fa542e226f61ba27eddf2c889ce28f3f55fa26ca82fd58106b508001777625'],
+  'netlistsvg@1.0.2/lib/default.svg': ['netlistsvg-default.svg', '922cacf59d4e54616a059b13a1c77f29e418268390741373a471216917de19d3'],
+  'elkjs@0.9.3/lib/elk.bundled.js': ['elk.bundled.js', 'b0745abd7f23cd91690a1587e377edbe19fd7233c783300290936720546216d4'],
+  'jszip@3.10.1/dist/jszip.min.js': ['jszip.min.js', 'acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e']
+};
+for (const [path, [name, sha]] of Object.entries(SINGLE)) cpSync(await fetchChecked('https://cdn.jsdelivr.net/npm/' + path, name, sha), join(vendor, name));
+writeFileSync(join(web, 'verilog-worker.js'), readFileSync(join(root, 'verilog-worker.js'), 'utf8').replace(/^const IVERILOG = .*$/m, "const IVERILOG = new URL('./vendor/iverilog/', self.location.href).href;"));
+writeFileSync(join(web, 'circuit-worker.js'), readFileSync(join(root, 'circuit-worker.js'), 'utf8').replace(/^const YOSYS = .*$/m, "const YOSYS = new URL('./vendor/yosys/bundle.js', self.location.href).href;"));
+writeFileSync(join(web, 'verilog-circuit.js'), readFileSync(join(root, 'verilog-circuit.js'), 'utf8')
+  .replace(/^(\s*)const ELKJS = .*$/m, "$1const ELKJS = 'vendor/elk.bundled.js';")
+  .replace(/^(\s*)const NETLISTSVG = .*$/m, "$1const NETLISTSVG = 'vendor/netlistsvg.bundle.js';")
+  .replace(/^(\s*)const SKIN = .*$/m, "$1const SKIN = 'vendor/netlistsvg-default.svg';"));
+writeFileSync(join(web, 'verilog.js'), readFileSync(join(root, 'verilog.js'), 'utf8').replace(/^(\s*)const ZIP = .*$/m, "$1const ZIP = 'vendor/jszip.min.js';"));
+for (const f of ['logic.js', 'wave.js', 'verilog-examples.js']) cpSync(join(root, f), join(web, f));
+
 // CodeMirror 5: only the parts the pages use
-for (const d of ['lib', 'mode/clike', 'mode/python', 'mode/markdown', 'addon/edit', 'addon/hint', 'addon/runmode'])
+for (const d of ['lib', 'mode/clike', 'mode/python', 'mode/markdown', 'mode/verilog', 'addon/edit', 'addon/hint', 'addon/runmode'])
   cpSync(join(nm, 'codemirror', d), join(vendor, 'codemirror', d), { recursive: true });
 
 // fonts (Latin subsets), replacing the Google Fonts stylesheet
@@ -121,6 +143,7 @@ writeFileSync(join(web, 'algorithms.html'), localPage('algorithms.html'));
 for (const f of ['algorithms.js', 'examples-algo.js']) cpSync(join(root, f), join(web, f));
 // the shared tab bar and the Practice page (its problem list is a saved copy; links open in the browser)
 writeFileSync(join(web, 'practice.html'), localPage('practice.html'));
+writeFileSync(join(web, 'verilog.html'), localPage('verilog.html'));
 for (const f of ['shell.js', 'shell.css', 'practice.js', 'practice-hints.js', 'practice-data.js']) cpSync(join(root, f), join(web, f));
 // the animated simulations (sims/, copied from the algorithm-simulations project by tools/sync-sims.mjs), with local fonts
 cpSync(join(root, 'sims'), join(web, 'sims'), { recursive: true });
@@ -150,7 +173,7 @@ cpSync(join(root, 'guide-more.js'), join(web, 'guide-more.js'));
 
 // every file the page loads must now be local: fail the build if a CDN address is left anywhere it would be fetched
 const problems = [];
-for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js', 'visualize.js', 'python-tracer.js']) {
+for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js', 'visualize.js', 'python-tracer.js', 'verilog.html', 'verilog.js', 'verilog-worker.js', 'circuit-worker.js', 'verilog-circuit.js']) {
   const text = readFileSync(join(web, f), 'utf8');
   for (const m of text.matchAll(/(?:src|href)="(https?:[^"]+)"|import\s*\(?\s*['"](https?:[^'"]+)|=\s*'(https?:\/\/cdn[^']+)'/g)) {
     const url = m[1] || m[2] || m[3];

@@ -9,9 +9,9 @@ const crypto = require('node:crypto');
 const WEB = path.join(__dirname, 'web');
 const NAME = 'Playground';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.tar': 'application/x-tar', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.zip': 'application/zip', '.whl': 'application/zip' };
-const PAGES = { editor: 'index.html', algorithms: 'algorithms.html', stl: 'stl.html', notebook: 'notebook.html', practice: 'practice.html' };
+const PAGES = { editor: 'index.html', algorithms: 'algorithms.html', stl: 'stl.html', notebook: 'notebook.html', practice: 'practice.html', verilog: 'verilog.html' };
 // the tabs that can be hidden with the Window menu (the page keeps the list; the menu shows it)
-const TABS = [['algorithms', 'Algorithms'], ['stl', 'C++ STL'], ['notebook', 'Notebook'], ['practice', 'Practice']];
+const TABS = [['algorithms', 'Algorithms'], ['stl', 'C++ STL'], ['notebook', 'Notebook'], ['practice', 'Practice'], ['verilog', 'Verilog']];
 let tabsHidden = [];
 
 // keep settings (exam mode, saved code) in a folder with a specific name: "Playground" alone could clash with
@@ -74,7 +74,7 @@ function buildMenu() {
   const send = a => () => {
     if (!win) return;
     // the STL, Algorithms and Practice pages have no files or exam dialog: those actions open the code editor first
-    if (/\/(stl|algorithms|practice)\.html/.test(win.webContents.getURL()) && a !== 'run' && !a.startsWith('tabs:')) {
+    if (/\/(stl|algorithms|practice|verilog)\.html/.test(win.webContents.getURL()) && a !== 'run' && !a.startsWith('tabs:')) {
       if (go('editor')) win.webContents.once('did-finish-load', () => win && win.webContents.send('menu', a));
       return;
     }
@@ -95,11 +95,11 @@ function buildMenu() {
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Run', submenu: [{ label: 'Run now / run cell', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
     { label: 'Guide', submenu: [{ label: 'Guide & help', accelerator: 'F1', click: send('guide') }] },
-    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { label: 'Practice (Codeforces, CodeChef)', accelerator: 'CmdOrCtrl+5', click: () => go('practice') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
+    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { label: 'Practice (Codeforces, CodeChef)', accelerator: 'CmdOrCtrl+5', click: () => go('practice') }, { label: 'Verilog (waveforms, circuits)', accelerator: 'CmdOrCtrl+6', click: () => go('verilog') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Window', submenu: [
       { label: 'Tabs to show', enabled: false },
       { label: 'Code editor (always shown)', type: 'checkbox', checked: true, enabled: false },
-      ...TABS.map(([id, label]) => ({ label, type: 'checkbox', checked: !tabsHidden.includes(id), enabled: !(exam && id !== 'notebook'),
+      ...TABS.map(([id, label]) => ({ label, type: 'checkbox', checked: !tabsHidden.includes(id), enabled: !(exam && id !== 'notebook' && id !== 'verilog'),
         click: item => win && win.webContents.send('menu', 'tabs:' + id + ':' + (item.checked ? '1' : '0')) })),
       { type: 'separator' },
       { role: 'minimize' },

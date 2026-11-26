@@ -7,14 +7,16 @@
     algorithms: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><circle cx="16" cy="9" r="1.5"/>',
     stl: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
     notebook: '<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M12 8h5M12 12h5"/>',
-    practice: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/>'
+    practice: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/>',
+    verilog: '<path d="M2 12h3l2-6 3 12 3-12 3 12 2-6h4"/>'
   };
   const TABS = [
     { id: 'editor', label: 'Code editor', href: 'index.html', tip: 'Write and run C, C++, Java and Python' },
     { id: 'algorithms', label: 'Algorithms', href: 'algorithms.html', tip: 'Animated algorithm simulations, with the code in every language' },
     { id: 'stl', label: 'C++ STL', href: 'stl.html', tip: 'The C++ Standard Template Library with runnable examples' },
     { id: 'notebook', label: 'Notebook', href: 'notebook.html', tip: 'Python notebook for data science and machine learning' },
-    { id: 'practice', label: 'Practice', href: 'practice.html', tip: 'Codeforces and CodeChef problems to solve and submit' }
+    { id: 'practice', label: 'Practice', href: 'practice.html', tip: 'Codeforces and CodeChef problems to solve and submit' },
+    { id: 'verilog', label: 'Verilog', href: 'verilog.html', tip: 'Verilog: waveforms, truth tables, logic equations and circuits as you type' }
   ];
   // in exam mode only the code editor and the notebook stay
   const EXAM_HIDES = ['algorithms', 'stl', 'practice'];

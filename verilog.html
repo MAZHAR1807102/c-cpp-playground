@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Playground Verilog</title>
+<meta name="description" content="Write Verilog and see the waveform, the timing diagram, the truth table, the logic equations and the circuit right away: Icarus Verilog runs in the browser.">
+<script>
+  try { const t = localStorage.getItem('ccp.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="shell.css">
+<style>
+:root{
+  --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
+  --ok:#15803d; --warn:#b45309; --err:#be123c; --code-bg:#fbfcfd; --gutter:#f1f4f7;
+  --t-kw:#7c3aed; --t-type:#0a6f8c; --t-str:#b45309; --t-num:#15803d; --t-com:#7b8794; --t-meta:#be123c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#17202a; --ink:#e4ebf2; --muted:#93a2b1; --line:#2b3845; --accent:#4cb8d8; --accent-ink:#06222b;
+  --ok:#4ade80; --warn:#fbbf24; --err:#fb7185; --code-bg:#121a22; --gutter:#17202a;
+  --t-kw:#c4b5fd; --t-type:#67d4ee; --t-str:#fcd34d; --t-num:#86efac; --t-com:#7d8b99; --t-meta:#fda4af;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--ink); font:15px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif; padding:0 16px}
+.wrap{height:100vh; height:100dvh; padding:10px 0 12px; display:flex; flex-direction:column; gap:10px}
+header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 20px}
+.hright{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
+h1{font:800 clamp(1.4rem,2.6vw,1.9rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif; margin:0}
+.byline{margin:2px 0 0; font-size:.85rem; color:var(--muted)}
+label.f{display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted)}
+select,input[type=text],input[type=number]{font:13px "JetBrains Mono",monospace; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:5px 7px}
+.btn{font:700 .85rem "Atkinson Hyperlegible",sans-serif; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:5px 11px; cursor:pointer; text-decoration:none}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.small{padding:2px 8px; font-size:.8rem}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.main{flex:1; min-height:0; display:grid; grid-template-columns:200px minmax(0,1fr) minmax(0,1.15fr); gap:10px}
+.pane{background:var(--surface); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden}
+.phead{display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.phead .r{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:600; display:flex; gap:6px; align-items:center}
+/* workspace */
+.ws{padding:8px; overflow:auto; display:flex; flex-direction:column; gap:8px}
+.ws select{width:100%}
+.wsbtns{display:flex; flex-wrap:wrap; gap:4px}
+.files{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+.files li{display:flex; align-items:center; gap:6px; padding:5px 7px; border-radius:6px; cursor:pointer; font:13px "JetBrains Mono",monospace}
+.files li:hover{background:var(--bg)}
+.files li[aria-current="true"]{background:color-mix(in oklab,var(--accent) 18%,transparent); color:var(--ink); font-weight:700}
+.files li .x{margin-left:auto; display:none; gap:2px}
+.files li:hover .x,.files li[aria-current="true"] .x{display:flex}
+.files li .x button{border:0; background:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:13px}
+.files li .x button:hover{color:var(--err)}
+.files li .err{color:var(--err)}
+.mods{font-size:.78rem; color:var(--muted)}
+.mods b{display:block; font:700 .68rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; margin:4px 0 2px}
+.mods span{display:block; font-family:"JetBrains Mono",monospace; padding:1px 0}
+.mods span i{font-style:normal; color:var(--accent); font-size:.72rem}
+.editor{flex:1; min-height:0; position:relative}
+.CodeMirror{position:absolute; inset:0; height:auto; font:14px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace; background:var(--code-bg); color:var(--ink)}
+.CodeMirror-gutters{background:var(--gutter); border-right:1px solid var(--line)}
+.CodeMirror-linenumber{color:var(--muted)} .CodeMirror-cursor{border-left:2px solid var(--accent)}
+.CodeMirror-selected,.CodeMirror-focused .CodeMirror-selected{background:color-mix(in oklab,var(--accent) 22%,transparent)}
+.cm-s-default .cm-keyword{color:var(--t-kw); font-weight:600} .cm-s-default .cm-number{color:var(--t-num)} .cm-s-default .cm-string{color:var(--t-str)}
+.cm-s-default .cm-comment{color:var(--t-com); font-style:italic} .cm-s-default .cm-meta,.cm-s-default .cm-builtin{color:var(--t-meta)} .cm-s-default .cm-def{color:var(--t-type); font-weight:600}
+.cm-s-default .cm-variable,.cm-s-default .cm-variable-2,.cm-s-default .cm-variable-3,.cm-s-default .cm-operator,.cm-s-default .cm-tag,.cm-s-default .cm-atom{color:var(--ink)}
+.errline{background:color-mix(in oklab,var(--err) 16%,transparent)}
+/* results */
+.tabs{display:flex; gap:2px; padding:6px 8px 0; border-bottom:1px solid var(--line)}
+.tabs button{font:700 .85rem "Atkinson Hyperlegible",sans-serif; border:1px solid transparent; border-bottom:0; background:none; color:var(--muted); padding:6px 12px; border-radius:7px 7px 0 0; cursor:pointer; display:flex; align-items:center; gap:6px}
+.tabs button[aria-selected="true"]{background:var(--surface); color:var(--ink); border-color:var(--line); margin-bottom:-1px}
+.tabs .dot{width:8px; height:8px; border-radius:50%; background:var(--muted)}
+.tabs .dot.ok{background:var(--ok)} .tabs .dot.err{background:var(--err)} .tabs .dot.busy{background:var(--warn); animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.status{margin-left:auto; align-self:center; font:600 .78rem "JetBrains Mono",monospace; color:var(--muted); padding-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.panel{flex:1; min-height:0; display:none; flex-direction:column}
+.panel.on{display:flex}
+.tbar{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:6px 10px; border-bottom:1px solid var(--line); font-size:.82rem; color:var(--muted)}
+.tbar .grow{flex:1}
+.src{font:600 .78rem "JetBrains Mono",monospace; color:var(--ink)}
+/* waveform */
+.wave{flex:1; min-height:0; display:grid; grid-template-columns:minmax(120px,30%) minmax(0,1fr); overflow:auto; background:var(--code-bg)}
+.wv-names{border-right:1px solid var(--line); min-width:0}
+.wv-head{height:26px; padding:5px 8px; font:700 .68rem "JetBrains Mono",monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line)}
+.wv-head span{color:var(--warn); text-transform:none}
+.wv-name{display:flex; align-items:center; gap:6px; padding:0 6px; font:12px "JetBrains Mono",monospace; border-bottom:1px solid color-mix(in oklab,var(--line) 60%,transparent); white-space:nowrap; overflow:hidden}
+.wv-name i{width:10px; height:10px; border-radius:3px; background:var(--c); flex:none}
+.wv-name b{font-weight:700; color:var(--c)}
+.wv-name small{color:var(--muted); overflow:hidden; text-overflow:ellipsis; min-width:0}
+.wv-name em{margin-left:auto; font-style:normal; font-weight:700; color:var(--warn)}
+.wv-name .wv-hide{border:0; background:none; color:var(--muted); cursor:pointer; visibility:hidden; padding:0 2px}
+.wv-name:hover .wv-hide{visibility:visible}
+.wv-plot{position:relative; min-width:0; cursor:crosshair}
+.wv-plot canvas{display:block}
+.empty{padding:28px 20px; color:var(--muted); text-align:center; font-size:.92rem}
+/* console */
+.console{flex:1; min-height:0; margin:0; padding:10px 12px; overflow:auto; font:13px/1.5 "JetBrains Mono",monospace; white-space:pre-wrap; word-break:break-word; background:var(--code-bg)}
+.console .e{color:var(--err)} .console .m{color:var(--muted); font-style:italic} .console .ln{cursor:pointer; text-decoration:underline dotted}
+/* logic */
+.logic{flex:1; min-height:0; overflow:auto; padding:10px 12px; display:flex; flex-direction:column; gap:14px}
+.logic>*{flex-shrink:0}
+.logic h3{margin:0; font:800 1.05rem "Bricolage Grotesque",system-ui,sans-serif}
+.logic .sub{color:var(--muted); font-size:.85rem; margin:2px 0 0}
+.tt{border-collapse:collapse; font:13px "JetBrains Mono",monospace}
+.tt th,.tt td{border:1px solid var(--line); padding:3px 9px; text-align:center}
+.tt th{background:var(--bg); color:var(--muted); font-size:.75rem}
+.tt th.o,.tt td.o{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+.tt td.o.one{color:var(--accent); font-weight:700}
+.tt td.o.x{color:var(--muted)}
+.tt td.click{cursor:pointer; user-select:none}
+.tt td.click:hover{outline:2px solid var(--accent)}
+.tt tr.sep td{border-top:2px solid var(--line)}
+.eq{border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--code-bg)}
+.eq .nm{font:700 .9rem "JetBrains Mono",monospace; color:var(--accent)}
+.eq .f{font:14px "JetBrains Mono",monospace; margin:3px 0; overflow-x:auto}
+.eq .f small{color:var(--muted); font-size:.72rem; display:inline-block; min-width:48px}
+.kmap{display:inline-grid; gap:0; margin-top:6px; font:12px "JetBrains Mono",monospace; vertical-align:top}
+.kmap span{border:1px solid var(--line); min-width:34px; height:28px; display:flex; align-items:center; justify-content:center}
+.kmap span.h{border:0; color:var(--muted); font-size:.72rem}
+.kmap span.one{background:color-mix(in oklab,var(--accent) 22%,transparent); font-weight:700}
+.kmap span.x{color:var(--muted)}
+.row{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center}
+.designer{border-top:2px solid var(--line); padding-top:12px; display:flex; flex-direction:column; gap:10px}
+pre.code{margin:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--code-bg); font:12.5px/1.45 "JetBrains Mono",monospace; overflow:auto; max-height:280px}
+.note{font-size:.85rem; color:var(--muted)}
+.note.err{color:var(--err)}
+@media (max-width:1100px){ .main{grid-template-columns:170px minmax(0,1fr)} .results{grid-column:1/-1; min-height:520px} .wrap{height:auto; min-height:100vh} .editorpane{min-height:420px} }
+@media (max-width:700px){ .main{grid-template-columns:minmax(0,1fr)} }
+</style>
+</head>
+<body data-page="verilog">
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Playground <span class="exambadge" id="exambadge" hidden>Exam mode</span></h1>
+      <p class="byline">by MAZHAR</p>
+    </div>
+    <div class="hright">
+      <nav id="modes"></nav>
+      <label class="f" title="Colours of the page">Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="pane" aria-label="Workspace">
+      <div class="phead">Workspace</div>
+      <div class="ws">
+        <label class="f" style="flex-direction:column; align-items:stretch">Project <select id="proj" aria-label="Project"></select></label>
+        <div class="wsbtns">
+          <button class="btn small" type="button" id="projNew" title="A new project, empty or from an example">New…</button>
+          <button class="btn small" type="button" id="projRen" title="Rename this project">Rename</button>
+          <button class="btn small" type="button" id="projDel" title="Delete this project">Delete</button>
+        </div>
+        <div class="phead" style="padding:4px 0; border:0">Files <span class="r"><button class="btn small" type="button" id="fileNew" title="Add a file">+ File</button></span></div>
+        <ul class="files" id="files"></ul>
+        <div class="wsbtns">
+          <button class="btn small" type="button" id="fileOpen" title="Add .v / .sv files from your computer">Open…</button>
+          <button class="btn small" type="button" id="fileSave" title="Download this file">Download</button>
+          <button class="btn small" type="button" id="projZip" title="Download the whole project as a .zip">Export .zip</button>
+        </div>
+        <input type="file" id="fileInput" accept=".v,.sv,.vh,.svh,.txt,.zip" multiple hidden>
+        <div class="mods" id="mods"></div>
+      </div>
+    </section>
+
+    <section class="pane editorpane" aria-label="Editor">
+      <div class="phead"><span id="fname">main.v</span><span class="r" id="pos"></span></div>
+      <div class="editor" id="editor"></div>
+    </section>
+
+    <section class="pane results" aria-label="Results">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="wave" aria-selected="true"><span class="dot" id="dotWave"></span>Waveform</button>
+        <button type="button" role="tab" data-tab="logic" aria-selected="false"><span class="dot" id="dotLogic"></span>Logic</button>
+        <button type="button" role="tab" data-tab="circuit" aria-selected="false"><span class="dot" id="dotCircuit"></span>Circuit</button>
+        <button type="button" role="tab" data-tab="console" aria-selected="false"><span class="dot" id="dotConsole"></span>Console</button>
+        <span class="status" id="status">Loading Icarus Verilog…</span>
+      </div>
+
+      <div class="panel on" id="p-wave" role="tabpanel">
+        <div class="tbar">
+          <span>Showing</span> <span class="src" id="waveSrc">—</span>
+          <span class="grow"></span>
+          <label class="f">Values <select id="radix"><option value="hex">hex</option><option value="dec">decimal</option><option value="sdec">signed</option><option value="bin">binary</option></select></label>
+          <button class="btn small" type="button" id="wReplay" title="Play the waves again">▶ Replay</button>
+          <button class="btn small" type="button" id="wOut" title="Zoom out">−</button>
+          <button class="btn small" type="button" id="wFit" title="Fit the whole run">Fit</button>
+          <button class="btn small" type="button" id="wIn" title="Zoom in">+</button>
+          <button class="btn small" type="button" id="wAll" title="Show hidden signals again">All signals</button>
+          <button class="btn small" type="button" id="wPng" title="Save the timing diagram as a picture">PNG</button>
+        </div>
+        <div class="wave" id="wave"></div>
+      </div>
+
+      <div class="panel" id="p-logic" role="tabpanel">
+        <div class="logic" id="logic"></div>
+      </div>
+
+      <div class="panel" id="p-circuit" role="tabpanel">
+        <div class="tbar"><span>Module</span> <span class="src" id="circSrc">—</span><span class="grow"></span>
+          <label class="f">View <select id="circView"><option value="gates">Logic gates</option><option value="rtl">Blocks (RTL)</option></select></label>
+          <button class="btn small" type="button" id="cOut">−</button><button class="btn small" type="button" id="cFit">Fit</button><button class="btn small" type="button" id="cIn">+</button>
+          <button class="btn small" type="button" id="cSvg" title="Save the diagram as SVG">SVG</button>
+        </div>
+        <div class="logic" id="circuit" style="padding:0"></div>
+      </div>
+
+      <div class="panel" id="p-console" role="tabpanel">
+        <pre class="console" id="console" aria-live="polite"></pre>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="newDlg" style="border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); padding:18px 20px; width:min(440px,calc(100vw - 32px))">
+  <form method="dialog" style="display:flex; flex-direction:column; gap:10px">
+    <b style="font:800 1.15rem 'Bricolage Grotesque',sans-serif">New project</b>
+    <label class="f" style="flex-direction:column; align-items:stretch">Name <input type="text" id="newName" value="My circuit"></label>
+    <label class="f" style="flex-direction:column; align-items:stretch">Start from <select id="newFrom"></select></label>
+    <div style="display:flex; justify-content:flex-end; gap:8px"><button class="btn" value="cancel">Cancel</button><button class="btn primary" value="ok" id="newOk">Create</button></div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/verilog/verilog.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="logic.js"></script>
+<script src="wave.js"></script>
+<script src="verilog-examples.js"></script>
+<script src="verilog.js"></script>
+<script src="verilog-circuit.js"></script>
+<script src="shell.js"></script>
+</body>
+</html>

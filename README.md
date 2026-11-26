@@ -37,6 +37,19 @@ For C, C++ and Java, `instrument.js` adds a step recorder to the code before it 
 
 How it works: `visualize.js` parses the code with [tree-sitter](https://tree-sitter.github.io/) (WebAssembly; one grammar per language, about 0.4–3.4 MB, loaded the first time) and `flowchart.js` turns the syntax tree into a flowchart and lays it out as SVG. `python-tracer.js` is a separate Pyodide worker that runs the program under `sys.settrace` and sends back every step.
 
+## Verilog (waveforms, truth tables, circuits)
+
+The **Verilog** tab is a workspace for digital design. There is no run button: a moment after you stop typing, the design is compiled and simulated again and every view updates.
+
+- **Workspace:** several projects, each with several files (`.v`, `.sv`); add, rename, delete, open files from the computer, download a file or the whole project as a `.zip`. Example projects: adders built from half adders, a counter with a testbench, multiplexers, a decoder and priority encoder, a traffic-light state machine, a shift register, an ALU.
+- **Waveform / timing diagram:** each signal in its own colour, buses with their values (hex, decimal, signed or binary). A playhead sweeps through the run so the signals can be followed; zoom with the wheel, drag to move, click to put a cursor that shows every value at that time; save as PNG.
+- **Inputs without writing a testbench:** if the project has a testbench (a module without ports) it drives the simulation. Otherwise one is made for the module being edited: every input combination for combinational logic (up to 10 input bits), or a clock, a reset and changing inputs for clocked logic.
+- **Logic:** the truth table of the module being edited, found by simulating every combination, with the minimised equations (Quine–McCluskey: sum of products, product of sums, Σm/ΠM) and Karnaugh maps. **Design from a truth table:** click the output cells (0, 1, don't-care) or type a formula such as `A'B + AC`, and get the equations, a Verilog module and a testbench that checks every row.
+- **Circuit:** the module drawn as logic gates or as blocks (its sub-modules, adders, multiplexers, registers), coloured with the simulation: wires carrying 1 glow, 0 is dim, unknown is red. Play runs through the simulated time; clicking the waveform moves the circuit to that moment.
+- **Console:** `$display` / `$monitor` output and compiler errors (click one to jump to the line).
+
+How it works: [Icarus Verilog](https://github.com/steveicarus/iverilog) compiled to WebAssembly (the `@veriflow/iverilog-wasm` build, about 3 MB, GPL-2.0-or-later; corresponding source: https://github.com/AlexMercer12138/iverilog) simulates in `verilog-worker.js`; [Yosys](https://yosyshq.net/yosys/) (YoWASP build, about 80 MB, loaded when the Circuit tab is first opened) makes the netlist in `circuit-worker.js`, drawn by [netlistsvg](https://github.com/nturley/netlistsvg) with ELK. `wave.js` reads the VCD and draws the timing diagram, `logic.js` minimises truth tables.
+
 ## Algorithm animations
 
 **Algorithms** at the top of the page (`algorithms.html`) shows the animated, step-by-step simulations from [Algorithm Simulations](https://github.com/MAZHAR1807102/algorithm-simulations): insertion, bubble, counting, merge and quick sort; graph search (BFS, DFS, UCS, A*…); shortest paths; minimum spanning trees; string matching; prefix sums; dynamic programming; N-Queens; the travelling salesman problem; and game theory. Each one has buttons that open the matching program in C, C++, Java or Python in the editor.
