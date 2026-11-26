@@ -455,10 +455,11 @@ endmodule
       if (!vcd) { $('wave').classList.add('stale'); }
       if (!vcd && !wave.data) $('waveSrc').textContent = '—';
     } else setStatus('ok', `${desc} · ${Math.round(sim.ms || 0)} ms`);
-    renderLogic();
+    if ($('p-logic').classList.contains('on')) renderLogic(); else { logicStale = true; $('dotLogic').className = 'dot ' + (last.truthRun && last.truthRun.ok ? 'ok' : ''); }
     renderCircuit();
     renderStim();
   }
+  let logicStale = true;
   $('console').onclick = e => {
     const l = e.target.closest('.ln'); if (!l) return;
     if (l.dataset.f !== cur.active && cur.files.some(f => f.name === l.dataset.f)) openFile(l.dataset.f);
@@ -638,6 +639,7 @@ endmodule
       ${kmap(names, values)}</div>`;
   }
   function renderLogic() {
+    logicStale = false;
     const el = $('logic');
     let html = '';
     const m = last && last.target;
@@ -739,6 +741,7 @@ endmodule
     store.set('vl.tab', t);
     if (t === 'wave') requestAnimationFrame(() => wave.draw());
     if (t === 'circuit') renderCircuit();
+    if (t === 'logic' && logicStale) renderLogic();
   }
   document.querySelector('.tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) selectTab(b.dataset.tab); };
   selectTab(store.get('vl.tab') || 'wave');

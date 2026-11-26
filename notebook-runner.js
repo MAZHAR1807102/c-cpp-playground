@@ -10,6 +10,8 @@ const OFFLINE = null;
 const LIMIT = 500000;   // characters of text output per cell before it is cut off
 
 let muted = false;   // true while micropip installs: its progress lines are not the student's output
+// nbRun / nbComplete / nbFiles: the kernel's Python functions, looked up once (each lookup makes a proxy that must be freed)
+let nbRun = null, nbComplete = null, nbFiles = null;
 let py = null, lock = {}, importToPkg = {}, cur = null, sent = 0, buf = [], last = 0, interrupt = null;
 
 function flush() { if (buf.length) { postMessage({ type: 'out', id: cur, items: buf }); buf = []; } last = performance.now(); }
@@ -217,7 +219,8 @@ async function micropipInstall(spec) {
     }
     const arg = list ? py.toPy(list) : spec;
     muted = true;
-    try { await py.pyimport('micropip').install(arg); } finally { muted = false; }
+    const mp = py.pyimport('micropip');
+    try { await mp.install(arg); } finally { muted = false; mp.destroy(); }
     if (arg.destroy) arg.destroy();
     return true;
   } catch (e) {
@@ -285,6 +288,7 @@ onmessage = async ({ data }) => {
       py.FS.writeFile('/lib/pg/pg_nb.py', NB);
       py.FS.writeFile('/lib/pg/pg_inline.py', INLINE);
       py.runPython("import sys; sys.path.insert(0, '/lib/pg'); import pg_nb");
+      { const nb = py.pyimport('pg_nb'); nbRun = nb.run; nbComplete = nb.complete; nbFiles = nb.files; }   // kept for the kernel's lifetime
       const pkgs = OFFLINE || Object.keys(lock).filter(n => lock[n].package_type === 'package');
       postMessage({ type: 'ready', version: py.runPython('import sys; sys.version.split()[0]'), packages: pkgs.map(n => [n, lock[n] ? lock[n].version : '']), extra: Object.keys(EXTRA), offline: !!OFFLINE, interrupt: !!interrupt });
     } catch (e) { postMessage({ type: 'fatal', message: String(e && e.message || e) }); }
@@ -311,7 +315,7 @@ onmessage = async ({ data }) => {
       postMessage({ type: 'status', text: 'Running…' });
       if (!src.trim()) res = [true, 0, '', ''];
       else {
-        const r = await py.pyimport('pg_nb').run(src, `<cell ${++counter}>`);
+        const r = await nbRun(src, `<cell ${++counter}>`);
         res = r.toJs(); r.destroy();
       }
     } catch (e) { push('error', String(e && e.message || e)); }
@@ -332,7 +336,7 @@ onmessage = async ({ data }) => {
 
   if (data.type === 'complete') {
     let list = [];
-    try { const r = py.pyimport('pg_nb').complete(data.text); list = r.toJs(); r.destroy(); } catch (_) {}
+    try { const r = nbComplete(data.text); list = r.toJs(); r.destroy(); } catch (_) {}
     postMessage({ type: 'completions', id: data.id, list });
     return;
   }
@@ -356,5 +360,5 @@ onmessage = async ({ data }) => {
 };
 
 function listFiles() {
-  try { const r = py.pyimport('pg_nb').files(); const l = r.toJs(); r.destroy(); return l; } catch (_) { return []; }
+  try { const r = nbFiles(); const l = r.toJs(); r.destroy(); return l; } catch (_) { return []; }
 }

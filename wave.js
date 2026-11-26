@@ -15,13 +15,14 @@
       const w = words[i++];
       if (!w) continue;
       if (w === '$timescale') { const parts = []; while (i < words.length && words[i] !== '$end') parts.push(words[i++]); i++; out.timescale = parts.join(''); }
-      else if (w === '$scope') { i++; scope.push(words[i++]); while (words[i] !== '$end') i++; i++; }
-      else if (w === '$upscope') { scope.pop(); while (words[i] !== '$end') i++; i++; }
+      // (every scan for $end stops at the end of the text, so a cut-off file cannot hang the page)
+      else if (w === '$scope') { i++; scope.push(words[i++]); while (i < words.length && words[i] !== '$end') i++; i++; }
+      else if (w === '$upscope') { scope.pop(); while (i < words.length && words[i] !== '$end') i++; i++; }
       else if (w === '$var') {
         const type = words[i++], width = +words[i++], id = words[i++];
         let name = words[i++];
         const rest = [];
-        while (words[i] !== '$end') rest.push(words[i++]);
+        while (i < words.length && words[i] !== '$end') rest.push(words[i++]);
         i++;
         if (rest.length && /^\[/.test(rest[0])) name += rest.join('');
         const sig = { id, name, scope: scope.join('.'), width, type, changes: [] };
@@ -134,7 +135,8 @@
     draw() {
       const cv = this.canvas, W = this.plot.clientWidth, H = Math.max(this.plot.clientHeight, this.TOP + this.rows.length * this.ROW + 8);
       const dpr = devicePixelRatio || 1;
-      cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      // resizing a canvas reallocates it: only when the size really changed (not on every animation frame)
+      if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
       const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
       const css = getComputedStyle(this.el);
       const ink = css.getPropertyValue('--ink').trim() || '#16202a', muted = css.getPropertyValue('--muted').trim() || '#5a6876', line = css.getPropertyValue('--line').trim() || '#d3dbe3';

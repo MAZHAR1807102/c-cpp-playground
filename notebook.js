@@ -196,7 +196,8 @@
     const lastO = c.outputs[c.outputs.length - 1];
     if ((kind === 'stdout' || kind === 'stderr') && lastO && lastO[0] === kind) {
       lastO[1] += data;
-      if (!quiet && lastO.el) { lastO.el.textContent = lastO[1]; }
+      // appended, not re-set: re-setting the whole text for every piece made long printing loops slow (quadratic)
+      if (!quiet && lastO.el) lastO.el.appendChild(document.createTextNode(data));
       return;
     }
     const o = [kind, data];

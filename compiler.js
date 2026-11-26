@@ -54,7 +54,8 @@ onmessage = async ({ data }) => {
   if (lang === 'cpp') args.push('-fno-exceptions', '-isystem', 'extra');   // the bundled libc++ is built without exception support
   if (lang === 'c') args.push('-lm');
   let diag = '';
-  const stderr = bytes => { if (bytes) diag += new TextDecoder().decode(bytes); };
+  const dec = new TextDecoder();
+  const stderr = bytes => { if (bytes) diag += dec.decode(bytes, { stream: true }); };
   const t0 = performance.now();
   try {
     const mod = await load();

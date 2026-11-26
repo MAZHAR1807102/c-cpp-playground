@@ -1702,11 +1702,13 @@ print("best:", best[0])
     const base = f => f.split(/[\\/]/).pop();
     const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;
     const defaultName = () => LANGS[lang].file;
+    let sentState = '';
     function update() {
       const dirty = mainDoc.getValue() !== saved;
       $('fname').dataset.main = (path ? base(path) : defaultName()) + (dirty ? ' •' : '');
       if (cm.getDoc() === mainDoc) $('fname').textContent = $('fname').dataset.main;
-      D.docState({ dirty, path, name: path ? base(path) : 'Untitled' });
+      const st = { dirty, path, name: path ? base(path) : 'Untitled' }, key = JSON.stringify(st);
+      if (key !== sentState) { sentState = key; D.docState(st); }   // not on every keystroke, only when it changes
     }
     keepTextOnToggle = () => !!path;
     cm.on('changes', update);

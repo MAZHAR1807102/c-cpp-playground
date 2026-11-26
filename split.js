@@ -67,7 +67,9 @@
   addEventListener('resize', () => requestAnimationFrame(placeAll));
   let queued = false;
   new MutationObserver(list => {
-    if (queued || list.every(m => m.target.classList && m.target.classList.contains('splitter'))) return;
+    // changes inside drawings and the editor (the circuit's animated wires, highlighted lines) never move the panes:
+    // skipping them avoids measuring the layout again on every animation frame
+    if (queued || list.every(m => !m.target.closest || m.target.closest('.splitter, svg, .CodeMirror, .wv-names, .stimt, .tt, #vizFrames, #out'))) return;
     queued = true; requestAnimationFrame(() => { queued = false; placeAll(); });
   }).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class', 'hidden'] });
   const store = { get(k) { try { return localStorage.getItem('ccp.split.' + k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem('ccp.split.' + k, v); } catch (_) {} }, del(k) { try { localStorage.removeItem('ccp.split.' + k); } catch (_) {} } };

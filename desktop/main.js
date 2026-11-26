@@ -5,6 +5,7 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell, session, nat
 const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
+const { Readable } = require('node:stream');
 
 const WEB = path.join(__dirname, 'web');
 const NAME = 'Playground';
@@ -25,12 +26,15 @@ app.setPath('userData', path.join(app.getPath('appData'), 'C and C++ Playground'
 if (process.platform === 'linux' && process.env.APPIMAGE) app.commandLine.appendSwitch('no-sandbox');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
-if (!app.requestSingleInstanceLock()) app.quit();
+// a second copy only brings the first one forward (see 'second-instance'); exit before it sets anything up
+if (!app.requestSingleInstanceLock()) app.exit(0);
 
 /* ---------- settings file (exam mode) ---------- */
 const CONFIG = () => path.join(app.getPath('userData'), 'settings.json');
-function readConfig() { try { return JSON.parse(fs.readFileSync(CONFIG(), 'utf8')); } catch (_) { return {}; } }
-function writeConfig(c) { fs.mkdirSync(path.dirname(CONFIG()), { recursive: true }); fs.writeFileSync(CONFIG(), JSON.stringify(c, null, 2)); }
+// read once and kept in memory: the title (updated as the code is edited) and every link click ask for exam mode
+let config = null;
+function readConfig() { if (!config) { try { config = JSON.parse(fs.readFileSync(CONFIG(), 'utf8')) || {}; } catch (_) { config = {}; } } return { ...config }; }
+function writeConfig(c) { fs.mkdirSync(path.dirname(CONFIG()), { recursive: true }); fs.writeFileSync(CONFIG(), JSON.stringify(c, null, 2)); config = { ...c }; }
 const hash = (pw, salt) => crypto.scryptSync(pw, salt, 32).toString('hex');
 const examOn = () => !!readConfig().exam;
 
@@ -161,7 +165,7 @@ ipcMain.on('go', (_, page) => go(page));
 ipcMain.on('tabs-state', (_, list) => { if (Array.isArray(list)) { tabsHidden = list.filter(x => typeof x === 'string'); buildMenu(); } });
 // Submit on the Practice page copies the code before opening the judge in the browser
 ipcMain.handle('copy', (_, text) => { if (typeof text === 'string' && text.length < 1e6) clipboard.writeText(text); return true; });
-ipcMain.on('doc-state', (_, s) => { doc = { dirty: !!s.dirty, path: s.path || null, name: String(s.name || 'Untitled') }; setTitle(); });
+ipcMain.on('doc-state', (_, s) => { if (!s || typeof s !== 'object') return; doc = { dirty: !!s.dirty, path: s.path || null, name: String(s.name || 'Untitled') }; setTitle(); });
 ipcMain.handle('discard-ok', () => askDiscard());
 ipcMain.handle('open-file', async (_, o) => {
   if (!askDiscard()) return null;
@@ -209,9 +213,12 @@ app.whenReady().then(() => {
     const file = path.normalize(path.join(WEB, !rel || rel.endsWith('/') ? rel + 'index.html' : rel));
     if (!file.startsWith(WEB + path.sep)) return new Response('Forbidden', { status: 403 });
     try {
-      const data = await fs.promises.readFile(file);
+      const st = await fs.promises.stat(file);
+      if (!st.isFile()) throw new Error('not a file');
+      // streamed rather than read whole: some files (Clang, Pyodide) are tens of megabytes
+      const body = Readable.toWeb(fs.createReadStream(file));
       // cross-origin isolation lets the notebook stop a running cell without restarting Python (SharedArrayBuffer)
-      return new Response(data, { headers: { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': String(data.length), 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp', 'cross-origin-resource-policy': 'same-origin' } });
+      return new Response(body, { headers: { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': String(st.size), 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp', 'cross-origin-resource-policy': 'same-origin' } });
     } catch (_) { return new Response('Not found', { status: 404 }); }
   });
   // the app is fully offline: refuse anything that would go to the network

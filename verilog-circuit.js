@@ -186,7 +186,7 @@
   $('cIn').onclick = () => { zoom = Math.min(4, zoom * 1.25); applyZoom(); };
   $('cOut').onclick = () => { zoom = Math.max(0.25, zoom / 1.25); applyZoom(); };
   $('cFit').onclick = () => { const svg = $('cView').querySelector('svg'); if (!svg) return; const w = +svg.getAttribute('width') || 600; zoom = Math.min(2, ($('cView').clientWidth - 24) / w); applyZoom(); };
-  $('cSvg').onclick = () => { if (!svgText) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' })); a.download = ($('circSrc').textContent || 'circuit') + '.svg'; a.click(); };
+  $('cSvg').onclick = () => { if (!svgText) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' })); a.download = ($('circSrc').textContent || 'circuit') + '.svg'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
   $('circView').onchange = () => { cacheKey = ''; if (state) build(); };
   // the waveform cursor moves the circuit to that time
   window.addEventListener('vl-cursor', e => { t = e.detail; stop(); paint(); });

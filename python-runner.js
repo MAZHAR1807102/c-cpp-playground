@@ -3,7 +3,7 @@
 const PYODIDE = 'https://cdn.jsdelivr.net/npm/pyodide@314.0.8/';
 const LIMIT = 200000;   // characters of output before it is cut off
 
-let py = null, stdinText = '', stdinGiven = false, sent = 0, buf = [], last = 0;
+let py = null, pgRun = null, stdinText = '', stdinGiven = false, sent = 0, buf = [], last = 0;
 function flush() { if (buf.length) { postMessage({ type: 'out', chunks: buf }); buf = []; } last = performance.now(); }
 function emit(stream, text) {
   if (!text || sent > LIMIT) return;
@@ -80,6 +80,7 @@ onmessage = async ({ data }) => {
       py.setStderr(sink(2));
       py.setStdin({ stdin: () => { if (stdinGiven) return null; stdinGiven = true; return stdinText; }, isatty: false });
       py.runPython(HARNESS);
+      pgRun = py.globals.get('__pg_run');
       postMessage({ type: 'ready', version: py.runPython('import sys; sys.version.split()[0]') });
     } catch (e) { postMessage({ type: 'fatal', message: String(e && e.message || e) }); }
     return;
@@ -91,7 +92,7 @@ onmessage = async ({ data }) => {
   const t0 = performance.now();
   let code = 0, line = 0, msg = '';
   try {
-    const r = py.globals.get('__pg_run')(data.source);
+    const r = pgRun(data.source);
     [code, line, msg] = r.toJs(); r.destroy();
   } catch (e) { code = 1; msg = String(e && e.message || e); emit(2, msg + '\n'); }
   flush();
