@@ -1,0 +1,120 @@
+/* Visualize panel (visualize.js): the flowchart of the code and, for Python, a step-by-step run.
+   Uses the page's colour tokens, so it follows the light and dark themes. */
+.vizpanel{position:fixed; top:0; right:0; z-index:40; width:min(860px,60vw); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
+.vizpanel[hidden]{display:none}
+body.vizopen .wrap{margin-right:min(860px,60vw)}
+body.vizopen .main{grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1.25fr) minmax(0,1fr)}
+body.vizopen .right{grid-template-rows:minmax(0,1fr) auto}
+body.vizopen textarea.stdin{min-height:54px}
+body.vizopen header .hright label.f{display:none}
+@media (max-width:900px){ .vizpanel{width:100vw} body.vizopen .wrap{margin-right:0} }
+.exam #vizBtn,.exam #vizPanel{display:none!important}
+
+.vizhead{display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line)}
+.vizhead b{font:800 1.05rem "Bricolage Grotesque",system-ui,sans-serif; margin-right:4px}
+.vizhead .btn{padding:5px 11px}
+.vizhead select{max-width:260px}
+.vizhead .grow{flex:1}
+.vizzoom{display:inline-flex; border:1px solid var(--line); border-radius:7px; overflow:hidden}
+.vizzoom button{font:700 .85rem "JetBrains Mono",monospace; border:0; border-right:1px solid var(--line); background:var(--surface); color:var(--ink); padding:5px 10px; cursor:pointer}
+.vizzoom button:last-child{border-right:0}
+.vizzoom button:hover{background:var(--bg)}
+#vizStepBtn[aria-pressed="true"],#vizBtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.viznote{padding:6px 12px; font-size:.85rem; color:var(--muted); border-bottom:1px solid var(--line); background:color-mix(in oklab,var(--warn) 8%,var(--surface))}
+.viznote[hidden]{display:none}
+.vizchart{flex:1 1 55%; min-height:120px; overflow:auto; background:var(--code-bg); cursor:grab; position:relative}
+.vizchart.drag{cursor:grabbing; user-select:none}
+.vizchart svg{display:block; margin:0 auto}
+.vizempty{padding:30px 20px; color:var(--muted); text-align:center}
+.vizlegend{display:flex; flex-wrap:wrap; gap:4px 14px; padding:5px 12px; border-top:1px solid var(--line); font-size:.78rem; color:var(--muted)}
+.vizlegend span{display:inline-flex; align-items:center; gap:5px}
+.vizlegend svg{width:22px; height:14px}
+
+/* flowchart */
+.fc{font:12px/1 "JetBrains Mono",ui-monospace,Consolas,monospace}
+.fc .fc-n .s{fill:var(--surface); stroke:color-mix(in oklab,var(--ink) 55%,transparent); stroke-width:1.4}
+.fc .fc-n .s2{fill:none; stroke:color-mix(in oklab,var(--ink) 55%,transparent); stroke-width:1.2}
+.fc .fc-n text{fill:var(--ink); text-anchor:middle}
+.fc .fc-term .s{fill:color-mix(in oklab,var(--accent) 16%,var(--surface)); stroke:var(--accent)}
+.fc .fc-term.k-throw .s{fill:color-mix(in oklab,var(--err) 14%,var(--surface)); stroke:var(--err)}
+.fc .fc-dec .s{fill:color-mix(in oklab,var(--warn) 13%,var(--surface)); stroke:var(--warn)}
+.fc .fc-in .s,.fc .fc-out .s{fill:color-mix(in oklab,var(--ok) 12%,var(--surface)); stroke:var(--ok)}
+.fc .fc-call .s,.fc .fc-call .s2{fill:color-mix(in oklab,var(--t-kw) 10%,var(--surface)); stroke:var(--t-kw)}
+.fc .fc-call .s2{fill:none}
+.fc .fc-jump .s{fill:var(--surface); stroke-dasharray:4 3}
+.fc .fc-conn .s{fill:var(--ink); stroke:var(--ink)}
+.fc .fc-conn text{fill:var(--surface); font-weight:700}
+.fc .fc-e{fill:none; stroke:color-mix(in oklab,var(--ink) 50%,transparent); stroke-width:1.4}
+.fc .ah{fill:color-mix(in oklab,var(--ink) 60%,transparent)}
+.fc .fc-el{fill:var(--muted); font-size:11px; font-weight:700}
+.fc .fc-cl{fill:var(--accent); font-size:11px; font-weight:700}
+.fc .fc-cl.fall{fill:var(--warn); font-weight:600}
+.fc .fc-dot{fill:color-mix(in oklab,var(--ink) 55%,transparent)}
+.fc .fc-g rect{fill:none; stroke:color-mix(in oklab,var(--ink) 35%,transparent); stroke-dasharray:5 4}
+.fc .fc-g text{fill:var(--muted); font-size:11px; font-weight:700}
+.fc .fc-n{cursor:pointer}
+.fc .fc-n:hover .s{stroke-width:2.4}
+.fc .fc-n.sel .s{stroke:var(--accent); stroke-width:3}
+.fc .fc-n.now .s{stroke:var(--accent); stroke-width:3.2; fill:color-mix(in oklab,var(--accent) 30%,var(--surface)); filter:drop-shadow(0 0 6px color-mix(in oklab,var(--accent) 70%,transparent))}
+.fc .fc-n.was .s{stroke:color-mix(in oklab,var(--accent) 60%,transparent); stroke-width:2.2}
+.fc .fc-n.pair .s{stroke:var(--err); stroke-width:3}
+.fc .fc-conn.pair .s{fill:var(--err)}
+/* end flowchart */
+
+/* step through (Python) */
+.vizstep{flex:1 1 45%; min-height:0; display:flex; flex-direction:column; border-top:2px solid var(--line)}
+.vizstep[hidden]{display:none}
+.vizctl{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:7px 12px; border-bottom:1px solid var(--line)}
+.vizctl .btn{padding:4px 10px; font-family:"JetBrains Mono",monospace}
+.vizctl input[type=range]{flex:1 1 160px; accent-color:var(--accent)}
+.vizctl .cnt{font:600 .8rem "JetBrains Mono",monospace; color:var(--muted); min-width:110px; text-align:right}
+.vizmsg{padding:5px 12px; font-size:.85rem; border-bottom:1px solid var(--line); color:var(--muted)}
+.vizmsg.err{color:var(--err); background:color-mix(in oklab,var(--err) 8%,var(--surface))}
+.vizmsg.done{color:var(--ok)}
+.vizbody{flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+@media (max-width:700px){ .vizbody{grid-template-columns:minmax(0,1fr)} }
+.vizframes{overflow:auto; padding:10px 12px; display:flex; flex-direction:column; gap:8px}
+.vizout{overflow:auto; margin:0; padding:10px 12px; border-left:1px solid var(--line); background:var(--code-bg); font:13px/1.45 "JetBrains Mono",monospace; white-space:pre-wrap; word-break:break-word}
+.vizout::before{content:"Output so far"; display:block; font:700 .68rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+.vframe{border:1px solid var(--line); border-radius:8px; background:var(--code-bg)}
+.vframe.cur{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+.vframe h4{margin:0; padding:5px 10px; font:700 .8rem "JetBrains Mono",monospace; color:var(--muted); border-bottom:1px solid var(--line); display:flex; gap:8px}
+.vframe.cur h4{color:var(--accent)}
+.vframe h4 i{font-style:normal; font-weight:600; margin-left:auto}
+.vvars{display:grid; grid-template-columns:max-content minmax(0,1fr); gap:3px 12px; padding:6px 10px; align-items:start}
+.vvars .nm{font:600 13px/1.9 "JetBrains Mono",monospace; color:var(--ink); text-align:right}
+.vvars .vl{font:13px/1.9 "JetBrains Mono",monospace; min-width:0; overflow-x:auto}
+.vvars .none{grid-column:1/-1; color:var(--muted); font-size:.85rem}
+.vvars .rv .nm{color:var(--accent)}
+.vv-n{color:var(--t-num)} .vv-s{color:var(--t-str)} .vv-b,.vv-x{color:var(--t-kw)}
+.vv-fn,.vv-cls,.vv-o{color:var(--muted); font-style:italic}
+.chg>.vl,.chg>.nm{animation:vflash 1s ease-out}
+.vvars .chg.nm,.vvars .chg.vl{background:color-mix(in oklab,var(--warn) 22%,transparent); border-radius:4px}
+@keyframes vflash{from{background:color-mix(in oklab,var(--warn) 55%,transparent)}}
+@media (prefers-reduced-motion:reduce){ .chg>.vl,.chg>.nm{animation:none} }
+.vlist{display:inline-flex; flex-wrap:nowrap; vertical-align:top; align-items:flex-end; gap:0; margin:2px 0}
+.vlist .c{display:flex; flex-direction:column; align-items:center; min-width:30px}
+.vlist .c .i{font:10px/1.2 "JetBrains Mono",monospace; color:var(--muted)}
+.vlist .c .b{border:1px solid color-mix(in oklab,var(--ink) 40%,transparent); margin-left:-1px; padding:1px 6px; min-width:30px; text-align:center; background:var(--surface); line-height:1.6}
+.vlist .c.chg .b{background:color-mix(in oklab,var(--warn) 28%,var(--surface))}
+.vlist .bar{width:22px; background:color-mix(in oklab,var(--accent) 65%,transparent); border-radius:3px 3px 0 0; margin-bottom:2px}
+.vlist .bar.neg{background:color-mix(in oklab,var(--err) 60%,transparent)}
+.vlist .c.chg .bar{background:var(--warn)}
+.vkind{font:600 10px "JetBrains Mono",monospace; color:var(--muted); margin-right:4px; vertical-align:top}
+.vgrid{border-collapse:collapse; margin:2px 0; font:12px "JetBrains Mono",monospace}
+.vgrid td,.vgrid th{border:1px solid color-mix(in oklab,var(--ink) 35%,transparent); padding:1px 6px; text-align:center; background:var(--surface)}
+.vgrid th{font-size:10px; color:var(--muted); background:transparent; border:0}
+.vgrid td.chg{background:color-mix(in oklab,var(--warn) 28%,var(--surface))}
+.vdict{display:inline-grid; grid-template-columns:auto auto; border:1px solid color-mix(in oklab,var(--ink) 35%,transparent); border-radius:4px; margin:2px 0; vertical-align:top}
+.vdict>span{padding:0 8px; border-bottom:1px solid var(--line)}
+.vdict>span:nth-child(odd){border-right:1px solid var(--line); color:var(--muted)}
+.vobj{display:inline-block; border:1px solid color-mix(in oklab,var(--t-kw) 50%,transparent); border-radius:6px; padding:0 8px 2px; vertical-align:top}
+.vobj>b{display:block; font-size:10px; color:var(--t-kw)}
+.vid{font:600 10px "JetBrains Mono",monospace; color:var(--accent-ink); background:var(--accent); border-radius:4px; padding:0 4px; margin-left:4px; vertical-align:top}
+.vmore{color:var(--muted); padding:0 6px; align-self:center}
+
+/* the editor: the line about to run, and the one that just ran */
+.CodeMirror .viz-cur{background:color-mix(in oklab,var(--accent) 26%,transparent)}
+.CodeMirror .viz-prev{background:color-mix(in oklab,var(--accent) 10%,transparent)}
+.CodeMirror .viz-pick{background:color-mix(in oklab,var(--t-kw) 16%,transparent)}
+.viz-arrow{color:var(--accent); font:700 13px "JetBrains Mono",monospace; padding-left:2px}

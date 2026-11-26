@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
 <link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="visualize.css">
 <style>
 :root{
   --bg:#eef2f5; --surface:#fff; --ink:#16202a; --muted:#5a6876; --line:#d3dbe3; --accent:#0a6f8c; --accent-ink:#fff;
@@ -211,6 +212,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     <label class="f" id="optlabel">Optimisation <select id="opt"><option>O0</option><option selected>O1</option><option>O2</option></select></label>
     <label class="f" id="exlabel">Example <select id="ex"></select></label>
     <button class="btn" type="button" id="animBtn" hidden title="Watch this algorithm animated, step by step, beside your code">▶ Animation</button>
+    <button class="btn" type="button" id="vizBtn" aria-pressed="false" title="See your code as a flowchart; for Python, also run it one step at a time">◇ Visualize</button>
     <label class="f"><input type="checkbox" id="auto" checked> Run as I type</label>
     <label class="f" title="Keyword suggestions while you type, and hints with fixes for errors"><input type="checkbox" id="sugg" checked> Suggestions</label>
     <span class="spacer"></span>
@@ -238,6 +240,42 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <aside class="simpanel" id="simPanel" hidden aria-label="Algorithm animation">
   <div class="simhead"><b id="simName">Animation</b><a class="btn" id="simFull" href="algorithms.html">All simulations</a><button class="btn" type="button" id="simClose" title="Close (Esc)">Close</button></div>
   <iframe id="simFrame" title="Algorithm animation"></iframe>
+</aside>
+
+<aside class="vizpanel" id="vizPanel" hidden aria-label="Flowchart and step-through">
+  <div class="vizhead">
+    <b>Visualize</b>
+    <select id="vizFn" aria-label="Which function to draw" hidden></select>
+    <span class="vizzoom" role="group" aria-label="Zoom"><button type="button" id="vizZoomOut" title="Zoom out">−</button><button type="button" id="vizZoomFit" title="Fit to the panel">100%</button><button type="button" id="vizZoomIn" title="Zoom in">+</button></span>
+    <span class="grow"></span>
+    <button class="btn" type="button" id="vizStepBtn" aria-pressed="false" hidden title="Run the program one step at a time and watch every variable change">▶ Step through</button>
+    <button class="btn" type="button" id="vizClose" title="Close (Esc)">Close</button>
+  </div>
+  <div class="viznote" id="vizNote" hidden></div>
+  <div class="vizchart" id="vizChart" aria-label="Flowchart of the code"></div>
+  <div class="vizlegend" aria-hidden="true">
+    <span><svg viewBox="0 0 22 14"><rect x="1" y="2" width="20" height="10" rx="5" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg>start / end</span>
+    <span><svg viewBox="0 0 22 14"><rect x="1" y="2" width="20" height="10" rx="1.5" fill="none" stroke="var(--muted)" stroke-width="1.5"/></svg>step</span>
+    <span><svg viewBox="0 0 22 14"><polygon points="4,2 21,2 18,12 1,12" fill="none" stroke="var(--ok)" stroke-width="1.5"/></svg>input / output</span>
+    <span><svg viewBox="0 0 22 14"><polygon points="11,1 21,7 11,13 1,7" fill="none" stroke="var(--warn)" stroke-width="1.5"/></svg>decision</span>
+    <span><svg viewBox="0 0 22 14"><rect x="1" y="2" width="20" height="10" fill="none" stroke="var(--t-kw)" stroke-width="1.5"/><path d="M4 2v10M18 2v10" stroke="var(--t-kw)" stroke-width="1.2"/></svg>function call (double-click to open)</span>
+    <span><svg viewBox="0 0 22 14"><circle cx="11" cy="7" r="6" fill="var(--ink)"/></svg>connector: break / continue jump to the same letter</span>
+  </div>
+  <section class="vizstep" id="vizStepper" hidden aria-label="Step through">
+    <div class="vizctl">
+      <button class="btn" type="button" id="vizFirst" title="First step">⏮</button>
+      <button class="btn" type="button" id="vizPrev" title="Previous step (←)">◀</button>
+      <button class="btn primary" type="button" id="vizPlay">Play</button>
+      <button class="btn" type="button" id="vizNext" title="Next step (→)">▶</button>
+      <button class="btn" type="button" id="vizLast" title="Last step">⏭</button>
+      <input type="range" id="vizRange" min="0" max="0" value="0" aria-label="Step">
+      <span class="cnt" id="vizCount"></span>
+      <select id="vizSpeed" aria-label="Speed"><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select>
+      <label class="f" title="Draw lists of numbers as bars"><input type="checkbox" id="vizBars"> Bars</label>
+    </div>
+    <div class="vizmsg" id="vizMsg"></div>
+    <div class="vizbody"><div class="vizframes" id="vizFrames"></div><pre class="vizout" id="vizOut"></pre></div>
+  </section>
 </aside>
 
 <dialog id="drawer" class="drawer" aria-label="Guide and help">
@@ -268,10 +306,11 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
         <li><b>Theme:</b> choose System, Light or Dark in the toolbar; the choice is remembered in this browser.</li>
         <li>A run is stopped after 5 seconds (Java: 10 seconds), so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
         <li>With <b>Suggestions</b> on, a list of keywords, library names and names from your code appears as you type (pick with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Esc</kbd>, open it any time with <kbd>Ctrl</kbd> + <kbd>Space</kbd>). Errors get a short explanation and, when there is an obvious fix, a button that applies it. Untick Suggestions to turn both off.</li>
+        <li><b>◇ Visualize</b> draws your code as a flowchart (C, C++, Java and Python), one chart per function: diamonds are decisions and loops, slanted boxes are input and output, and lettered circles show where <code>break</code> and <code>continue</code> jump to. Click a shape to find its code; moving the cursor highlights the matching shape. For Python, <b>Step through</b> runs the program one line at a time and shows every variable, list and dictionary as it changes, with the flowchart following along (at most 1,500 steps).</li>
         <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs immediately. Click a line number in an error message to jump to it. Your code is kept in this browser.</li>
       </ul>
     </details>
-    <footer>Made by Mazharul Islam<span class="weblink"> · <a href="https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest">Download the offline app (Windows, Mac)</a> · <a href="https://mazhar1807102.github.io/algorithm-simulations/">Algorithm simulations</a></span></footer>
+    <footer>Made by Mazharul Islam<span class="weblink"> · <a href="https://github.com/MAZHAR1807102/c-cpp-playground/releases/latest">Download the offline app (Windows, Mac, Linux)</a> · <a href="https://mazhar1807102.github.io/algorithm-simulations/">Algorithm simulations</a></span></footer>
   </div>
 </dialog>
 
@@ -561,6 +600,7 @@ print("best:", best[0])
 
   function setLang(l, keepText) {
     lang = l; store.set('lang', l);
+    langHooks.forEach(fn => fn(l));
     document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
     cm.setOption('mode', LANGS[l].mode);
     $('fname').textContent = LANGS[l].file;
@@ -575,6 +615,9 @@ print("best:", best[0])
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[1]); }
     if (!keepText) setExample(store.get('example.' + l) || '');   // each language remembers its own example
   }
+  // for visualize.js (the flowchart and step-through panel)
+  const langHooks = [];
+  window.PG = { cm, lang: () => lang, stdin: () => $('stdin').value, onLang: fn => langHooks.push(fn), closeSim: () => closeSim() };
   function loadExample(name) { if (practice) stopPractice(); const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); setExample(name); schedule(0); }
   /* ---------- the animated simulation that goes with the loaded example (sims/, see examples-algo.js) ---------- */
   let curExample = '';
@@ -590,6 +633,7 @@ print("best:", best[0])
   function openSim() {
     const sim = SIMS[curExample];
     if (!sim) return;
+    if (window.Viz) window.Viz.close();
     $('simName').textContent = curExample + ' — animation';
     const url = 'sims/' + sim + '/index.html';
     if ($('simFrame').getAttribute('src') !== url) $('simFrame').setAttribute('src', url);
@@ -1515,5 +1559,6 @@ print("best:", best[0])
   }
 })();
 </script>
+<script type="module" src="visualize.js"></script>
 </body>
 </html>

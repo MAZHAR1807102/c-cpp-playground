@@ -66,6 +66,28 @@ const wheelUrl = f => `new URL('./vendor/wheels/${f}', self.location.href).href`
 const EXTRA_JS = `const EXTRA = { seaborn: [${wheelUrl(extraWheels.seaborn)}], openpyxl: [${wheelUrl(extraWheels.openpyxl)}, ${wheelUrl(extraWheels['et-xmlfile'])}] };`;
 const OFFLINE_JS = `const OFFLINE = ${JSON.stringify([...want].sort())};`;
 
+// the code parser for flowcharts (visualize.js): web-tree-sitter from npm, and the four grammars, downloaded from
+// jsDelivr (their npm packages also build native Node add-ons, which the app does not need) and checked by sha256
+const GRAMMARS = {
+  'tree-sitter-c@0.24.1/tree-sitter-c.wasm': 'c852c2a85ebf2beb636aa3b0ef7f7e70458684d74f6741b20dcb296885bed9f9',
+  'tree-sitter-cpp@0.23.4/tree-sitter-cpp.wasm': '174eb0deb75b2ec7881bcacda9f995648d8e683956e5c2267e69ab6dc503fcbf',
+  'tree-sitter-java@0.23.5/tree-sitter-java.wasm': '4fdeac4ca6ca089f06c6f7e562abcac1733cd465728cc7031ebb73c2019122c4',
+  'tree-sitter-python@0.25.0/tree-sitter-python.wasm': '16108b50df4ee9a30168794252ab55e7c93bfc5765d7fa0aa3e335752c515f47'
+};
+mkdirSync(join(vendor, 'tree-sitter', 'grammars'), { recursive: true });
+for (const f of ['tree-sitter.js', 'tree-sitter.wasm']) cpSync(join(nm, 'web-tree-sitter', f), join(vendor, 'tree-sitter', f));
+for (const [path, sha] of Object.entries(GRAMMARS)) {
+  const src = await fetchChecked('https://cdn.jsdelivr.net/npm/' + path, path.replace('/', '_'), sha);
+  mkdirSync(join(vendor, 'tree-sitter', 'grammars', dirname(path)), { recursive: true });
+  cpSync(src, join(vendor, 'tree-sitter', 'grammars', path));
+}
+const tsLocal = "new URL('./vendor/tree-sitter/', import.meta.url).href";
+writeFileSync(join(web, 'visualize.js'), readFileSync(join(root, 'visualize.js'), 'utf8')
+  .replace(/^const TS = .*$/m, `const TS = ${tsLocal};`)
+  .replace(/^const GRAMMARS = .*$/m, "const GRAMMARS = new URL('./vendor/tree-sitter/grammars/', import.meta.url).href;"));
+for (const f of ['flowchart.js', 'visualize.css']) cpSync(join(root, f), join(web, f));
+writeFileSync(join(web, 'python-tracer.js'), readFileSync(join(root, 'python-tracer.js'), 'utf8').replace(/^const PYODIDE = .*$/m, "const PYODIDE = new URL('./vendor/pyodide/', self.location.href).href;"));
+
 // CodeMirror 5: only the parts the pages use
 for (const d of ['lib', 'mode/clike', 'mode/python', 'mode/markdown', 'addon/edit', 'addon/hint', 'addon/runmode'])
   cpSync(join(nm, 'codemirror', d), join(vendor, 'codemirror', d), { recursive: true });
@@ -128,7 +150,7 @@ cpSync(join(root, 'guide-more.js'), join(web, 'guide-more.js'));
 
 // every file the page loads must now be local: fail the build if a CDN address is left anywhere it would be fetched
 const problems = [];
-for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js']) {
+for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js', 'visualize.js', 'python-tracer.js']) {
   const text = readFileSync(join(web, f), 'utf8');
   for (const m of text.matchAll(/(?:src|href)="(https?:[^"]+)"|import\s*\(?\s*['"](https?:[^'"]+)|=\s*'(https?:\/\/cdn[^']+)'/g)) {
     const url = m[1] || m[2] || m[3];
