@@ -85,7 +85,7 @@ const tsLocal = "new URL('./vendor/tree-sitter/', import.meta.url).href";
 writeFileSync(join(web, 'visualize.js'), readFileSync(join(root, 'visualize.js'), 'utf8')
   .replace(/^const TS = .*$/m, `const TS = ${tsLocal};`)
   .replace(/^const GRAMMARS = .*$/m, "const GRAMMARS = new URL('./vendor/tree-sitter/grammars/', import.meta.url).href;"));
-for (const f of ['flowchart.js', 'visualize.css']) cpSync(join(root, f), join(web, f));
+for (const f of ['flowchart.js', 'instrument.js', 'visualize.css']) cpSync(join(root, f), join(web, f));
 writeFileSync(join(web, 'python-tracer.js'), readFileSync(join(root, 'python-tracer.js'), 'utf8').replace(/^const PYODIDE = .*$/m, "const PYODIDE = new URL('./vendor/pyodide/', self.location.href).href;"));
 
 // CodeMirror 5: only the parts the pages use

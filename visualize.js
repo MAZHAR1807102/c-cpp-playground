@@ -2,6 +2,7 @@
 // run that shows the line about to run, every variable, and the output so far, with the flowchart following along.
 // The page (index.html) exposes window.PG = { cm, lang(), stdin(), onLang(fn), closeSim() }.
 import { buildCharts, layoutChart, renderSVG } from './flowchart.js';
+import { instrument, parseTrace } from './instrument.js';
 
 const TS = 'https://cdn.jsdelivr.net/npm/web-tree-sitter@0.25.10/';
 const GRAMMARS = 'https://cdn.jsdelivr.net/npm/';
@@ -108,7 +109,11 @@ function markNodes() {
   svg.querySelectorAll('.fc-n.sel,.fc-n.now,.fc-n.was').forEach(g => g.classList.remove('sel', 'now', 'was'));
   if (stepping && trace && trace.steps.length) {
     const st = trace.steps[stepIdx];
-    for (const g of nodesForLine(st.l, true).concat(nodesForLine(st.l, true).length ? [] : nodesForLine(st.l, false))) g.classList.add('now');
+    // several shapes on one line (a for loop's start, test and update): the test is the one that runs each time
+    let now = nodesForLine(st.l, true);
+    if (!now.length) now = nodesForLine(st.l, false);
+    const tests = now.filter(g => g.classList.contains('fc-dec'));
+    for (const g of tests.length ? tests : now) g.classList.add('now');
     if (stepIdx > 0) { const p = trace.steps[stepIdx - 1].l; if (p !== st.l) nodesForLine(p, true).forEach(g => g.classList.add('was')); }
     const n = svg.querySelector('.fc-n.now');
     if (n) scrollIntoViewIfNeeded(n);
@@ -149,20 +154,88 @@ function ensureWorker() {
 }
 function killWorker() { if (worker) worker.terminate(); worker = null; workerReady = null; }
 
-async function runTrace() {
-  if (!stepping) return;
-  const seqNo = ++traceSeq;
-  stopPlay();
-  setMsg('Starting Python…');
-  try { await ensureWorker(); } catch (e) { setMsg('Python could not start: ' + e.message, 'err'); return; }
-  if (seqNo !== traceSeq) return;
-  setMsg('Running the program step by step…');
-  const result = await new Promise(res => {
+function tracePython(seqNo) {
+  return new Promise(async res => {
+    setMsg('Starting Python…');
+    try { await ensureWorker(); } catch (e) { return res({ steps: [], out: '', error: 'Python could not start: ' + e.message, errLine: 0 }); }
+    if (seqNo !== traceSeq) return res(null);
+    setMsg('Running the program step by step…');
     const t = setTimeout(() => { killWorker(); res({ steps: [], out: '', error: 'Stopped: the program ran for more than ' + TRACE_TIMEOUT / 1000 + ' seconds without reaching a new line (a very long calculation inside one line?).', errLine: 0, timeout: true }); }, TRACE_TIMEOUT);
     worker.onmessage = ({ data }) => { if (data.type === 'trace') { clearTimeout(t); res(data); } };
     worker.postMessage({ type: 'trace', source: cm.getValue(), stdin: PG.stdin(), maxSteps: MAX_STEPS });
   });
-  if (seqNo !== traceSeq) return;
+}
+
+/* C, C++ and Java: the code gets a step recorder (instrument.js), is compiled and run, and the records become steps */
+const withTimeout = (p, ms) => Promise.race([p, new Promise(res => setTimeout(() => res({ timeout: true }), ms))]);
+function runWasm(wasm, stdin) {
+  return new Promise(res => {
+    const w = new Worker('runner.js', { type: 'module' });
+    let text = '', err = '';
+    const t = setTimeout(() => { w.terminate(); res({ text, err, timeout: true }); }, 10000);
+    w.onmessage = ({ data }) => {
+      if (data.type === 'out') for (const [s, x] of data.chunks) { if (s === 2) err += x; else text += x; }
+      else if (data.type === 'done') { clearTimeout(t); w.terminate(); res({ text, err, trap: data.trap, code: data.code }); }
+    };
+    w.onerror = e => { clearTimeout(t); res({ text, err, trap: e.message || 'the runner failed' }); };
+    w.postMessage({ wasm, stdin, limit: 40e6 }, [wasm.buffer]);
+  });
+}
+// the first error in compiler output: "main.cpp:12:5: error: ..." or "Main.java:12: ..."
+function firstError(text) {
+  const m = /(?:main\.(?:c|cpp)|Main\.java):(\d+):(?:\d+:)?\s*(?:fatal )?(?:error:)?\s*(.*)/.exec(text || '');
+  return m ? { line: +m[1], msg: m[2].trim() } : { line: 0, msg: (text || '').trim().split('\n')[0] || 'the compiler failed' };
+}
+async function traceCompiled(lang, seqNo) {
+  const src = cm.getValue(), stdin = PG.stdin();
+  let parser;
+  try { parser = await parserFor(lang); } catch (e) { return { steps: [], out: '', error: 'The code parser could not be loaded: ' + (e.message || e), errLine: 0 }; }
+  const tree = parser.parse(src);
+  let first = null;
+  try {
+    // with every variable first; if that does not compile, step through the lines only
+    for (const vars of [true, false]) {
+      let code;
+      try { code = instrument(tree.rootNode, lang, src, { vars }).code; } catch (e) { console.error(e); continue; }
+      if (seqNo !== traceSeq) return null;
+      let res;
+      if (lang === 'java') {
+        setMsg(vars ? 'Compiling the program with a step recorder (Java)…' : 'Trying again without the variables…');
+        const r = await withTimeout(PG.javaRun(code, stdin, PG.javaMainClass(src)).catch(e => ({ ok: false, error: String(e && e.message || e) })), 30000);
+        if (r.timeout) { PG.javaReset(); return { steps: [], out: '', error: 'Stopped after 30 seconds (compiling included). Is there an infinite loop that prints nothing?', errLine: 0 }; }
+        const err = String(r.stderr || r.error || '');
+        if (!r.ok && r.generateMs == null && /^Main\.java:\d+: /m.test(err)) { first = first || firstError(err); continue; }
+        const t = parseTrace(r.stdout || '');
+        let error = '';
+        if (!r.ok && !/__PG_STOP__|__PG_EXIT__/.test(err)) error = 'Exception: ' + (err.split('\n').find(l => l.trim()) || 'the program stopped with an error').trim();
+        res = { ...t, error, errLine: 0 };
+      } else {
+        setMsg(PG.clangReady() ? (vars ? 'Compiling the program with a step recorder…' : 'Trying again without the variables…') : 'Loading the C/C++ compiler (about 100 MB the first time)…');
+        const std = lang === 'cpp' && /^c\+\+1[14]$/.test(PG.std()) ? 'c++17' : PG.std();
+        const c = await withTimeout(PG.compile(lang, code, std), 180000);
+        if (c.timeout) return { steps: [], out: '', error: 'The compiler did not answer. Try again.', errLine: 0 };
+        if (!c.ok) { first = first || firstError(c.diag); continue; }
+        if (seqNo !== traceSeq) return null;
+        setMsg('Running the program step by step…');
+        const r = await runWasm(c.wasm, stdin);
+        const t = parseTrace(r.text);
+        const error = r.timeout ? 'Stopped after 10 seconds. Is there an infinite loop that prints nothing?' : r.trap ? 'Runtime error: ' + r.trap + ' (for example an out-of-bounds access or a division by zero)' : '';
+        res = { ...t, out: t.out + r.err, error, errLine: 0 };
+      }
+      if (!vars) res.note = 'Only the lines are shown: this program could not be compiled with the variable recorder.';
+      return res;
+    }
+  } finally { tree.delete(); }
+  return { steps: [], out: '', error: 'Step-through needs a program that compiles. Fix the errors shown in the Output panel first.' + (first && first.msg ? ` (First error: ${first.msg})` : ''), errLine: first ? first.line : 0 };
+}
+
+async function runTrace() {
+  if (!stepping) return;
+  const seqNo = ++traceSeq;
+  stopPlay();
+  const lang = PG.lang();
+  const result = lang === 'python' ? await tracePython(seqNo) : await traceCompiled(lang, seqNo);
+  if (!result || seqNo !== traceSeq) return;
   // after an edit, stay at the same step number, so a change can be watched in place
   const keep = trace ? stepIdx : 0;
   trace = result; stale = false;
@@ -197,10 +270,11 @@ function showStep() {
   if (st.ev === 'exception') setMsg(`Line ${st.l}: ${st.ex}`, 'err');
   else if (last && trace.error) setMsg(`Line ${trace.errLine || st.l}: ${trace.error}`, 'err');
   else if (last && trace.truncated) setMsg(`Stopped after ${n} steps (the step limit). Shorten the loop or the input to see the end.`, 'err');
-  else if (last) setMsg('The program finished.', 'done');
+  else if (last) setMsg('The program finished.' + (trace.note ? ' ' + trace.note : ''), 'done');
   else {
-    const limit = trace.truncated ? ` (only the first ${n} steps are recorded: the step limit)` : '';
-    if (st.ev === 'call') setMsg(`Calling ${top ? top.n : ''}() — line ${st.l}${limit}`);
+    const limit = (trace.truncated ? ` (only the first ${n} steps are recorded: the step limit)` : '') + (trace.note ? ' · ' + trace.note : '');
+    if (st.ev === 'call' && (!top || top.n === 'Global')) setMsg(`The program starts${limit}`);
+    else if (st.ev === 'call') setMsg(`Calling ${top.n}() — line ${st.l}${limit}`);
     else if (st.ev === 'return') setMsg(`${top && top.n !== 'Global' ? top.n + '() returns' : 'Finishing'} — line ${st.l}${limit}`);
     else setMsg(`Line ${st.l} runs next${limit}`);
   }
@@ -244,6 +318,8 @@ function countRefs(st) {
   return c;
 }
 function prim(v) {
+  if (v[0] === 'p') return `<span class="vv-p" title="A pointer: the address of what it points to">${esc(v[1])}</span>`;
+  if (v[0] === 'u') return v[1] ? `<span class="vv-o">${esc(v[1])}</span>` : '<span class="vv-o" title="This type cannot be shown">…</span>';
   const cls = { n: 'vv-n', s: 'vv-s', b: 'vv-b', x: 'vv-x' }[v[0]] || '';
   return `<span class="${cls}">${esc(v[1])}</span>`;
 }
@@ -323,7 +399,7 @@ function togglePlay() {
   playing = setInterval(() => { if (!trace || stepIdx >= trace.steps.length - 1) return stopPlay(); go(stepIdx + 1); }, SPEEDS[$('vizSpeed').value] || 420);
 }
 function setStepping(on) {
-  stepping = on && PG.lang() === 'python';
+  stepping = on;
   $('vizStepBtn').setAttribute('aria-pressed', stepping);
   $('vizStepper').hidden = !stepping;
   if (!stepping) { stopPlay(); clearMarks(); traceSeq++; }
@@ -341,7 +417,7 @@ function openPanel() {
   cm.refresh();
   updateLangUI();
   refresh();
-  if (store.get('step') === '1' && PG.lang() === 'python') setStepping(true);
+  if (store.get('step') === '1') setStepping(true);
 }
 function closePanel() {
   if (!open) return;
@@ -354,9 +430,13 @@ function closePanel() {
   cm.refresh();
 }
 function updateLangUI() {
-  const py = PG.lang() === 'python';
-  $('vizStepBtn').hidden = !py;
-  if (!py && stepping) setStepping(false);
+  // the hook runs before the new language's code is in the editor: start once it is
+  if (stepping) {
+    trace = null; stepIdx = 0; traceSeq++; stopPlay(); clearMarks();
+    $('vizFrames').innerHTML = ''; $('vizOut').textContent = ''; $('vizCount').textContent = ''; $('vizRange').max = 0;
+    setMsg('Preparing…');
+    clearTimeout(traceTimer); traceTimer = setTimeout(runTrace, 50);
+  }
 }
 window.Viz = { close: closePanel, isOpen: () => open };
 

@@ -2,7 +2,7 @@
 // The page creates a fresh runner for every run and terminates it if the program runs too long.
 import { WASI, File, OpenFile, ConsoleStdout, PreopenDirectory, WASIProcExit } from 'https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.4.2/dist/index.js';
 
-const LIMIT = 200000;   // characters of output before it is cut off
+let LIMIT = 200000;   // characters of output before it is cut off (the step-through asks for more)
 let sent = 0, buf = [], timer = null;
 function flush() { if (buf.length) { postMessage({ type: 'out', chunks: buf }); buf = []; } timer = null; }
 function emit(stream, text) {
@@ -20,6 +20,7 @@ function sink(stream) {
 
 onmessage = async ({ data }) => {
   const { wasm, stdin } = data;
+  if (data.limit) LIMIT = data.limit;
   const fds = [new OpenFile(new File(new TextEncoder().encode(stdin))), sink(1), sink(2), new PreopenDirectory('.', [])];
   const wasi = new WASI(['main'], [], fds);
   const t0 = performance.now();

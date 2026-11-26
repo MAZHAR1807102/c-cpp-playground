@@ -248,7 +248,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
     <select id="vizFn" aria-label="Which function to draw" hidden></select>
     <span class="vizzoom" role="group" aria-label="Zoom"><button type="button" id="vizZoomOut" title="Zoom out">−</button><button type="button" id="vizZoomFit" title="Fit to the panel">100%</button><button type="button" id="vizZoomIn" title="Zoom in">+</button></span>
     <span class="grow"></span>
-    <button class="btn" type="button" id="vizStepBtn" aria-pressed="false" hidden title="Run the program one step at a time and watch every variable change">▶ Step through</button>
+    <button class="btn" type="button" id="vizStepBtn" aria-pressed="false" title="Run the program one step at a time and watch every variable change">▶ Step through</button>
     <button class="btn" type="button" id="vizClose" title="Close (Esc)">Close</button>
   </div>
   <div class="viznote" id="vizNote" hidden></div>
@@ -306,7 +306,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
         <li><b>Theme:</b> choose System, Light or Dark in the toolbar; the choice is remembered in this browser.</li>
         <li>A run is stopped after 5 seconds (Java: 10 seconds), so an infinite loop cannot freeze the page. Output is cut off after 200,000 characters.</li>
         <li>With <b>Suggestions</b> on, a list of keywords, library names and names from your code appears as you type (pick with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Esc</kbd>, open it any time with <kbd>Ctrl</kbd> + <kbd>Space</kbd>). Errors get a short explanation and, when there is an obvious fix, a button that applies it. Untick Suggestions to turn both off.</li>
-        <li><b>◇ Visualize</b> draws your code as a flowchart (C, C++, Java and Python), one chart per function: diamonds are decisions and loops, slanted boxes are input and output, and lettered circles show where <code>break</code> and <code>continue</code> jump to. Click a shape to find its code; moving the cursor highlights the matching shape. For Python, <b>Step through</b> runs the program one line at a time and shows every variable, list and dictionary as it changes, with the flowchart following along (at most 1,500 steps).</li>
+        <li><b>◇ Visualize</b> draws your code as a flowchart (C, C++, Java and Python), one chart per function: diamonds are decisions and loops, slanted boxes are input and output, and lettered circles show where <code>break</code> and <code>continue</code> jump to. Click a shape to find its code; moving the cursor highlights the matching shape. <b>Step through</b> (all four languages) runs the program one line at a time and shows every variable, array, list, map and object as it changes, with the flowchart following along into each function call (at most 1,500 steps). For C, C++ and Java the program is compiled again with a hidden step recorder, which takes a few seconds; pointers show as addresses.</li>
         <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> runs immediately. Click a line number in an error message to jump to it. Your code is kept in this browser.</li>
       </ul>
     </details>
@@ -1237,7 +1237,7 @@ print("best:", best[0])
       }
       else if (data.type === 'ready') engineReady('clang', 'Compiler');
       else if (data.type === 'fatal') { compiler.terminate(); compiler = null; engineFailed('clang', data.message); }
-      else if (data.type === 'compiled') onCompiled(data);
+      else if (data.type === 'compiled') { if (vizWait.has(data.id)) { vizWait.get(data.id)(data); vizWait.delete(data.id); } else onCompiled(data); }
     };
     compiler.postMessage({ type: 'load' });
   }
@@ -1270,6 +1270,40 @@ print("best:", best[0])
     killTimer = setTimeout(() => { if (!runner) return; stopRunner(); stopped(); }, 5000);
     runner.postMessage({ wasm, stdin: $('stdin').value }, [wasm.buffer]);
   }
+
+  /* for the step-through of visualize.js: the same compiler (its own request ids), a Java runtime of its own */
+  const vizWait = new Map();
+  let vizN = 0, vizJava = null;
+  function enginePromise(eng) {
+    return new Promise((res, rej) => {
+      let started = false;
+      const tick = () => {
+        const st = engines[eng].state;
+        if (st === 'ready') return res();
+        if (st === 'loading') started = true;
+        else if (started) return rej(new Error('Could not load ' + ENGINE_NAME[eng] + '. Check the internet connection.'));
+        else { ensureEngine(eng); started = true; }
+        setTimeout(tick, 250);
+      };
+      tick();
+    });
+  }
+  Object.assign(window.PG, {
+    std: () => $('std').value,
+    clangReady: () => engines.clang.state === 'ready',
+    compile: async (l, source, std) => {
+      await enginePromise('clang');
+      return new Promise(res => { const id = 'viz' + (++vizN); vizWait.set(id, res); compiler.postMessage({ type: 'compile', id, lang: l, source, std, opt: 'O1' }); });
+    },
+    javaRun: async (source, input, mainClass) => {
+      await loadScript(JAVA_BASE + 'java-wasm.iife.js');
+      if (!vizJava) vizJava = JavaWasm.createRuntime({ baseUrl: new URL(JAVA_BASE, location.href).href, onProgress: () => {} });
+      const rt = await vizJava;
+      return rt.run(javaSource(source), { input, mainClass });
+    },
+    javaReset: () => { if (vizJava) vizJava.then(r => r.destroy(), () => {}); vizJava = null; },
+    javaMainClass: src => javaMainClass(src)
+  });
 
   /* Python: one worker keeps the interpreter loaded; it is replaced if a program has to be stopped */
   let pyWorker = null, pyKill = null, pyAny = false;

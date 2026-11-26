@@ -87,6 +87,7 @@ body.vizopen header .hright label.f{display:none}
 .vvars .none{grid-column:1/-1; color:var(--muted); font-size:.85rem}
 .vvars .rv .nm{color:var(--accent)}
 .vv-n{color:var(--t-num)} .vv-s{color:var(--t-str)} .vv-b,.vv-x{color:var(--t-kw)}
+.vv-p{color:var(--muted); font-size:.92em}
 .vv-fn,.vv-cls,.vv-o{color:var(--muted); font-style:italic}
 .chg>.vl,.chg>.nm{animation:vflash 1s ease-out}
 .vvars .chg.nm,.vvars .chg.vl{background:color-mix(in oklab,var(--warn) 22%,transparent); border-radius:4px}
