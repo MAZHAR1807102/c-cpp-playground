@@ -262,6 +262,74 @@
     return { code: L.join('\n') + '\nendmodule\n', desc, truth: false };
   }
 
+  /* ---------- inputs chosen by hand: a table of steps, each holding a value for every input ---------- */
+  // Values may be written 1, 0, 13, -4, 0x1f, 0b101, 8'hff, 4'b10x1 … Combinational modules hold each step for
+  // a number of nanoseconds; with a clock the clock runs by itself and each step lasts a number of cycles.
+  function parseVal(raw, w) {
+    const s = String(raw == null ? '' : raw).trim().replace(/_/g, '');
+    if (s === '') return { lit: `${w}'d0` };
+    let m;
+    if ((m = /^(\d*)'([sS]?)([bBoOdDhH])([0-9a-fA-FxXzZ?]+)$/.exec(s))) {
+      const digits = { b: /^[01xXzZ?]+$/, o: /^[0-7xXzZ?]+$/, d: /^(\d+|[xXzZ?])$/, h: /^[0-9a-fA-FxXzZ?]+$/ }[m[3].toLowerCase()];
+      return digits.test(m[4]) ? { lit: `${w}'${m[2]}${m[3]}${m[4]}` } : { err: `“${raw}” has a digit that ${m[3]} numbers do not have` };
+    }
+    if ((m = /^0[xX]([0-9a-fA-F]+)$/.exec(s))) return { lit: `${w}'h${m[1]}` };
+    if ((m = /^0[bB]([01xXzZ]+)$/.exec(s))) return { lit: `${w}'b${m[1]}` };
+    if (/^[xXzZ]$/.test(s)) return { lit: `${w}'b${s.repeat(Math.min(w, 64))}` };
+    if ((m = /^(-?)(\d+)$/.exec(s))) {
+      const n = BigInt(m[2]);
+      if (!m[1] && n >= 1n << BigInt(w)) return { err: `${m[2]} does not fit in ${w} bit${w > 1 ? 's' : ''}` };
+      return { lit: `${m[1] ? '-' : ''}${w}'d${m[2]}` };
+    }
+    return { err: `“${raw}” is not a number (write e.g. 5, 0x1f, 0b101 or 4'b1010)` };
+  }
+  const clockOf = m => m.ports.find(p => p.dir === 'input' && isClock(p));
+  const stimCols = m => m.ports.filter(p => p.dir === 'input' && p !== clockOf(m));
+  function stimFor(m) {
+    cur.stim = cur.stim || {};
+    return cur.stim[m.name] || (cur.stim[m.name] = { mode: null, tb: null, steps: null });
+  }
+  function defaultSteps(m) {
+    const cols = stimCols(m), clk = clockOf(m), rst = cols.find(isReset);
+    const zero = p => p === rst ? (activeLow(p) ? '0' : '1') : /^(en|enable|ce)$/i.test(p.name) ? '1' : '0';
+    if (clk) {
+      const on = Object.fromEntries(cols.map(p => [p.name, zero(p)]));
+      const run = Object.fromEntries(cols.map(p => [p.name, p === rst ? (activeLow(p) ? '1' : '0') : zero(p)]));
+      return rst ? [{ v: on, t: 2 }, { v: run, t: 4 }, { v: { ...run }, t: 4 }] : [{ v: on, t: 4 }, { v: { ...run }, t: 4 }];
+    }
+    const n = cols.reduce((s, p) => s + p.width, 0), rows = Math.min(4, 1 << Math.min(n, 2));
+    return Array.from({ length: Math.max(1, rows) }, (_, r) => {
+      let bit = n - 1; const v = {};
+      for (const p of cols) { let x = 0n; for (let k = p.width - 1; k >= 0; k--, bit--) if (bit < 2 && (r >> bit) & 1) x |= 1n << BigInt(k); v[p.name] = x.toString(); }
+      return { v, t: 10 };
+    });
+  }
+  // forFile: a readable testbench to keep in the project; otherwise rows report "\x1eST <step> <outputs>"
+  function manualTestbench(m, steps, forFile) {
+    const ins = m.ports.filter(p => p.dir === 'input'), outs = m.ports.filter(p => p.dir !== 'input');
+    const clk = clockOf(m), cols = stimCols(m), errors = [];
+    const decl = (p, kind) => `    ${kind} ${p.width > 1 ? `[${p.width - 1}:0] ` : ''}${p.name};`;
+    const tbName = forFile || '__pg_tb';   // forFile: the module name of a testbench to keep
+    const L = ['`timescale 1ns/1ps', `module ${tbName};`];
+    ins.forEach(p => L.push(decl(p, 'reg')));
+    outs.forEach(p => L.push(decl(p, 'wire')));
+    L.push('', `    ${m.name} dut (${m.ports.map(p => `.${p.name}(${p.name})`).join(', ')});`, '');
+    if (clk) L.push(`    // the clock: 10 ns per cycle`, `    initial ${clk.name} = 0;`, `    always #5 ${clk.name} = ~${clk.name};`, '');
+    const fmtAll = ins.filter(p => p !== clk).concat(outs).map(p => `${p.name}=%${p.width > 4 ? 'h' : 'b'}`).join(' ');
+    const argsAll = ins.filter(p => p !== clk).concat(outs).map(p => p.name).join(', ');
+    L.push('    initial begin', `        $dumpfile("wave.vcd"); $dumpvars(0, ${tbName});`);
+    steps.forEach((s, i) => {
+      L.push(`        // step ${i + 1}`);
+      for (const p of cols) { const v = parseVal(s.v && s.v[p.name], p.width); if (v.err) errors.push({ step: i, port: p.name, msg: v.err }); else L.push(`        ${p.name} = ${v.lit};`); }
+      const t = Math.max(1, Math.min(100000, Math.trunc(+s.t) || (clk ? 1 : 10)));
+      L.push(clk ? `        repeat (${t}) @(negedge ${clk.name});` : `        #${t};`);
+      if (!forFile) L.push(`        $display("%cST ${i}${outs.map(() => ' %b').join('')}", 8'd30${outs.map(p => ', ' + p.name).join('')});`);
+      if (argsAll) L.push(`        $display("t=%0t  ${fmtAll}", $time, ${argsAll});`);
+    });
+    L.push('        $finish;', '    end', 'endmodule', '');
+    return { code: L.join('\n'), errors, desc: `your inputs for ${m.name}: ${steps.length} step${steps.length === 1 ? '' : 's'}` };
+  }
+
   /* ---------- simulation (verilog-worker.js) ---------- */
   let worker = null, ready = null, busy = false, pending = false, timer = 0, killer = 0, runId = 0;
   function startWorker() {
@@ -300,20 +368,40 @@
     // the testbench: the project's own (a module without ports), preferring one that uses the module being edited
     const tbs = mods.filter(m => !m.ports.length && m.name !== '__pg_tb');
     const target = mods.find(m => m.name === focus) || mods.find(m => m.ports.length && !mods.some(x => x.insts.some(i => i.type === m.name))) || mods[0];
+    // where the inputs come from: a testbench, the automatic one, or the user's table (chosen per module)
+    const forTarget = tbs.filter(t => target && (t.insts.some(i => i.type === target.name) || uses(t, target.name)));
+    const st = target && target.ports.length ? stimFor(target) : null;
+    let mode = here && !here.ports.length ? 'tb' : st && st.mode || (tbs.length ? 'tb' : 'auto');
     let tb = null;
-    if (here && !here.ports.length) tb = here;
-    else if (tbs.length) tb = tbs.find(t => target && (t.insts.some(i => i.type === target.name) || uses(t, target.name))) || tbs[0];
-    let sim, desc, truthRun = null;
-    if (tb) {
-      const dump = /\$dumpvars/.test(tb.body) ? '' : `module __pg_dump;\n  initial begin $dumpfile("wave.vcd"); $dumpvars(0, ${tb.name}); end\nendmodule\n`;
-      const vcdName = (/\$dumpfile\s*\(\s*"([^"]+)"/.exec(tb.body) || [])[1] || 'wave.vcd';
-      sim = await simulate([...files, { path: '__pg_extra.v', data: LIMIT_V + dump }], [tb.name, '__pg_limit', ...(dump ? ['__pg_dump'] : [])], vcdName);
-      desc = 'testbench ' + tb.name;
-      // the truth table of the module being edited still comes from its own run
+    if (mode === 'tb') {
+      if (here && !here.ports.length) tb = here;
+      else tb = (st && st.tb && tbs.find(t => t.name === st.tb)) || forTarget[0] || tbs[0] || null;
+      if (!tb) mode = 'auto';
+    }
+    if (mode === 'manual' && !(st && target.ports.some(p => p.dir === 'input'))) mode = 'auto';
+    let sim, desc, truthRun = null, stimErrors = [];
+    const truthToo = async () => {
       if (target && target.ports.length && combinational(target) && inBits(target) <= 10 && inBits(target) > 0 && sim.ok) {
         const t = autoTestbench(target);
         truthRun = await simulate([...files, { path: '__pg_tb.v', data: t.code }], ['__pg_tb'], 'wave.vcd');
       }
+    };
+    if (mode === 'tb') {
+      const dump = /\$dumpvars/.test(tb.body) ? '' : `module __pg_dump;
+  initial begin $dumpfile("wave.vcd"); $dumpvars(0, ${tb.name}); end
+endmodule
+`;
+      const vcdName = (/\$dumpfile\s*\(\s*"([^"]+)"/.exec(tb.body) || [])[1] || 'wave.vcd';
+      sim = await simulate([...files, { path: '__pg_extra.v', data: LIMIT_V + dump }], [tb.name, '__pg_limit', ...(dump ? ['__pg_dump'] : [])], vcdName);
+      desc = 'testbench ' + tb.name;
+      await truthToo();   // the truth table of the module being edited still comes from its own run
+    } else if (mode === 'manual') {
+      if (!st.steps || !st.steps.length) { st.steps = defaultSteps(target); save(); }
+      const t = manualTestbench(target, st.steps);
+      stimErrors = t.errors;
+      sim = await simulate([...files, { path: '__pg_tb.v', data: t.code }, { path: '__pg_extra.v', data: LIMIT_V }], ['__pg_tb', '__pg_limit'], 'wave.vcd');
+      desc = t.desc;
+      await truthToo();
     } else if (target && target.ports.length) {
       const t = autoTestbench(target);
       sim = await simulate([...files, { path: '__pg_tb.v', data: t.code }, { path: '__pg_extra.v', data: LIMIT_V }], ['__pg_tb', '__pg_limit'], 'wave.vcd');
@@ -325,7 +413,7 @@
     }
     busy = false;
     if (id !== runId) return;
-    last = { sim, desc, target, tb, truthRun, mods };
+    last = { sim, desc, target, tb, truthRun, mods, mode, tbs, forTarget, stimErrors, here };
     show();
     if (pending) run();
   }
@@ -350,7 +438,7 @@
     errFiles = new Set(last.errors.map(e => e.file));
     renderFiles(); markErrors();
     // console
-    const lines = text.split('\n').filter(l => !l.startsWith('\x1eTT ') && !/^VCD info: dumpfile/.test(l) && !/^__pg_|\$finish called at/.test(l));
+    const lines = text.split('\n').filter(l => !l.startsWith('\x1eTT ') && !l.startsWith('\x1eST ') && !/^VCD info: dumpfile/.test(l) && !/^__pg_|\$finish called at/.test(l));
     $('console').innerHTML = (sim.ok ? `<span class="m">${esc(desc)} · simulated in ${Math.round(sim.ms || 0)} ms</span>\n` : '') +
       lines.map(l => { const m = /^([^\s:]+\.\w+):(\d+): (.*)$/.exec(l); return m && !m[1].startsWith('__pg') ? `<span class="${/error/i.test(m[3]) ? 'e' : ''}"><span class="ln" data-f="${esc(m[1])}" data-l="${m[2]}">${esc(m[1])}:${m[2]}</span>: ${esc(m[3])}</span>` : (/^(The simulation was stopped|Icarus|\(stopped)/.test(l) ? `<span class="e">${esc(l)}</span>` : esc(l)); }).join('\n');
     // waveform
@@ -369,6 +457,7 @@
     } else setStatus('ok', `${desc} · ${Math.round(sim.ms || 0)} ms`);
     renderLogic();
     renderCircuit();
+    renderStim();
   }
   $('console').onclick = e => {
     const l = e.target.closest('.ln'); if (!l) return;
@@ -381,13 +470,127 @@
     $('mods').innerHTML = '<b>Modules</b>' + mods.map(m => `<span title="${esc(m.file)}:${m.line}">${esc(m.name)} ${!m.ports.length ? '<i>testbench</i>' : top.includes(m) && m.insts.length ? '<i>top</i>' : ''}${m.ports.length ? ` <i>${m.ports.filter(p => p.dir === 'input').length} in · ${m.ports.filter(p => p.dir !== 'input').length} out</i>` : ''}</span>`).join('');
   }
 
+  /* ---------- the Inputs selector (waveform tab) and the table of steps ---------- */
+  let stimKey = null;
+  function renderStim() {
+    const sel = $('inSrc'), box = $('stim'), L = last, m = L && L.target;
+    if (!L || !m || !m.ports.length || (L.here && !L.here.ports.length)) {
+      sel.innerHTML = L && L.tb ? `<option>Testbench: ${esc(L.tb.name)}</option>` : '<option>—</option>';
+      sel.disabled = true; sel.title = L && L.tb ? 'The module being edited is a testbench, so it drives the simulation' : '';
+      box.hidden = true; stimKey = null; return;
+    }
+    sel.disabled = false; sel.title = 'Where the inputs of ' + m.name + ' come from';
+    const hasIn = m.ports.some(p => p.dir === 'input');
+    const auto = combinational(m) && inBits(m) <= 10 && hasIn ? 'Automatic: every combination' : 'Automatic: clock, reset, random values';
+    sel.innerHTML = `<option value="auto">${auto}</option>` + (hasIn ? '<option value="manual">My values (a table of steps)</option>' : '') +
+      L.tbs.map(t => `<option value="tb:${esc(t.name)}">Testbench: ${esc(t.name)}${L.forTarget.includes(t) ? '' : ' (does not use ' + esc(m.name) + ')'}</option>`).join('') +
+      (hasIn ? '<option value="new">Write a testbench file from my values…</option>' : '');
+    sel.value = L.mode === 'tb' && L.tb ? 'tb:' + L.tb.name : L.mode;
+    box.hidden = L.mode !== 'manual';
+    if (L.mode === 'manual') stimTable(m);
+    else stimKey = null;
+  }
+  function stimTable(m, force) {
+    const box = $('stim'), st = stimFor(m), cols = stimCols(m), outs = m.ports.filter(p => p.dir !== 'input'), clk = clockOf(m);
+    if (!st.steps || !st.steps.length) st.steps = defaultSteps(m);
+    const key = [cur.id, m.name, cols.map(p => p.name + ':' + p.width).join(','), outs.map(p => p.name + ':' + p.width).join(','), st.steps.length].join('|');
+    if (force || key !== stimKey) {
+      stimKey = key;
+      const unit = clk ? 'cycles' : 'ns';
+      let h = `<div class="srow"><b>Inputs of ${esc(m.name)}</b><span class="note">${clk ? `${esc(clk.name)} ticks by itself (10 ns per cycle); each step lasts some cycles` : 'each step holds the inputs for some nanoseconds'}. Click a bit to flip it; type other values as 5, 0x1f, 0b101 or 8'hff.</span></div>`;
+      h += `<table class="tt stimt"><thead><tr><th>step</th>${cols.map(p => `<th title="input, ${p.width} bit${p.width > 1 ? 's' : ''}">${esc(p.name)}${p.width > 1 ? `<small>[${p.width - 1}:0]</small>` : ''}</th>`).join('')}<th>${unit}</th>${outs.map(p => `<th class="o" title="output, ${p.width} bit${p.width > 1 ? 's' : ''}">${esc(p.name)}</th>`).join('')}<th></th></tr></thead><tbody>`;
+      st.steps.forEach((s, i) => {
+        h += `<tr data-i="${i}"><td class="n">${i + 1}</td>`;
+        for (const p of cols) {
+          const v = s.v[p.name] == null ? '0' : String(s.v[p.name]);
+          h += p.width === 1 && /^[01]$/.test(v) ? `<td class="click bit${v === '1' ? ' one' : ''}" data-p="${esc(p.name)}" tabindex="0" role="button" title="Click to flip">${v}</td>`
+            : `<td><input type="text" data-p="${esc(p.name)}" value="${esc(v)}" size="${Math.max(3, Math.min(10, Math.ceil(p.width / 3) + 2))}" spellcheck="false" aria-label="${esc(p.name)} in step ${i + 1}"></td>`;
+        }
+        h += `<td><input type="number" data-t min="1" max="100000" value="${esc(s.t)}" aria-label="length of step ${i + 1}"></td>`;
+        h += outs.map((p, k) => `<td class="o" data-k="${k}">·</td>`).join('');
+        h += `<td class="act"><button type="button" data-a="up" title="Move up">↑</button><button type="button" data-a="dup" title="Copy this step below">⧉</button><button type="button" data-a="del" title="Delete this step">✕</button></td></tr>`;
+      });
+      h += `</tbody></table><div class="srow"><button class="btn small primary" type="button" data-a="add">+ Step</button><button class="btn small" type="button" data-a="count" title="One step for every combination of the inputs">Every combination</button><button class="btn small" type="button" data-a="reset" title="Start again from a few steps">Reset</button><button class="btn small" type="button" data-a="file" title="Save these steps as a testbench file you can edit">Save as testbench file</button><span class="note err" id="stimErr"></span></div>`;
+      box.innerHTML = h;
+    }
+    // the outputs of each step, from the last run, and any values that could not be read
+    const res = {};
+    if (last && last.mode === 'manual' && last.sim) for (const [, t] of last.sim.out) for (const line of t.split('\n')) { const mm = /^\x1eST (\d+)((?: [01xz]+)*)/.exec(line); if (mm) res[mm[1]] = mm[2].trim().split(' '); }
+    const radix = $('radix').value;
+    box.querySelectorAll('tr[data-i]').forEach(tr => outs.forEach((p, k) => {
+      const td = tr.querySelector(`td.o[data-k="${k}"]`), v = res[tr.dataset.i] && res[tr.dataset.i][k];
+      td.textContent = v == null ? '·' : Wave.fmt(v, p.width, radix);
+      td.title = v == null ? 'not simulated' : `${p.name} = ${v} (binary)`;
+      td.classList.toggle('one', v === '1');
+      td.classList.toggle('x', v != null && /[xz]/.test(v));
+    }));
+    box.querySelectorAll('.bad').forEach(e => { e.classList.remove('bad'); e.removeAttribute('title'); });
+    const errs = last && last.mode === 'manual' ? last.stimErrors || [] : [];
+    for (const e of errs) { const c = box.querySelector(`tr[data-i="${e.step}"] [data-p="${CSS.escape(e.port)}"]`); if (c) { c.classList.add('bad'); c.title = e.msg; } }
+    const er = $('stimErr'); if (er) er.textContent = errs.length ? `Step ${errs[0].step + 1}, ${errs[0].port}: ${errs[0].msg}` + (errs.length > 1 ? ` (and ${errs.length - 1} more)` : '') : '';
+  }
+  function stimTarget() { return last && last.target && last.mode === 'manual' ? last.target : null; }
+  function stimChanged(rebuild, ms = 250) { const m = stimTarget(); if (rebuild && m) stimTable(m, true); save(); schedule(ms); }
+  function saveTestbenchFile(m) {
+    const st = stimFor(m);
+    if (!st.steps || !st.steps.length) st.steps = defaultSteps(m);
+    let tbName = m.name + '_tb', k = 2;
+    while (mods.some(x => x.name === tbName) || cur.files.some(f => f.name === tbName + '.v')) tbName = m.name + '_tb' + k++;
+    const t = manualTestbench(m, st.steps, tbName);
+    const name = addFile(tbName + '.v', `// Testbench for ${m.name}, written from the table of steps. Edit it freely: while it is in the\n// project and chosen under "Inputs", it drives the simulation.\n` + t.code, false);
+    st.mode = 'tb'; st.tb = tbName;
+    openFile(name); save(); schedule(0);
+  }
+  $('inSrc').onchange = () => {
+    const m = last && last.target, v = $('inSrc').value; if (!m) return;
+    const st = stimFor(m);
+    if (v === 'new') { saveTestbenchFile(m); return; }
+    if (v.startsWith('tb:')) { st.mode = 'tb'; st.tb = v.slice(3); }
+    else { st.mode = v; if (v === 'manual' && (!st.steps || !st.steps.length)) st.steps = defaultSteps(m); }
+    stimKey = null; save(); schedule(0);
+  };
+  $('stim').addEventListener('click', e => {
+    const m = stimTarget(); if (!m) return;
+    const st = stimFor(m), tr = e.target.closest('tr[data-i]'), i = tr ? +tr.dataset.i : -1;
+    const bit = e.target.closest('td.bit');
+    if (bit && tr) { const s = st.steps[i]; s.v[bit.dataset.p] = s.v[bit.dataset.p] === '1' ? '0' : '1'; bit.textContent = s.v[bit.dataset.p]; bit.classList.toggle('one', s.v[bit.dataset.p] === '1'); stimChanged(false, 120); return; }
+    const b = e.target.closest('button[data-a]'); if (!b) return;
+    const a = b.dataset.a, cols = stimCols(m);
+    if (a === 'del') { st.steps.splice(i, 1); if (!st.steps.length) st.steps = defaultSteps(m); }
+    else if (a === 'dup') st.steps.splice(i + 1, 0, JSON.parse(JSON.stringify(st.steps[i])));
+    else if (a === 'up') { if (i > 0) [st.steps[i - 1], st.steps[i]] = [st.steps[i], st.steps[i - 1]]; }
+    else if (a === 'add') { const ls = st.steps[st.steps.length - 1]; st.steps.push(ls ? JSON.parse(JSON.stringify(ls)) : defaultSteps(m)[0]); }
+    else if (a === 'reset') st.steps = defaultSteps(m);
+    else if (a === 'count') {
+      const n = cols.reduce((s, p) => s + p.width, 0);
+      if (n > 10) { alert(`${n} input bits would need ${2 ** n} steps; write the values by hand instead.`); return; }
+      if (n > 6 && !confirm(`That makes ${2 ** n} steps. Continue?`)) return;
+      const t = clockOf(m) ? 1 : 10;
+      st.steps = Array.from({ length: 2 ** n }, (_, r) => { let bit = n - 1; const v = {}; for (const p of cols) { let x = 0n; for (let k = p.width - 1; k >= 0; k--, bit--) if ((r >> bit) & 1) x |= 1n << BigInt(k); v[p.name] = x.toString(); } return { v, t }; });
+    }
+    else if (a === 'file') { saveTestbenchFile(m); return; }
+    stimChanged(true, 0);
+  });
+  $('stim').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('td.bit')) { e.preventDefault(); e.target.click(); } });
+  $('stim').addEventListener('input', e => {
+    const m = stimTarget(), tr = e.target.closest('tr[data-i]'); if (!m || !tr) return;
+    const s = stimFor(m).steps[+tr.dataset.i]; if (!s) return;
+    if (e.target.dataset.p) s.v[e.target.dataset.p] = e.target.value; else if ('t' in e.target.dataset) s.t = e.target.value;
+    stimChanged(false, 450);
+  });
+  // a 1-bit input typed as x shows a text box; once it is 0 or 1 again it turns back into a switch
+  $('stim').addEventListener('change', e => {
+    const m = stimTarget(), p = m && e.target.dataset.p && stimCols(m).find(q => q.name === e.target.dataset.p);
+    if (p && p.width === 1 && /^[01]$/.test(e.target.value.trim())) { stimFor(m).steps[+e.target.closest('tr').dataset.i].v[p.name] = e.target.value.trim(); stimChanged(true, 0); }
+  });
+
   /* ---------- waveform ---------- */
   const wave = new Wave.View($('wave'));
   window.VL_WAVE = wave;
   $('wave').insertAdjacentHTML('afterbegin', '');
   $('radix').value = store.get('vl.radix') || 'hex';
   wave.setRadix($('radix').value);
-  $('radix').onchange = () => { store.set('vl.radix', $('radix').value); wave.setRadix($('radix').value); };
+  $('radix').onchange = () => { store.set('vl.radix', $('radix').value); wave.setRadix($('radix').value); if (stimTarget()) stimTable(stimTarget()); };
   $('wReplay').onclick = () => wave.replay();
   $('wFit').onclick = () => wave.fit();
   $('wIn').onclick = () => wave.zoom(0.6);

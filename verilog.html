@@ -104,6 +104,24 @@ select,input[type=text],input[type=number]{font:13px "JetBrains Mono",monospace;
 .wv-plot{position:relative; min-width:0; cursor:crosshair}
 .wv-plot canvas{display:block}
 .empty{padding:28px 20px; color:var(--muted); text-align:center; font-size:.92rem}
+/* inputs table */
+.stim{flex:none; max-height:45%; overflow:auto; padding:8px 10px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:6px}
+.stim[hidden]{display:none}
+.stim>*{flex-shrink:0}
+.stim .srow{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; font-size:.85rem}
+.stim .srow .note{font-size:.78rem}
+.stimt td{padding:2px 6px}
+.stimt th small{color:var(--muted); font-weight:400; margin-left:2px}
+.stimt td.n{color:var(--muted); font-size:.75rem}
+.stimt td.bit{min-width:28px; font-weight:700; color:var(--muted)}
+.stimt td.bit.one{background:color-mix(in oklab,var(--ok) 22%,transparent); color:var(--ink)}
+.stimt input[type=text],.stimt input[type=number]{padding:2px 5px; font-size:12px}
+.stimt input[type=number]{width:64px}
+.stimt .bad{outline:2px solid var(--err); outline-offset:-2px}
+.stimt td.act{white-space:nowrap}
+.stimt td.act button{border:0; background:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:13px}
+.stimt td.act button:hover{color:var(--accent)}
+.stimt td.act button[data-a=del]:hover{color:var(--err)}
 /* console */
 .console{flex:1; min-height:0; margin:0; padding:10px 12px; overflow:auto; font:13px/1.5 "JetBrains Mono",monospace; white-space:pre-wrap; word-break:break-word; background:var(--code-bg)}
 .console .e{color:var(--err)} .console .m{color:var(--muted); font-style:italic} .console .ln{cursor:pointer; text-decoration:underline dotted}
@@ -190,7 +208,8 @@ pre.code{margin:0; padding:8px 10px; border:1px solid var(--line); border-radius
 
       <div class="panel on" id="p-wave" role="tabpanel">
         <div class="tbar">
-          <span>Showing</span> <span class="src" id="waveSrc">—</span>
+          <label class="f" title="Where the inputs come from">Inputs <select id="inSrc" style="max-width:280px"><option>—</option></select></label>
+          <span class="src" id="waveSrc" hidden>—</span>
           <span class="grow"></span>
           <label class="f">Values <select id="radix"><option value="hex">hex</option><option value="dec">decimal</option><option value="sdec">signed</option><option value="bin">binary</option></select></label>
           <button class="btn small" type="button" id="wReplay" title="Play the waves again">▶ Replay</button>
@@ -200,6 +219,7 @@ pre.code{margin:0; padding:8px 10px; border:1px solid var(--line); border-radius
           <button class="btn small" type="button" id="wAll" title="Show hidden signals again">All signals</button>
           <button class="btn small" type="button" id="wPng" title="Save the timing diagram as a picture">PNG</button>
         </div>
+        <div class="stim" id="stim" hidden></div>
         <div class="wave" id="wave"></div>
       </div>
 
