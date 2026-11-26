@@ -54,12 +54,29 @@ select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--
 .btn:disabled{opacity:.45; cursor:default}
 .spacer{flex:1}
 :focus-visible{outline:3px solid var(--accent); outline-offset:2px}
-.main{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:12px; flex:1; min-height:0}
+.main{display:grid; grid-template-columns:minmax(0,var(--c1,1.25fr)) minmax(0,var(--c2,1fr)); gap:12px; flex:1; min-height:0}
 
 .pane{background:var(--surface); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden}
 .phead{display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line); font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .phead .r{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:600}
-.editor{flex:1; min-height:0; position:relative}
+.editor{flex:1; min-height:0; min-width:0; position:relative}
+/* the program's files: a drawer on the left of the editor */
+.edbody{flex:1; min-height:0; display:flex}
+.fdrawer{width:var(--fdw,200px); flex:none; border-right:1px solid var(--line); background:var(--gutter); overflow:auto; display:flex; flex-direction:column; gap:6px; padding:8px}
+.fdrawer[hidden]{display:none}
+.fdrawer ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px}
+.fdrawer li{display:flex; align-items:center; gap:4px; padding:4px 6px; border-radius:6px; cursor:pointer; font:12.5px "JetBrains Mono",monospace; color:var(--ink); text-transform:none; letter-spacing:0}
+.fdrawer li:hover{background:color-mix(in oklab,var(--ink) 7%,transparent)}
+.fdrawer li[aria-current="true"]{background:color-mix(in oklab,var(--accent) 20%,transparent); font-weight:700}
+.fdrawer li .tag{font-size:10px; color:var(--accent); margin-left:2px}
+.fdrawer li .x{margin-left:auto; display:none} .fdrawer li:hover .x,.fdrawer li[aria-current="true"] .x{display:flex}
+.fdrawer li .x button{border:0; background:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:12px} .fdrawer li .x button:hover{color:var(--err)}
+.fdrawer .fnew{display:flex; flex-direction:column; gap:5px; border-top:1px solid var(--line); padding-top:8px; font-size:.8rem; color:var(--muted)}
+.fdrawer .fnew select,.fdrawer .fnew input{font:12px "JetBrains Mono",monospace; width:100%; padding:4px 6px}
+.fdrawer .fnote{font-size:.75rem; color:var(--muted); line-height:1.35}
+.fbtn{font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.04em; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:6px; padding:2px 8px; cursor:pointer; text-transform:none}
+.fbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.fbtn b{color:inherit; opacity:.8}
 .CodeMirror{position:absolute; inset:0; height:auto; font:14px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace; background:var(--code-bg); color:var(--ink)}
 .CodeMirror-gutters{background:var(--gutter); border-right:1px solid var(--line)}
 .CodeMirror-linenumber{color:var(--muted)}
@@ -71,7 +88,8 @@ select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--
 .cm-s-default .cm-variable,.cm-s-default .cm-variable-2,.cm-s-default .cm-property,.cm-s-default .cm-operator,.cm-s-default .cm-punctuation,.cm-s-default .cm-qualifier{color:var(--ink)}
 .errline{background:color-mix(in oklab,var(--err) 14%,transparent)}
 .warnline{background:color-mix(in oklab,var(--warn) 12%,transparent)}
-.right{display:grid; grid-template-rows:minmax(0,1fr) auto; gap:12px; min-height:0}
+.right{display:grid; grid-template-rows:minmax(0,1fr) var(--inh,auto); gap:12px; min-height:0}
+.right textarea.stdin{flex:1}
 .out{flex:1; margin:0; padding:12px 14px; overflow:auto; font:14px/1.5 "JetBrains Mono",ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; min-height:0; background:var(--code-bg)}
 .out .e{color:var(--err)} .out .w{color:var(--warn)} .out .m{color:var(--muted); font-style:italic} .out .d{color:var(--muted)}
 .out .ln{cursor:pointer; text-decoration:underline dotted}
@@ -136,16 +154,16 @@ label.f[hidden]{display:none}
 .ptoast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:9px; font-size:.9rem; z-index:70; max-width:min(560px,90vw); box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .ptoast[hidden]{display:none}
 /* the animation panel: on the right, over the output, so the code stays visible and editable */
-.simpanel{position:fixed; top:0; right:0; z-index:40; width:min(860px,60vw); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
+.simpanel{position:fixed; top:0; right:0; z-index:40; width:var(--sidew,min(860px,60vw)); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
 .simpanel[hidden]{display:none}
 .simhead{display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line)}
 .simhead b{margin-right:auto; font:800 1.05rem "Bricolage Grotesque",system-ui,sans-serif}
 .simhead .btn{text-decoration:none; padding:5px 11px}
 .simpanel iframe{flex:1; border:0; width:100%; background:#fff}
 /* with the panel open, the editor and the output share the space to its left, one above the other */
-body.simopen .wrap{margin-right:min(860px,60vw)}
-body.simopen .main{grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1.25fr) minmax(0,1fr)}
-body.simopen .right{grid-template-rows:minmax(0,1fr) auto}
+body.simopen .wrap{margin-right:var(--sidew,min(860px,60vw))}
+body.simopen .main{grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,var(--r1,1.25fr)) minmax(0,var(--r2,1fr))}
+body.simopen .right{grid-template-rows:minmax(0,1fr) var(--inh,auto)}
 body.simopen textarea.stdin{min-height:54px}
 body.simopen header .hright label.f{display:none}
 @media (max-width:900px){ .simpanel{width:100vw} body.simopen .wrap{margin-right:0} }
@@ -221,8 +239,15 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 
   <div class="main">
     <section class="pane" aria-label="Editor">
-      <div class="phead"><span id="fname">main.cpp</span><span class="r" id="pos"></span></div>
-      <div class="editor" id="editor"></div>
+      <div class="phead"><button type="button" class="fbtn" id="filesBtn" aria-pressed="false" title="The files of this program: add classes, headers and modules">☰ Files<b id="filesN"></b></button><span id="fname">main.cpp</span><span class="r" id="pos"></span></div>
+      <div class="edbody" id="edbody">
+        <aside class="fdrawer" id="fdrawer" hidden aria-label="Files">
+          <ul id="flist"></ul>
+          <div class="fnew"><span>New file</span><select id="fkind" aria-label="Kind of file"></select><input type="text" id="fname2" placeholder="Name, e.g. Animal" aria-label="Name"><button class="btn" type="button" id="fadd">Add</button></div>
+          <p class="fnote" id="fnote"></p>
+        </aside>
+        <div class="editor" id="editor"></div>
+      </div>
     </section>
     <div class="right">
       <section class="pane" aria-label="Output">
@@ -339,6 +364,8 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="examples-java.js"></script>
 <script src="examples-python.js"></script>
 <script src="examples-algo.js"></script>
+<script src="examples-oop.js"></script>
+<script src="split.js"></script>
 <script src="practice-hints.js"></script>
 <script src="shell.js"></script>
 <script>
@@ -576,9 +603,9 @@ print("best:", best[0])
   const EX_GROUPS = {};
   for (const l of Object.keys(EXAMPLES)) {
     EX_GROUPS[l] = { 'Getting started': Object.keys(EXAMPLES[l]) };
-    for (const [group, name, code, input] of (window.MORE_EXAMPLES || {})[l] || []) {
+    for (const [group, name, code, input, files] of (window.MORE_EXAMPLES || {})[l] || []) {
       (EX_GROUPS[l][group] = EX_GROUPS[l][group] || []).push(name);
-      EXAMPLES[l][name] = [code, input];
+      EXAMPLES[l][name] = [code, input, files];
     }
   }
   const store = { get(k) { try { return localStorage.getItem('ccp.' + k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem('ccp.' + k, v); } catch (_) {} } };
@@ -598,8 +625,127 @@ print("best:", best[0])
   $('simFrame').addEventListener('load', () => themeFrame($('simFrame')));
   const cm = CodeMirror($('editor'), { lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: true, mode: 'text/x-c++src', extraKeys: { 'Ctrl-Enter': () => runNow(), 'Cmd-Enter': () => runNow(), Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') } });
 
+
+  /* ---------- the program's files: the main file (main.cpp, Main.java, main.py…) plus extra files ---------- */
+  // Extra files are kept per language. C/C++: every .c/.cpp is compiled and linked, headers can be #included.
+  // Java: all files are compiled together. Python: the files sit next to main.py, so "import shapes" works.
+  const mainDoc = cm.getDoc();
+  let extra = [];                 // [{ name, doc }] for the current language
+  const EXT_MODE = n => /\.(c|h)$/i.test(n) && lang === 'c' ? 'text/x-csrc' : /\.(cpp|cc|cxx|h|hh|hpp|hxx)$/i.test(n) ? 'text/x-c++src' : /\.java$/i.test(n) ? 'text/x-java' : /\.py$/i.test(n) ? 'text/x-python' : LANGS[lang].mode;
+  const KINDS = {
+    c: [['Header + source (.h + .c)', 'pair'], ['Source file (.c)', 'c'], ['Header (.h)', 'h']],
+    cpp: [['Class (.h + .cpp)', 'class'], ['Subclass of… (.h)', 'sub'], ['Header (.h)', 'h'], ['Source file (.cpp)', 'cpp']],
+    java: [['Class', 'class'], ['Subclass of…', 'sub'], ['Interface', 'iface'], ['Abstract class', 'abstract']],
+    python: [['Module (.py)', 'mod'], ['Class (.py)', 'class'], ['Subclass of… (.py)', 'sub']]
+  };
+  function loadExtra() {
+    let list = [];
+    try { list = JSON.parse(store.get('files.' + lang) || '[]'); } catch (_) {}
+    extra = (Array.isArray(list) ? list : []).filter(f => f && f.name).map(f => ({ name: f.name, doc: CodeMirror.Doc(f.text || '', EXT_MODE(f.name)) }));
+    if (cm.getDoc() !== mainDoc) cm.swapDoc(mainDoc);
+    renderFiles();
+  }
+  function saveExtra() { store.set('files.' + lang, JSON.stringify(extra.map(x => ({ name: x.name, text: x.doc.getValue() })))); }
+  const isMain = name => !name || name === LANGS[lang].file;
+  function docOf(name) { if (isMain(name)) return mainDoc; const n = String(name).replace(/^\.\//, ''); const x = extra.find(x => x.name === n); return x ? x.doc : null; }
+  const viewing = () => cm.getDoc() === mainDoc ? '' : (extra.find(x => x.doc === cm.getDoc()) || {}).name || '';
+  function showFile(name) {
+    const d = docOf(name) || mainDoc;
+    if (cm.getDoc() !== d) cm.swapDoc(d);
+    $('fname').textContent = d === mainDoc ? ($('fname').dataset.main || LANGS[lang].file) : name;
+    renderFiles();
+  }
+  const projectFiles = () => extra.map(x => ({ name: x.name, text: x.doc.getValue() }));
+  function setFiles(list) {   // replace the extra files (for example with an example's files)
+    extra = (list || []).map(([name, text]) => ({ name, doc: CodeMirror.Doc(text, EXT_MODE(name)) }));
+    saveExtra(); showFile('');
+    if (extra.length) openFiles(true);
+  }
+  function renderFiles() {
+    const cur = viewing();
+    $('filesN').textContent = extra.length ? ' ' + (extra.length + 1) : '';
+    $('flist').innerHTML = `<li data-f=""${!cur ? ' aria-current="true"' : ''} title="The program starts here"><span>${esc(LANGS[lang].file)}</span><span class="tag">main</span></li>` +
+      extra.map(x => `<li data-f="${esc(x.name)}"${cur === x.name ? ' aria-current="true"' : ''}><span>${esc(x.name)}</span><span class="x"><button type="button" data-act="ren" title="Rename">✎</button><button type="button" data-act="del" title="Delete">✕</button></span></li>`).join('');
+    $('fkind').innerHTML = KINDS[lang].map(([l, v]) => `<option value="${v}">${l}</option>`).join('');
+    $('fnote').textContent = { c: 'Every .c file is compiled and linked with main.c; #include "name.h" finds the headers here.', cpp: 'Every .cpp file is compiled and linked with main.cpp; #include "name.h" finds the headers here.', java: 'All the files are compiled together, so classes can use and extend each other. Keep main in Main.java.', python: 'The files sit next to main.py: write "from shapes import Circle" or "import shapes".' }[lang];
+  }
+  function openFiles(on) { $('fdrawer').hidden = !on; $('filesBtn').setAttribute('aria-pressed', on); store.set('drawer', on ? '1' : '0'); cm.refresh(); }
+  $('filesBtn').onclick = () => openFiles($('fdrawer').hidden);
+  $('flist').onclick = e => {
+    const li = e.target.closest('li[data-f]'); if (!li) return;
+    const name = li.dataset.f, act = e.target.closest('button') && e.target.closest('button').dataset.act;
+    if (act === 'del') {
+      if (!confirm('Delete ' + name + '?')) return;
+      extra = extra.filter(x => x.name !== name); saveExtra(); showFile(''); schedule(0);
+    } else if (act === 'ren') {
+      const nn = (prompt('New name for ' + name, name) || '').trim();
+      if (!nn || nn === name || isMain(nn) || extra.some(x => x.name === nn)) return;
+      const x = extra.find(x => x.name === name); x.name = nn; saveExtra(); showFile(nn); schedule(0);
+    } else { showFile(name); cm.focus(); }
+  };
+  const ident = s => /^[A-Za-z_]\w*$/.test(s);
+  function template(kind, name, base) {
+    const N = name, low = name.toLowerCase(), G = name.toUpperCase() + '_H';
+    if (lang === 'java') {
+      if (kind === 'iface') return [[N + '.java', `public interface ${N} {\n    void run();\n}\n`]];
+      if (kind === 'abstract') return [[N + '.java', `public abstract class ${N} {\n    protected final String name;\n\n    protected ${N}(String name) { this.name = name; }\n\n    public abstract void speak();\n\n    public String getName() { return name; }\n}\n`]];
+      if (kind === 'sub') return [[N + '.java', `public class ${N} extends ${base} {\n    public ${N}() {\n        super();\n    }\n}\n`]];
+      return [[N + '.java', `public class ${N} {\n    private int value;\n\n    public ${N}(int value) { this.value = value; }\n\n    public int getValue() { return value; }\n\n    @Override\n    public String toString() { return "${N}(" + value + ")"; }\n}\n`]];
+    }
+    if (lang === 'python') {
+      if (kind === 'mod') return [[low + '.py', `def greet(name):\n    return f"Hello, {name}!"\n`]];
+      if (kind === 'sub') return [[low + '.py', `from ${base.toLowerCase()} import ${base}\n\n\nclass ${N}(${base}):\n    def __init__(self):\n        super().__init__()\n`]];
+      return [[low + '.py', `class ${N}:\n    def __init__(self, value):\n        self.value = value\n\n    def __repr__(self):\n        return f"${N}({self.value})"\n`]];
+    }
+    if (lang === 'cpp') {
+      if (kind === 'h') return [[low + '.h', `#pragma once\n\n`]];
+      if (kind === 'cpp') return [[low + '.cpp', `#include <iostream>\n\n`]];
+      if (kind === 'sub') return [[low + '.h', `#pragma once\n#include "${base.toLowerCase()}.h"\n\nclass ${N} : public ${base} {\npublic:\n    using ${base}::${base};\n};\n`]];
+      return [[low + '.h', `#pragma once\n#include <string>\n\nclass ${N} {\npublic:\n    explicit ${N}(int value);\n    virtual ~${N}() = default;\n    int value() const;\n    virtual std::string describe() const;\nprotected:\n    int value_;\n};\n`],
+              [low + '.cpp', `#include "${low}.h"\n\n${N}::${N}(int value) : value_(value) {}\n\nint ${N}::value() const { return value_; }\n\nstd::string ${N}::describe() const { return "${N}(" + std::to_string(value_) + ")"; }\n`]];
+    }
+    if (kind === 'h') return [[low + '.h', `#ifndef ${G}\n#define ${G}\n\n#endif\n`]];
+    if (kind === 'c') return [[low + '.c', `#include <stdio.h>\n\n`]];
+    return [[low + '.h', `#ifndef ${G}\n#define ${G}\n\nint ${low}_add(int a, int b);\n\n#endif\n`], [low + '.c', `#include "${low}.h"\n\nint ${low}_add(int a, int b) { return a + b; }\n`]];
+  }
+  $('fadd').onclick = () => {
+    const kind = $('fkind').value, raw = $('fname2').value.trim();
+    if (!ident(raw)) { $('fname2').focus(); $('fnote').textContent = 'Give the file a name made of letters, digits and _ (for example Animal).'; return; }
+    let base = '';
+    if (kind === 'sub') {
+      base = (prompt('Which class does ' + raw + ' extend?', 'Animal') || '').trim();
+      if (!ident(base)) return;
+    }
+    const name = lang === 'java' || kind !== 'mod' && kind !== 'h' && kind !== 'c' && kind !== 'cpp' && kind !== 'pair' ? raw[0].toUpperCase() + raw.slice(1) : raw;
+    const made = template(kind, name, base);
+    for (const [n, t] of made) if (!extra.some(x => x.name === n) && !isMain(n)) extra.push({ name: n, doc: CodeMirror.Doc(t, EXT_MODE(n)) });
+    saveExtra(); showFile(made[0][0]); $('fname2').value = ''; schedule(0);
+  };
+  $('fname2').addEventListener('keydown', e => { if (e.key === 'Enter') $('fadd').click(); });
+  // Java: the files become one compilation unit (imports first, no package lines, only Main may stay public);
+  // map[line] says which file and line each line of the merged source came from
+  function javaMerge(mainSrc, files) {
+    const parts = [[LANGS.java.file, mainSrc], ...files.filter(f => /\.java$/i.test(f.name)).map(f => [f.name, f.text])];
+    const imports = new Set(), out = [], map = [];
+    for (const [name, text] of parts) {
+      text.split('\n').forEach((line, i) => {
+        let l = line;
+        const im = /^\s*import\s+[\w.*\s]+;/.exec(l);
+        if (im) { imports.add(im[0].trim()); l = ' '.repeat(im[0].length) + l.slice(im[0].length); }
+        if (/^\s*package\s+[\w.]+\s*;/.test(l)) l = '';
+        if (name !== LANGS.java.file) l = l.replace(/^(\s*)public(\s+(?:(?:final|abstract|sealed|non-sealed|strictfp)\s+)*(?:class|interface|enum|record)\s)/, '$1      $2');
+        out.push(l); map.push({ file: name, line: i + 1 });
+      });
+    }
+    if (imports.size) out[0] = [...imports].join(' ') + ' ' + out[0];
+    return { src: out.join('\n'), map };
+  }
+  if (store.get('drawer') === '1') openFiles(true);
+
   function setLang(l, keepText) {
+    if (cm.getDoc() !== mainDoc) cm.swapDoc(mainDoc);
     lang = l; store.set('lang', l);
+    loadExtra();   // this language's files first, so a starter example does not see the previous language's files
     langHooks.forEach(fn => fn(l));
     document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
     cm.setOption('mode', LANGS[l].mode);
@@ -614,11 +760,20 @@ print("best:", best[0])
     renderGuide();
     if (!keepText) { const saved = store.get('code.' + l); if (saved != null) { cm.setValue(saved); $('stdin').value = store.get('stdin.' + l) || ''; } else loadExample(Object.keys(EXAMPLES[l])[1]); }
     if (!keepText) setExample(store.get('example.' + l) || '');   // each language remembers its own example
+    renderFiles();
   }
   // for visualize.js (the flowchart and step-through panel)
   const langHooks = [];
-  window.PG = { cm, lang: () => lang, stdin: () => $('stdin').value, onLang: fn => langHooks.push(fn), closeSim: () => closeSim() };
-  function loadExample(name) { if (practice) stopPractice(); const [code, input] = EXAMPLES[lang][name]; cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); setExample(name); schedule(0); }
+  window.PG = { cm, lang: () => lang, stdin: () => $('stdin').value, onLang: fn => langHooks.push(fn), closeSim: () => closeSim(),
+    mainText: () => mainDoc.getValue(), files: () => projectFiles(), viewingMain: () => cm.getDoc() === mainDoc, showMain: () => showFile(''), javaMerge: (src, files) => javaMerge(src, files) };
+  function loadExample(name) {
+    if (practice) stopPractice();
+    const [code, input, files] = EXAMPLES[lang][name];
+    // an example with several files brings them; a one-file example asks before removing the program's other files
+    if (files) setFiles(files);
+    else if (extra.length && confirm('This example has one file. Remove the other files of this program (' + extra.map(x => x.name).join(', ') + ')?')) setFiles([]);
+    showFile('');
+    cm.setValue(code); $('stdin').value = input; store.set('stdin.' + lang, input); setExample(name); schedule(0); }
   /* ---------- the animated simulation that goes with the loaded example (sims/, see examples-algo.js) ---------- */
   let curExample = '';
   let practice = null;   // the Practice problem being solved (set further down)
@@ -654,7 +809,7 @@ print("best:", best[0])
   $('auto').checked = store.get('auto') !== '0';
   $('auto').onchange = () => { store.set('auto', $('auto').checked ? '1' : '0'); if ($('auto').checked) schedule(0); };
   $('run').onclick = () => runNow();
-  cm.on('changes', () => { store.set('code.' + lang, cm.getValue()); if ($('auto').checked) schedule(650); });
+  cm.on('changes', () => { if (cm.getDoc() === mainDoc) store.set('code.' + lang, cm.getValue()); else saveExtra(); if ($('auto').checked) schedule(650); });
   cm.on('cursorActivity', () => { const p = cm.getCursor(); $('pos').textContent = `line ${p.line + 1}, column ${p.ch + 1}`; });
   $('stdin').addEventListener('input', () => { store.set('stdin.' + lang, $('stdin').value); if ($('auto').checked) schedule(650); });
 
@@ -692,8 +847,8 @@ print("best:", best[0])
     const b = e.target.closest('[data-ex]');
     if (!b) return;
     const g = HEADER_GUIDE[lang][+b.dataset.ex];
-    if (cm.getValue().trim() && cm.getValue() !== g.ex && !confirm('Replace the code in the editor with this example?')) return;
-    cm.setValue(g.ex); $('stdin').value = g.input || ''; store.set('stdin.' + lang, g.input || '');
+    if (mainDoc.getValue().trim() && mainDoc.getValue() !== g.ex && !confirm('Replace the code in the editor with this example?')) return;
+    showFile(''); cm.setValue(g.ex); $('stdin').value = g.input || ''; store.set('stdin.' + lang, g.input || '');
     schedule(0);
     $('drawer').close();   // back to the editor, where the example now is
   });
@@ -1077,7 +1232,7 @@ print("best:", best[0])
   }
   // Group clang's output: each error or warning with its notes, source excerpt and fix-its.
   function parseDiag(diag) {
-    const head = /^(main\.c|main\.cpp|Main\.java):(\d+)(?::(\d+))?: (fatal error|error|warning|note): (.*)$/, fixit = /^fix-it:"[^"]*":\{(\d+):(\d+)-(\d+):(\d+)\}:"(.*)"$/;
+    const head = /^(?:\.\/)?([\w.\-\/]+\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|java|py)):(\d+)(?::(\d+))?: (fatal error|error|warning|note): (.*)$/, fixit = /^fix-it:"[^"]*":\{(\d+):(\d+)-(\d+):(\d+)\}:"(.*)"$/;
     const groups = []; let cur = null, item = null;
     for (const line of diag.replace(/\n$/, '').split('\n')) {
       const f = line.match(fixit);
@@ -1095,24 +1250,25 @@ print("best:", best[0])
 
   /* ---------- output ---------- */
   let marks = [], widgets = [], fixes = [], compiledSrc = '';
-  function clearMarks() { marks.forEach(([l, c]) => cm.removeLineClass(l, 'background', c)); marks = []; clearWidgets(); }
+  function clearMarks() { marks.forEach(([d, l, c]) => d.removeLineClass(l, 'background', c)); marks = []; clearWidgets(); }
   function clearWidgets() { widgets.forEach(w => w.clear()); widgets = []; }
   function itemHtml(it) {
     return it.lines.map((line, i) => {
       if (i || !it.kind) return `<span class="d">${esc(line)}</span>`;
       const kind = it.kind.includes('error') ? 'e' : it.kind === 'warning' ? 'w' : 'd';
-      if (kind !== 'd' && it.line < cm.lineCount()) { const c = kind === 'e' ? 'errline' : 'warnline'; cm.addLineClass(it.line, 'background', c); marks.push([it.line, c]); }
-      return `<span class="${kind}"><span class="ln" data-line="${it.line}" data-col="${it.col}">${esc(it.pre)}</span>${esc(line.slice(it.pre.length))}</span>`;
+      const d = docOf(it.file);
+      if (kind !== 'd' && d && it.line < d.lineCount()) { const c = kind === 'e' ? 'errline' : 'warnline'; d.addLineClass(it.line, 'background', c); marks.push([d, it.line, c]); }
+      return `<span class="${kind}"><span class="ln" data-file="${esc(isMain(it.file) ? '' : it.file)}" data-line="${it.line}" data-col="${it.col}">${esc(it.pre)}</span>${esc(line.slice(it.pre.length))}</span>`;
     }).join('\n') + '\n';
   }
   function showDiag(diag) {
     clearMarks(); fixes = [];
     if (!diag.trim()) return '';
     let html = '';
-    const onLine = new Set(), seenHints = new Set(), stale = cm.getValue() !== compiledSrc;
+    const onLine = new Set(), seenHints = new Set(), stale = mainDoc.getValue() !== compiledSrc;
     for (const g of parseDiag(diag)) {
       html += itemHtml(g.main) + g.notes.map(itemHtml).join('');
-      if (!suggOn() || !g.main.kind || g.main.kind === 'note') continue;
+      if (!suggOn() || !g.main.kind || g.main.kind === 'note' || !isMain(g.main.file)) continue;
       const ex = explain(g.main, compiledSrc) || {};
       const key = g.main.line + '|' + (ex.text || g.main.msg);   // javac can report the same problem twice on a line
       if (seenHints.has(key)) continue;
@@ -1125,7 +1281,7 @@ print("best:", best[0])
       const buttons = opts.slice(0, 2).map(o => { fixes.push(o); return `<button type="button" class="fix" data-fix="${fixes.length - 1}"${stale ? ' disabled' : ''}>${esc(o.label)}</button>`; }).join('');
       const body = (ex.text ? T(ex.text) : 'Clang suggests a fix:') + (buttons ? '<br>' + buttons : '');
       html += `<span class="hint"><b>Hint:</b> ${body}</span>`;
-      if (!stale && g.main.kind.includes('error') && widgets.length < 3 && !onLine.has(g.main.line) && g.main.line < cm.lineCount()) {
+      if (!stale && g.main.kind.includes('error') && widgets.length < 3 && !onLine.has(g.main.line) && g.main.line < mainDoc.lineCount() && cm.getDoc() === mainDoc) {
         onLine.add(g.main.line);
         const node = document.createElement('div');
         node.className = 'hintw';
@@ -1138,14 +1294,15 @@ print("best:", best[0])
   function applyFix(i) {
     const f = fixes[i];
     if (!f) return;
-    if (cm.getValue() !== compiledSrc) { status('busy', 'The code changed since this hint; waiting for the next run'); schedule(0); return; }
+    if (mainDoc.getValue() !== compiledSrc) { status('busy', 'The code changed since this hint; waiting for the next run'); schedule(0); return; }
+    showFile('');
     const P = (l, c) => CodeMirror.Pos(l, c);
     cm.operation(() => [...f.edits].sort((a, b) => b.l1 - a.l1 || b.c1 - a.c1).forEach(e => cm.replaceRange(e.text, P(e.l1, e.c1), P(e.l2, e.c2))));
     const e = f.edits[0]; cm.focus(); cm.setCursor(P(e.l1, e.c1 + e.text.length));
     if (!$('auto').checked) runNow();
   }
   document.addEventListener('click', e => { const b = e.target.closest('.fix:not(.exbtn)'); if (b && !b.disabled) applyFix(+b.dataset.fix); });
-  $('out').addEventListener('click', e => { const t = e.target.closest('.ln'); if (!t) return; cm.focus(); cm.setCursor({ line: +t.dataset.line, ch: +t.dataset.col }); cm.scrollIntoView(null, 80); });
+  $('out').addEventListener('click', e => { const t = e.target.closest('.ln'); if (!t) return; if (t.dataset.file != null && docOf(t.dataset.file)) showFile(t.dataset.file); cm.focus(); cm.setCursor({ line: +t.dataset.line, ch: +t.dataset.col }); cm.scrollIntoView(null, 80); });
   // once the code is edited, the hints refer to old positions: hide the editor hints and disable the buttons
   cm.on('changes', () => { clearWidgets(); document.querySelectorAll('#out .fix').forEach(b => b.disabled = true); });
   $('sugg').checked = store.get('sugg') !== '0';
@@ -1157,7 +1314,7 @@ print("best:", best[0])
   const engineOf = l => isClang(l) ? 'clang' : l;
   const ENGINE_NAME = { clang: 'the C/C++ compiler', python: 'Python', java: 'Java' };
   const engines = { clang: { state: 'idle' }, python: { state: 'idle' }, java: { state: 'idle' } };   // idle, loading or ready
-  let busy = false, pending = false, wantRun = false, reqId = 0, timer = null, reqSrc = '', reqLang = lang;
+  let busy = false, pending = false, wantRun = false, reqId = 0, timer = null, reqSrc = '', reqFiles = [], reqLang = lang, javaMap = null;
   const fmtMs = ms => ms < 1000 ? Math.round(ms) + ' ms' : (ms / 1000).toFixed(1) + ' s';
 
   function ensureEngine(eng) {
@@ -1186,10 +1343,10 @@ print("best:", best[0])
     const eng = engineOf(lang);
     if (engines[eng].state !== 'ready') { wantRun = true; ensureEngine(eng); return; }
     if (busy) { pending = true; return; }
-    busy = true; pending = false; wantRun = false; reqId++; reqSrc = cm.getValue(); reqLang = lang;
+    busy = true; pending = false; wantRun = false; reqId++; reqSrc = mainDoc.getValue(); reqFiles = projectFiles(); reqLang = lang;
     exitBadge(null);
     if (eng !== 'clang') stopRunner();
-    if (eng === 'clang') { status('busy', 'Compiling…'); compiler.postMessage({ type: 'compile', id: reqId, lang, source: reqSrc, std: $('std').value, opt: $('opt').value }); }
+    if (eng === 'clang') { status('busy', 'Compiling…'); compiler.postMessage({ type: 'compile', id: reqId, lang, source: reqSrc, files: reqFiles, std: $('std').value, opt: $('opt').value }); }
     else if (eng === 'python') runPython();
     else runJava();
   }
@@ -1212,7 +1369,7 @@ print("best:", best[0])
   // a hint for an error found while the program ran (Python, Java): in the output and under the line
   function runtimeHint(ex, line, title) {
     if (!ex || !suggOn()) return;
-    const opts = ex.fix ? [ex.fix] : [], stale = cm.getValue() !== compiledSrc;
+    const opts = ex.fix ? [ex.fix] : [], stale = mainDoc.getValue() !== compiledSrc;
     const buttons = opts.map(o => { fixes.push(o); return `<button type="button" class="fix" data-fix="${fixes.length - 1}"${stale ? ' disabled' : ''}>${esc(o.label)}</button>`; }).join('');
     const body = T(ex.text) + (buttons ? '<br>' + buttons : '');
     $('out').insertAdjacentHTML('beforeend', `\n<span class="hint"><b>Hint:</b> ${body}</span>`);
@@ -1223,7 +1380,7 @@ print("best:", best[0])
       widgets.push(cm.addLineWidget(line, node, { noHScroll: true }));
     }
   }
-  function markLine(line) { if (line >= 0 && line < cm.lineCount()) { cm.addLineClass(line, 'background', 'errline'); marks.push([line, 'errline']); } }
+  function markLine(line) { if (line >= 0 && line < mainDoc.lineCount()) { mainDoc.addLineClass(line, 'background', 'errline'); marks.push([mainDoc, line, 'errline']); } }
 
   /* C and C++: compile in one worker, run each program in a fresh worker */
   let compiler = null;
@@ -1291,9 +1448,9 @@ print("best:", best[0])
   Object.assign(window.PG, {
     std: () => $('std').value,
     clangReady: () => engines.clang.state === 'ready',
-    compile: async (l, source, std) => {
+    compile: async (l, source, std, files) => {
       await enginePromise('clang');
-      return new Promise(res => { const id = 'viz' + (++vizN); vizWait.set(id, res); compiler.postMessage({ type: 'compile', id, lang: l, source, std, opt: 'O1' }); });
+      return new Promise(res => { const id = 'viz' + (++vizN); vizWait.set(id, res); compiler.postMessage({ type: 'compile', id, lang: l, source, files: files || [], std, opt: 'O1' }); });
     },
     javaRun: async (source, input, mainClass) => {
       await loadScript(JAVA_BASE + 'java-wasm.iife.js');
@@ -1317,7 +1474,7 @@ print("best:", best[0])
     clearMarks(); fixes = []; lastDiag = ''; pyAny = false;
     $('out').innerHTML = '';
     status('busy', 'Running…');
-    pyWorker.postMessage({ type: 'run', source: reqSrc, stdin: $('stdin').value });
+    pyWorker.postMessage({ type: 'run', source: reqSrc, stdin: $('stdin').value, files: reqFiles });
   }
   function onPython({ data }) {
     if (data.type === 'ready') engineReady('python', `Python ${data.version}`);
@@ -1380,8 +1537,10 @@ print("best:", best[0])
     return err.split('\n').map(l => {
       const m = l.match(/^Main\.java:(\d+): (.*)$/);
       if (!m) return l;
-      const code = L[m[1] - 1];
-      return `Main.java:${m[1]}: error: ${m[2]}` + (code != null ? `\n${String(m[1]).padStart(5)} | ${code}` : '');
+      const at = javaMap && javaMap[m[1] - 1] || { file: 'Main.java', line: +m[1] };
+      const fl = at.file === 'Main.java' ? L : (projectFiles().find(f => f.name === at.file) || { text: '' }).text.split('\n');
+      const code = fl[at.line - 1];
+      return `${at.file}:${at.line}: error: ${m[2]}` + (code != null ? `\n${String(at.line).padStart(5)} | ${code}` : '');
     }).join('\n');
   }
   const JAVA_RUNTIME = [
@@ -1412,7 +1571,8 @@ print("best:", best[0])
     status('busy', 'Compiling and running…');
     const id = ++javaRunId;
     clearTimeout(javaKill); javaKill = setTimeout(killJava, JAVA_LIMIT);
-    javaRt.run(javaSource(reqSrc), { input: $('stdin').value, mainClass: javaMainClass(reqSrc) }).then(r => onJava(id, r), e => onJava(id, { ok: false, error: String(e && e.message || e), stderr: '' }));
+    const merged = javaMerge(reqSrc, reqFiles); javaMap = merged.map;
+    javaRt.run(javaSource(merged.src), { input: $('stdin').value, mainClass: javaMainClass(merged.src) }).then(r => onJava(id, r), e => onJava(id, { ok: false, error: String(e && e.message || e), stderr: '' }));
   }
   function killJava() {
     javaRunId++;   // ignore the result if it ever arrives
@@ -1476,7 +1636,7 @@ print("best:", best[0])
   }
   function stopPractice() { practice = null; try { localStorage.removeItem('ccp.practice.current'); } catch (_) {} showPractice(); }
   // keep the work on this problem, per language, so it comes back when the problem is opened again
-  cm.on('changes', () => { if (practice) store.set('practice.code.' + practice.key + '.' + lang, cm.getValue()); });
+  cm.on('changes', () => { if (practice && cm.getDoc() === mainDoc) store.set('practice.code.' + practice.key + '.' + lang, cm.getValue()); });
   $('stdin').addEventListener('input', () => { if (practice) store.set('practice.input.' + practice.key, $('stdin').value); });
   $('pHints').onclick = () => practice && PracticeHints.open(practice);
   $('pClose').onclick = stopPractice;
@@ -1484,7 +1644,7 @@ print("best:", best[0])
   $('pSubmit').onclick = () => {
     if (!practice) return;
     const judge = practice.judge;
-    Practice.submit(practice, cm.getValue()).then(copied => {
+    Practice.submit(practice, mainDoc.getValue()).then(copied => {
       let t = document.querySelector('.ptoast');
       if (!t) { t = document.createElement('div'); t.className = 'ptoast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
       t.textContent = (copied ? 'Your code is copied: paste it into the submit box and choose the language there. ' : 'Copy your code (Ctrl + A, Ctrl + C) and paste it into the submit box. ') + Practice.NOTE[judge];
@@ -1494,18 +1654,57 @@ print("best:", best[0])
   showPractice();
 
   /* ---------- desktop app only: files and exam mode (window.desktop comes from the app's preload script) ---------- */
+
+  /* ---------- drag handles between the panes (split.js); sizes are remembered, double-click resets ---------- */
+  if (window.Split) {
+    const S = Split.store, root = document.documentElement;
+    const mainEl = document.querySelector('.main'), edPane = mainEl.children[0], rightEl = mainEl.querySelector('.right');
+    const outPane = rightEl.children[0], inPane = rightEl.children[1];
+    const setVar = (el, k, v) => v == null ? el.style.removeProperty(k) : el.style.setProperty(k, v);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const refresh = () => cm.refresh();
+    const c = S.get('ed.cols'); if (c) { setVar(mainEl, '--c1', c + 'fr'); setVar(mainEl, '--c2', (1 - c) + 'fr'); }
+    const r = S.get('ed.rows'); if (r) { setVar(mainEl, '--r1', r + 'fr'); setVar(mainEl, '--r2', (1 - r) + 'fr'); }
+    const ih = S.get('ed.input'); if (ih) setVar(rightEl, '--inh', ih + 'px');
+    const sw = S.get('side'); if (sw) setVar(root, '--sidew', Math.min(+sw, innerWidth - 360) + 'px');
+    const fd = S.get('drawer'); if (fd) setVar($('edbody'), '--fdw', fd + 'px');
+    const vc = S.get('vizchart'); if (vc) setVar($('vizPanel'), '--vch', vc + 'px');
+    // editor | output and input (side by side)
+    Split.handle(mainEl, edPane, rightEl, 'x', (px, d) => { const f = clamp(px / (d.ar.width + d.br.width), 0.2, 0.8); setVar(mainEl, '--c1', f + 'fr'); setVar(mainEl, '--c2', (1 - f) + 'fr'); S.set('ed.cols', f.toFixed(3)); refresh(); },
+      () => { setVar(mainEl, '--c1'); setVar(mainEl, '--c2'); S.del('ed.cols'); refresh(); });
+    // editor above output and input (when a side panel is open, or on a narrow screen)
+    Split.handle(mainEl, edPane, rightEl, 'y', (px, d) => { const f = clamp(px / (d.ar.height + d.br.height), 0.15, 0.85); setVar(mainEl, '--r1', f + 'fr'); setVar(mainEl, '--r2', (1 - f) + 'fr'); S.set('ed.rows', f.toFixed(3)); refresh(); },
+      () => { setVar(mainEl, '--r1'); setVar(mainEl, '--r2'); S.del('ed.rows'); refresh(); });
+    // output above input
+    Split.handle(rightEl, outPane, inPane, 'y', (px, d) => { const total = d.ar.height + d.br.height; const h = clamp(total - px, 70, total - 70); setVar(rightEl, '--inh', h + 'px'); S.set('ed.input', Math.round(h)); },
+      () => { setVar(rightEl, '--inh'); S.del('ed.input'); });
+    // the file drawer's width
+    Split.handle($('edbody'), $('fdrawer'), $('editor'), 'x', px => { const w = clamp(px, 130, 420); setVar($('edbody'), '--fdw', w + 'px'); S.set('drawer', Math.round(w)); refresh(); },
+      () => { setVar($('edbody'), '--fdw'); S.del('drawer'); refresh(); });
+    // the width of the animation and Visualize panels
+    for (const panel of [$('simPanel'), $('vizPanel')]) {
+      Split.handle(document.body, document.querySelector('.wrap'), panel, 'x', (px, d) => { const w = clamp(innerWidth - (d.ar.left + px) - 6, 320, innerWidth - 360); setVar(root, '--sidew', w + 'px'); S.set('side', Math.round(w)); refresh(); },
+        () => { setVar(root, '--sidew'); S.del('side'); refresh(); });
+    }
+    // Visualize: flowchart above the step-through
+    const legend = document.querySelector('.vizlegend');
+    Split.handle($('vizPanel'), legend, $('vizStepper'), 'y', (px, d) => { const top = $('vizChart').getBoundingClientRect().top, h = clamp(d.ar.top + px - d.ar.height - top, 80, innerHeight - 260); setVar($('vizPanel'), '--vch', h + 'px'); S.set('vizchart', Math.round(h)); },
+      () => { setVar($('vizPanel'), '--vch'); S.del('vizchart'); });
+  }
+
   const D = window.desktop;
   if (D) {
     $('filebtns').hidden = false;
     $('simFull').onclick = e => { e.preventDefault(); D.go('algorithms'); };
     $('pList').onclick = e => { e.preventDefault(); D.go('practice'); };
-    let path = null, saved = cm.getValue();
+    let path = null, saved = mainDoc.getValue();
     const base = f => f.split(/[\\/]/).pop();
     const langOf = f => /\.c$/i.test(f) ? 'c' : /\.(cpp|cc|cxx|c\+\+|hpp|hh)$/i.test(f) ? 'cpp' : /\.java$/i.test(f) ? 'java' : /\.py$/i.test(f) ? 'python' : lang;
     const defaultName = () => LANGS[lang].file;
     function update() {
-      const dirty = cm.getValue() !== saved;
-      $('fname').textContent = (path ? base(path) : defaultName()) + (dirty ? ' •' : '');
+      const dirty = mainDoc.getValue() !== saved;
+      $('fname').dataset.main = (path ? base(path) : defaultName()) + (dirty ? ' •' : '');
+      if (cm.getDoc() === mainDoc) $('fname').textContent = $('fname').dataset.main;
       D.docState({ dirty, path, name: path ? base(path) : 'Untitled' });
     }
     keepTextOnToggle = () => !!path;
@@ -1519,10 +1718,10 @@ print("best:", best[0])
       path = r.path; saved = r.content;
       setExample('');
       stopPractice();
-      cm.setValue(r.content); cm.clearHistory(); update(); schedule(0);
+      showFile(''); cm.setValue(r.content); cm.clearHistory(); update(); schedule(0);
     }
     async function doSave(saveAs) {
-      const content = cm.getValue();
+      const content = mainDoc.getValue();
       const p = await D.saveFile({ path: saveAs ? null : path, content, suggested: path ? base(path) : defaultName() });
       if (!p) return false;
       path = p; saved = content;
@@ -1536,8 +1735,8 @@ print("best:", best[0])
       setExample('');
       stopPractice();
       path = null;
-      cm.setValue(EXAMPLES[lang]['Hello, world'][0]); cm.clearHistory();
-      saved = cm.getValue(); $('stdin').value = ''; store.set('stdin.' + lang, '');
+      showFile(''); cm.setValue(EXAMPLES[lang]['Hello, world'][0]); cm.clearHistory();
+      saved = mainDoc.getValue(); $('stdin').value = ''; store.set('stdin.' + lang, '');
       update(); schedule(0);
     }
     $('newBtn').onclick = doNew; $('openBtn').onclick = doOpen; $('saveBtn').onclick = () => doSave(false);

@@ -144,7 +144,7 @@ for (const f of ['algorithms.js', 'examples-algo.js']) cpSync(join(root, f), joi
 // the shared tab bar and the Practice page (its problem list is a saved copy; links open in the browser)
 writeFileSync(join(web, 'practice.html'), localPage('practice.html'));
 writeFileSync(join(web, 'verilog.html'), localPage('verilog.html'));
-for (const f of ['shell.js', 'shell.css', 'practice.js', 'practice-hints.js', 'practice-data.js']) cpSync(join(root, f), join(web, f));
+for (const f of ['shell.js', 'shell.css', 'split.js', 'practice.js', 'practice-hints.js', 'practice-data.js']) cpSync(join(root, f), join(web, f));
 // the animated simulations (sims/, copied from the algorithm-simulations project by tools/sync-sims.mjs), with local fonts
 cpSync(join(root, 'sims'), join(web, 'sims'), { recursive: true });
 for (const d of readdirSync(join(web, 'sims'))) {
@@ -154,7 +154,7 @@ for (const d of readdirSync(join(web, 'sims'))) {
   writeFileSync(f, readFileSync(f, 'utf8').replace(/<link rel="preconnect"[^>]*>\n?/g, '')
     .replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^"]*">/, `<link rel="stylesheet" href="${fonts}">`));
 }
-for (const f of ['examples-c.js', 'examples-cpp.js', 'examples-java.js', 'examples-python.js', 'stl-data.js', 'stl.js']) cpSync(join(root, f), join(web, f));
+for (const f of ['examples-c.js', 'examples-cpp.js', 'examples-java.js', 'examples-python.js', 'examples-oop.js', 'stl-data.js', 'stl.js']) cpSync(join(root, f), join(web, f));
 const pyLocal = "new URL('./vendor/pyodide/', self.location.href).href";
 let nbRunner = readFileSync(join(root, 'notebook-runner.js'), 'utf8')
   .replace(/^const PYODIDE = .*$/m, `const PYODIDE = ${pyLocal};`)

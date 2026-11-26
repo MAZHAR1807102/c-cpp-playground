@@ -22,6 +22,20 @@ Everything runs in the browser; nothing is sent to a server. Each language's too
 - Compile errors and warnings are listed with clickable line numbers and highlighted in the editor.
 - **Suggestions** (on by default, untick to turn off): while you type, a list offers keywords, library names (with the header, package or module they come from), names from your own code, `#include` headers, Java packages and Python modules (<kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it any time). Errors get a plain-English hint under the line, and a button that applies the fix when there is an obvious one — for example a missing `;` or `:`, a missing `#include`, `import java.util.Scanner;` or `from math import sqrt`, `std::`, `throws Exception`, or a misspelled name such as `retrun` → `return` or `Sytem` → `System`.
 
+## Several files (classes, headers, modules)
+
+The **☰ Files** button above the editor opens a drawer with the program's files: the main file (`main.c`, `main.cpp`, `Main.java`, `main.py`) and any number of others. **New file** makes a class (C++: `.h` + `.cpp`; Java: a class, subclass, interface or abstract class; Python: a module or class) or a plain header or source file; files can be renamed and deleted. Each language keeps its own files.
+
+- **C / C++:** every `.c` / `.cpp` file is compiled and linked with main; `#include "shape.h"` finds the headers.
+- **Java:** all the files are compiled together, so classes in different files can extend and use each other (main stays in `Main.java`).
+- **Python:** the files sit next to `main.py`, so `from shapes import Circle` works; edits to a module take effect on the next run.
+
+Errors in any file show its name and line; clicking one opens that file at the line. The Example menu has a *Classes in several files (OOP)* group: shapes with a base class and subclasses in C++, Java and Python, and a C module in a header and a source file.
+
+## Resizing
+
+Every border between panes can be dragged: editor and output, output and input, the files drawer, the Animation / Visualize panel (and its flowchart and step-through), and on the Verilog page the workspace, editor, results and the waveform's name column. Sizes are remembered; double-click a border to go back to the default.
+
 ## Examples
 
 The **Example** menu has 58 programs in each language, in groups: *Getting started*; *Classic programs* (Fibonacci, palindrome number and string, prime check, sieve of Eratosthenes, reverse a number, count and sum digits, Armstrong and perfect numbers, factorial, GCD and LCM, leap year, swap); *Number conversions* (decimal to binary/octal/hex with the division steps, binary to decimal, any base to any base); *Patterns* (triangles, pyramid, diamond, Floyd's and Pascal's triangles, hollow square); *Arrays* (max/min/sum/average, reverse, second largest, linear search, insert and delete, rotate, remove duplicates, frequencies, matrix add/multiply/transpose); *Algorithms, step by step*, which print every step so the output shows how the algorithm works (bubble, selection, insertion, merge, quick and counting sort, binary search, Tower of Hanoi, Kadane's maximum subarray, BFS and DFS); and *Graphs, strings, DP and games* (Dijkstra, Kruskal, KMP, prefix sums, 0/1 knapsack, N-Queens, travelling salesman, minimax with alpha-beta). The C, C++, Java and Python versions read the same input and print exactly the same output. They are in `examples-c.js`, `examples-cpp.js`, `examples-java.js`, `examples-python.js` and `examples-algo.js`.

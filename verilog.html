@@ -45,7 +45,7 @@ select,input[type=text],input[type=number]{font:13px "JetBrains Mono",monospace;
 .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
 .btn.small{padding:2px 8px; font-size:.8rem}
 :focus-visible{outline:3px solid var(--accent); outline-offset:2px}
-.main{flex:1; min-height:0; display:grid; grid-template-columns:200px minmax(0,1fr) minmax(0,1.15fr); gap:10px}
+.main{flex:1; min-height:0; display:grid; grid-template-columns:var(--v1,200px) minmax(0,var(--v2,1fr)) minmax(0,var(--v3,1.15fr)); gap:10px}
 .pane{background:var(--surface); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden}
 .phead{display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .phead .r{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:600; display:flex; gap:6px; align-items:center}
@@ -89,7 +89,7 @@ select,input[type=text],input[type=number]{font:13px "JetBrains Mono",monospace;
 .tbar .grow{flex:1}
 .src{font:600 .78rem "JetBrains Mono",monospace; color:var(--ink)}
 /* waveform */
-.wave{flex:1; min-height:0; display:grid; grid-template-columns:minmax(120px,30%) minmax(0,1fr); overflow:auto; background:var(--code-bg)}
+.wave{flex:1; min-height:0; display:grid; grid-template-columns:var(--wn,minmax(120px,30%)) minmax(0,1fr); overflow:auto; background:var(--code-bg)}
 .wv-names{border-right:1px solid var(--line); min-width:0}
 .wv-head{height:26px; padding:5px 8px; font:700 .68rem "JetBrains Mono",monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line)}
 .wv-head span{color:var(--warn); text-transform:none}
@@ -239,6 +239,22 @@ pre.code{margin:0; padding:8px 10px; border:1px solid var(--line); border-radius
 <script src="verilog-examples.js"></script>
 <script src="verilog.js"></script>
 <script src="verilog-circuit.js"></script>
+<script src="split.js"></script>
+<script>
+  // drag handles: workspace | editor | results, and the waveform's name column
+  (function () {
+    const S = Split.store, main = document.querySelector('.main'), [ws, ed, res] = main.children, wave = document.getElementById('wave');
+    const setVar = (el, k, v) => v == null ? el.style.removeProperty(k) : el.style.setProperty(k, v);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const refresh = () => window.VL && VL.cm.refresh();
+    const a = S.get('vl.ws'); if (a) setVar(main, '--v1', a + 'px');
+    const b = S.get('vl.ed'); if (b) { setVar(main, '--v2', b + 'fr'); setVar(main, '--v3', (1 - b) + 'fr'); }
+    const w = S.get('vl.names'); if (w) setVar(wave, '--wn', w + 'px');
+    Split.handle(main, ws, ed, 'x', px => { const v = clamp(px, 140, 420); setVar(main, '--v1', v + 'px'); S.set('vl.ws', Math.round(v)); refresh(); }, () => { setVar(main, '--v1'); S.del('vl.ws'); refresh(); });
+    Split.handle(main, ed, res, 'x', (px, d) => { const f = clamp(px / (d.ar.width + d.br.width), 0.2, 0.8); setVar(main, '--v2', f + 'fr'); setVar(main, '--v3', (1 - f) + 'fr'); S.set('vl.ed', f.toFixed(3)); refresh(); }, () => { setVar(main, '--v2'); setVar(main, '--v3'); S.del('vl.ed'); refresh(); });
+    Split.handle(wave, wave.querySelector('.wv-names'), wave.querySelector('.wv-plot'), 'x', px => { const v = clamp(px, 90, 500); setVar(wave, '--wn', v + 'px'); S.set('vl.names', Math.round(v)); }, () => { setVar(wave, '--wn'); S.del('vl.names'); });
+  })();
+</script>
 <script src="shell.js"></script>
 </body>
 </html>

@@ -57,6 +57,20 @@ def __pg_run(src):
         sys.stderr.flush()
 `;
 
+
+// the program's other .py files go next to main.py (the current directory), so "import shapes" finds them;
+// modules imported before are forgotten, so edits to them take effect on the next run
+let written = [];
+function syncFiles(files) {
+  const keep = (files || []).filter(f => f && /^[\w\-]+\.py$/.test(f.name) && f.name !== 'main.py');
+  const names = keep.map(f => f.name);
+  for (const old of written) if (!names.includes(old)) { try { py.FS.unlink(old); } catch (_) {} }
+  for (const f of keep) py.FS.writeFile(f.name, f.text);
+  const mods = [...new Set([...written, ...names])].map(n => n.replace(/\.py$/, ''));
+  written = names;
+  py.runPython(`import sys, os, importlib\nsys.dont_write_bytecode = True\nif os.getcwd() not in sys.path: sys.path.insert(0, os.getcwd())\nfor __m in ${JSON.stringify(mods)}:\n    sys.modules.pop(__m, None)\nimportlib.invalidate_caches()`);
+}
+
 onmessage = async ({ data }) => {
   if (data.type === 'load') {
     try {
@@ -72,6 +86,7 @@ onmessage = async ({ data }) => {
   }
   if (data.type !== 'run') return;
   stdinText = data.stdin; stdinGiven = false; sent = 0; buf = []; last = performance.now();
+  try { syncFiles(data.files); } catch (e) { emit(2, 'Could not write the program files: ' + e + '\n'); }
   postMessage({ type: 'started' });
   const t0 = performance.now();
   let code = 0, line = 0, msg = '';

@@ -162,7 +162,7 @@ function tracePython(seqNo) {
     setMsg('Running the program step by step…');
     const t = setTimeout(() => { killWorker(); res({ steps: [], out: '', error: 'Stopped: the program ran for more than ' + TRACE_TIMEOUT / 1000 + ' seconds without reaching a new line (a very long calculation inside one line?).', errLine: 0, timeout: true }); }, TRACE_TIMEOUT);
     worker.onmessage = ({ data }) => { if (data.type === 'trace') { clearTimeout(t); res(data); } };
-    worker.postMessage({ type: 'trace', source: cm.getValue(), stdin: PG.stdin(), maxSteps: MAX_STEPS });
+    worker.postMessage({ type: 'trace', source: PG.mainText(), stdin: PG.stdin(), files: PG.files(), maxSteps: MAX_STEPS });
   });
 }
 
@@ -187,7 +187,8 @@ function firstError(text) {
   return m ? { line: +m[1], msg: m[2].trim() } : { line: 0, msg: (text || '').trim().split('\n')[0] || 'the compiler failed' };
 }
 async function traceCompiled(lang, seqNo) {
-  const src = cm.getValue(), stdin = PG.stdin();
+  // the recorder goes into the main file; the program's other files are compiled with it as they are
+  const src = PG.mainText(), stdin = PG.stdin(), files = PG.files();
   let parser;
   try { parser = await parserFor(lang); } catch (e) { return { steps: [], out: '', error: 'The code parser could not be loaded: ' + (e.message || e), errLine: 0 }; }
   const tree = parser.parse(src);
@@ -201,7 +202,7 @@ async function traceCompiled(lang, seqNo) {
       let res;
       if (lang === 'java') {
         setMsg(vars ? 'Compiling the program with a step recorder (Java)…' : 'Trying again without the variables…');
-        const r = await withTimeout(PG.javaRun(code, stdin, PG.javaMainClass(src)).catch(e => ({ ok: false, error: String(e && e.message || e) })), 30000);
+        const r = await withTimeout(PG.javaRun(PG.javaMerge(code, files).src, stdin, PG.javaMainClass(src)).catch(e => ({ ok: false, error: String(e && e.message || e) })), 30000);
         if (r.timeout) { PG.javaReset(); return { steps: [], out: '', error: 'Stopped after 30 seconds (compiling included). Is there an infinite loop that prints nothing?', errLine: 0 }; }
         const err = String(r.stderr || r.error || '');
         if (!r.ok && r.generateMs == null && /^Main\.java:\d+: /m.test(err)) { first = first || firstError(err); continue; }
@@ -212,7 +213,7 @@ async function traceCompiled(lang, seqNo) {
       } else {
         setMsg(PG.clangReady() ? (vars ? 'Compiling the program with a step recorder…' : 'Trying again without the variables…') : 'Loading the C/C++ compiler (about 100 MB the first time)…');
         const std = lang === 'cpp' && /^c\+\+1[14]$/.test(PG.std()) ? 'c++17' : PG.std();
-        const c = await withTimeout(PG.compile(lang, code, std), 180000);
+        const c = await withTimeout(PG.compile(lang, code, std, files), 180000);
         if (c.timeout) return { steps: [], out: '', error: 'The compiler did not answer. Try again.', errLine: 0 };
         if (!c.ok) { first = first || firstError(c.diag); continue; }
         if (seqNo !== traceSeq) return null;
@@ -261,6 +262,7 @@ function showStep() {
     markNodes();
     return;
   }
+  if (!PG.viewingMain()) PG.showMain();   // the steps are lines of the main file
   const st = trace.steps[stepIdx], prev = stepIdx > 0 ? trace.steps[stepIdx - 1] : null;
   if (prev && prev.l !== st.l) markLine(prev.l, 'viz-prev');
   markLine(st.l, 'viz-cur');

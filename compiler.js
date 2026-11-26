@@ -45,7 +45,11 @@ onmessage = async ({ data }) => {
   if (data.type !== 'compile') return;
   const { id, lang, source, std, opt } = data;
   const file = lang === 'c' ? 'main.c' : 'main.cpp';
-  const args = [file, '-o', 'main.wasm', `-${opt}`, `-std=${std}`, '-Wall', '-Wextra', '-fno-color-diagnostics', '-fmessage-length=0', '-fdiagnostics-parseable-fixits',
+  // the program's other files: sources are compiled and linked with main, headers are found by #include "x.h"
+  const extra = (data.files || []).filter(f => f && /^[\w.\-]+$/.test(f.name) && f.name !== file);
+  const srcRe = lang === 'c' ? /\.c$/i : /\.(cpp|cc|cxx|c\+\+)$/i;
+  const sources = extra.filter(f => srcRe.test(f.name)).map(f => f.name);
+  const args = [file, ...sources, '-o', 'main.wasm', `-${opt}`, `-std=${std}`, '-Wall', '-Wextra', '-fno-color-diagnostics', '-fmessage-length=0', '-fdiagnostics-parseable-fixits',
     '-D_WASI_EMULATED_PROCESS_CLOCKS', '-lwasi-emulated-process-clocks'];   // makes clock() work (measured with the wall clock)
   if (lang === 'cpp') args.push('-fno-exceptions', '-isystem', 'extra');   // the bundled libc++ is built without exception support
   if (lang === 'c') args.push('-lm');
@@ -54,7 +58,9 @@ onmessage = async ({ data }) => {
   const t0 = performance.now();
   try {
     const mod = await load();
-    const out = await mod.commands[lang === 'c' ? 'clang' : 'clang++'](args, lang === 'cpp' ? { [file]: source, extra: { bits: { 'stdc++.h': STDCPP } } } : { [file]: source }, { stdout: stderr, stderr });
+    const tree = lang === 'cpp' ? { [file]: source, extra: { bits: { 'stdc++.h': STDCPP } } } : { [file]: source };
+    for (const f of extra) tree[f.name] = f.text;
+    const out = await mod.commands[lang === 'c' ? 'clang' : 'clang++'](args, tree, { stdout: stderr, stderr });
     const wasm = out['main.wasm'];
     postMessage({ type: 'compiled', id, ok: true, wasm, diag, ms: performance.now() - t0 }, [wasm.buffer]);
   } catch (e) {

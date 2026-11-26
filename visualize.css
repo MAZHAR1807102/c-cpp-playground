@@ -1,10 +1,10 @@
 /* Visualize panel (visualize.js): the flowchart of the code and, for Python, a step-by-step run.
    Uses the page's colour tokens, so it follows the light and dark themes. */
-.vizpanel{position:fixed; top:0; right:0; z-index:40; width:min(860px,60vw); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
+.vizpanel{position:fixed; top:0; right:0; z-index:40; width:var(--sidew,min(860px,60vw)); height:100vh; height:100dvh; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--line); box-shadow:-10px 0 30px rgba(0,0,0,.18)}
 .vizpanel[hidden]{display:none}
-body.vizopen .wrap{margin-right:min(860px,60vw)}
-body.vizopen .main{grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1.25fr) minmax(0,1fr)}
-body.vizopen .right{grid-template-rows:minmax(0,1fr) auto}
+body.vizopen .wrap{margin-right:var(--sidew,min(860px,60vw))}
+body.vizopen .main{grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,var(--r1,1.25fr)) minmax(0,var(--r2,1fr))}
+body.vizopen .right{grid-template-rows:minmax(0,1fr) var(--inh,auto)}
 body.vizopen textarea.stdin{min-height:54px}
 body.vizopen header .hright label.f{display:none}
 @media (max-width:900px){ .vizpanel{width:100vw} body.vizopen .wrap{margin-right:0} }
@@ -64,6 +64,9 @@ body.vizopen header .hright label.f{display:none}
 /* step through (Python) */
 .vizstep{flex:1 1 45%; min-height:0; display:flex; flex-direction:column; border-top:2px solid var(--line)}
 .vizstep[hidden]{display:none}
+/* a dragged size for the flowchart while the step-through is open */
+.vizpanel[style*="--vch"]:has(.vizstep:not([hidden])) .vizchart{flex:0 0 var(--vch)}
+.vizpanel[style*="--vch"]:has(.vizstep:not([hidden])) .vizstep{flex:1 1 0}
 .vizctl{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:7px 12px; border-bottom:1px solid var(--line)}
 .vizctl .btn{padding:4px 10px; font-family:"JetBrains Mono",monospace}
 .vizctl input[type=range]{flex:1 1 160px; accent-color:var(--accent)}

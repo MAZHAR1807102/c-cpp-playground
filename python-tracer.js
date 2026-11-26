@@ -148,6 +148,19 @@ def __pg_trace(src, stdin, max_steps, max_items):
 `;
 
 let py = null;
+// the program's other .py files go next to main.py (the current directory), so "import shapes" finds them;
+// modules imported before are forgotten, so edits to them take effect on the next run
+let written = [];
+function syncFiles(files) {
+  const keep = (files || []).filter(f => f && /^[\w\-]+\.py$/.test(f.name) && f.name !== 'main.py');
+  const names = keep.map(f => f.name);
+  for (const old of written) if (!names.includes(old)) { try { py.FS.unlink(old); } catch (_) {} }
+  for (const f of keep) py.FS.writeFile(f.name, f.text);
+  const mods = [...new Set([...written, ...names])].map(n => n.replace(/\.py$/, ''));
+  written = names;
+  py.runPython(`import sys, os, importlib\nsys.dont_write_bytecode = True\nif os.getcwd() not in sys.path: sys.path.insert(0, os.getcwd())\nfor __m in ${JSON.stringify(mods)}:\n    sys.modules.pop(__m, None)\nimportlib.invalidate_caches()`);
+}
+
 onmessage = async ({ data }) => {
   if (data.type === 'load') {
     try {
@@ -160,6 +173,7 @@ onmessage = async ({ data }) => {
   }
   if (data.type !== 'trace') return;
   const t0 = performance.now();
+  try { syncFiles(data.files); } catch (_) {}
   try {
     const json = py.globals.get('__pg_trace')(data.source, data.stdin, data.maxSteps || 1500, data.maxItems || 60);
     postMessage({ type: 'trace', ...JSON.parse(json), ms: performance.now() - t0 });
