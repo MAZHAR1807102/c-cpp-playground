@@ -30,6 +30,11 @@
 
   /* ---------- editor: one document per file, so each keeps its own undo history ---------- */
   const cm = CodeMirror($('editor'), { lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, mode: 'text/x-verilog', extraKeys: { Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') } });
+  if (window.EditorKit) {   // font, size, tabs, shortcuts, re-indenting (editor-kit.js)
+    EditorKit.attach(cm, { lang: () => 'verilog', brackets: false });
+    $('fmtBtn').onclick = () => { EditorKit.format(cm); cm.focus(); };
+    $('edSet').onclick = () => EditorKit.openSettings();
+  }
   const docs = new Map();
   function docFor(f) {
     const key = cur.id + '/' + f.name;
@@ -746,7 +751,16 @@ endmodule
   document.querySelector('.tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) selectTab(b.dataset.tab); };
   selectTab(store.get('vl.tab') || 'wave');
 
-  window.VL = { cm, get last() { return last; }, get project() { return cur; }, parseModules, setCircuitDot: k => { $('dotCircuit').className = 'dot ' + k; } };
+  window.VL = { cm, get last() { return last; }, get project() { return cur; }, parseModules, setCircuitDot: k => { $('dotCircuit').className = 'dot ' + k; },
+    // for the circuit designer: add a file to the current project, or replace its text, and open it
+    putFile(name, text) {
+      const f = cur.files.find(x => x.name === name);
+      if (!f) { addFile(name, text); return; }
+      f.text = text;
+      const d = docs.get(cur.id + '/' + name);
+      if (d) d.setValue(text);
+      openFile(name); cm.setCursor({ line: 0, ch: 0 }); schedule(0);
+    } };
   renderProjects();
   openFile(cur.active);
   run();

@@ -53,6 +53,7 @@
       value: e.code, mode: 'text/x-c++src', lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: true, viewportMargin: Infinity,
       extraKeys: { 'Ctrl-Enter': () => run(ex), 'Cmd-Enter': () => run(ex), Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') }
     });
+    if (window.EditorKit) EditorKit.attach(ex.cm, { lang: () => 'cpp', fold: false, wrap: false });
     ex.cm.on('focus', () => { current = ex; });
     ex.cm.on('changes', () => clearMarks(ex));
     box.querySelector('.exhead').onclick = ev => {

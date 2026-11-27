@@ -116,6 +116,11 @@ function buildMenu() {
     }
     win.webContents.send('menu', a);
   };
+  const edZoom = d => {
+    if (!win) return;
+    const wc = win.webContents;
+    wc.executeJavaScript(`window.EditorKit ? (EditorKit.zoom(${d}), true) : false`).then(ok => { if (!ok) wc.setZoomLevel(d === 0 ? 0 : wc.getZoomLevel() + d * 0.5); }).catch(() => {});
+  };
   const mac = process.platform === 'darwin', exam = examOn();
   const template = [
     ...(mac ? [{ label: app.name, submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] }] : []),
@@ -131,7 +136,13 @@ function buildMenu() {
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Run', submenu: [{ label: 'Run now / run cell', accelerator: 'CmdOrCtrl+Enter', click: send('run') }] },
     { label: 'Guide', submenu: [{ label: 'Guide & help', accelerator: 'F1', click: send('guide') }] },
-    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { label: 'Practice (Codeforces, CodeChef)', accelerator: 'CmdOrCtrl+5', click: () => go('practice') }, { label: 'Verilog (waveforms, circuits)', accelerator: 'CmdOrCtrl+6', click: () => go('verilog') }, { type: 'separator' }, { role: 'zoomIn', accelerator: 'CmdOrCtrl+=' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
+    { label: 'View', submenu: [{ label: 'Code editor', accelerator: 'CmdOrCtrl+1', click: () => go('editor') }, { label: 'Algorithm animations', accelerator: 'CmdOrCtrl+2', click: () => go('algorithms') }, { label: 'C++ STL guide', accelerator: 'CmdOrCtrl+3', click: () => go('stl') }, { label: 'Notebook (Python, data science)', accelerator: 'CmdOrCtrl+4', click: () => go('notebook') }, { label: 'Practice (Codeforces, CodeChef)', accelerator: 'CmdOrCtrl+5', click: () => go('practice') }, { label: 'Verilog (waveforms, circuits)', accelerator: 'CmdOrCtrl+6', click: () => go('verilog') }, { type: 'separator' },
+      // Ctrl + = / - / 0 size the code text (editor-kit.js); pages without an editor zoom as a whole
+      { label: 'Bigger code text', accelerator: 'CmdOrCtrl+=', click: () => edZoom(1) }, { label: 'Smaller code text', accelerator: 'CmdOrCtrl+-', click: () => edZoom(-1) },
+      { label: 'Default code text size', accelerator: 'CmdOrCtrl+0', click: () => edZoom(0) },
+      { label: 'Editor settings…', click: () => win && win.webContents.executeJavaScript('window.EditorKit && EditorKit.openSettings()').catch(() => {}) },
+      { type: 'separator' },
+      { role: 'zoomIn', label: 'Zoom the whole window in', accelerator: 'CmdOrCtrl+Shift+=' }, { role: 'zoomOut', label: 'Zoom the whole window out', accelerator: 'CmdOrCtrl+Shift+-' }, { role: 'resetZoom', label: 'Actual size', accelerator: 'CmdOrCtrl+Shift+0' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }])] },
     { label: 'Window', submenu: [
       { label: 'Tabs to show', enabled: false },
       { label: 'Code editor (always shown)', type: 'checkbox', checked: true, enabled: false },

@@ -441,6 +441,7 @@ function updateLangUI() {
   }
 }
 window.Viz = { close: closePanel, isOpen: () => open };
+window.PGParser = parserFor;   // shared with editor-kit.js (naming tips, rename)
 
 /* ---------------- wiring ---------------- */
 $('vizBtn').onclick = () => open ? closePanel() : openPanel();

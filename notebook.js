@@ -101,6 +101,7 @@
         Down: cm => { if (cm.getCursor().line === cm.lastLine() && !cm.state.completionActive) return moveSel(c, 1); return CodeMirror.Pass; }
       }
     });
+    if (window.EditorKit) EditorKit.attach(c.cm, { lang: () => type === 'code' ? 'python' : 'markdown', format: type === 'code', fold: false, wrap: false, lineNumbers: type === 'code', brackets: type === 'code' });
     c.cm.on('focus', () => select(c));
     c.cm.on('changes', () => { changed(); clearMark(c); });
     c.cm.on('inputRead', (cm, ch) => { if (type === 'code' && $('sugg').checked && !examOn && /[\w.]$/.test(ch.text.join(''))) showHint(cm, false); });

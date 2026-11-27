@@ -15,6 +15,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
 <link rel="stylesheet" href="shell.css">
 <link rel="stylesheet" href="visualize.css">
 <style>
@@ -78,6 +80,7 @@ select{font:14px "JetBrains Mono",monospace; color:var(--ink); background:var(--
 .fbtn{font:700 .72rem "JetBrains Mono",monospace; letter-spacing:.04em; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:6px; padding:2px 8px; cursor:pointer; text-transform:none}
 .fbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
 .fbtn b{color:inherit; opacity:.8}
+.phead .r:has(#fmtBtn){display:flex; align-items:center; gap:6px} #pos{margin-right:4px}
 .CodeMirror{position:absolute; inset:0; height:auto; font:14px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace; background:var(--code-bg); color:var(--ink)}
 .CodeMirror-gutters{background:var(--gutter); border-right:1px solid var(--line)}
 .CodeMirror-linenumber{color:var(--muted)}
@@ -240,7 +243,7 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 
   <div class="main">
     <section class="pane" aria-label="Editor">
-      <div class="phead"><button type="button" class="fbtn" id="filesBtn" aria-pressed="false" title="The files of this program: add classes, headers and modules">☰ Files<b id="filesN"></b></button><span id="fname">main.cpp</span><span class="r" id="pos"></span></div>
+      <div class="phead"><button type="button" class="fbtn" id="filesBtn" aria-pressed="false" title="The files of this program: add classes, headers and modules">☰ Files<b id="filesN"></b></button><span id="fname">main.cpp</span><button type="button" class="ek-chip" id="nameChip" hidden></button><span class="r"><span id="pos"></span><button type="button" class="fbtn" id="fmtBtn" title="Format the code: AStyle for C, C++ and Java, Ruff for Python (Shift + Alt + F)">{ } Format</button><button type="button" class="fbtn" id="edSet" title="Editor settings: font, text size, tabs, formatting style, naming style, shortcuts">Aa</button></span></div>
       <div class="edbody" id="edbody">
         <aside class="fdrawer" id="fdrawer" hidden aria-label="Files">
           <ul id="flist"></ul>
@@ -358,6 +361,18 @@ kbd{font:600 .75rem "JetBrains Mono",monospace; border:1px solid var(--line); bo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/runmode/runmode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/match-highlighter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
+<script src="editor-kit.js"></script>
 <script src="guide.js"></script>
 <script src="guide-more.js"></script>
 <script src="examples-c.js"></script>
@@ -625,6 +640,11 @@ print("best:", best[0])
   };
   $('simFrame').addEventListener('load', () => themeFrame($('simFrame')));
   const cm = CodeMirror($('editor'), { lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: true, mode: 'text/x-c++src', extraKeys: { 'Ctrl-Enter': () => runNow(), 'Cmd-Enter': () => runNow(), Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    ') } });
+  // font, size, tabs, formatting and naming tips (editor-kit.js); the parser comes from visualize.js once it has loaded
+  const kit = EditorKit.attach(cm, { lang: () => lang, naming: true, chip: $('nameChip'),
+    parser: l => window.PGParser ? window.PGParser(l) : null, enabled: () => !examOn && $('sugg').checked });
+  $('fmtBtn').onclick = () => { EditorKit.format(cm); cm.focus(); };
+  $('edSet').onclick = () => EditorKit.openSettings();
 
 
   /* ---------- the program's files: the main file (main.cpp, Main.java, main.py…) plus extra files ---------- */
@@ -1307,7 +1327,7 @@ print("best:", best[0])
   // once the code is edited, the hints refer to old positions: hide the editor hints and disable the buttons
   cm.on('changes', () => { clearWidgets(); document.querySelectorAll('#out .fix').forEach(b => b.disabled = true); });
   $('sugg').checked = store.get('sugg') !== '0';
-  $('sugg').onchange = () => { store.set('sugg', $('sugg').checked ? '1' : '0'); if (!$('sugg').checked && cm.state.completionActive) cm.state.completionActive.close(); runNow(); };
+  $('sugg').onchange = () => { store.set('sugg', $('sugg').checked ? '1' : '0'); if (!$('sugg').checked && cm.state.completionActive) cm.state.completionActive.close(); runNow(); kit.check(); };
 
   /* ---------- engines: Clang for C and C++, Pyodide for Python, javac + TeaVM for Java ---------- */
   // Each engine is loaded the first time its language is used.
@@ -1747,6 +1767,7 @@ print("best:", best[0])
     /* exam mode: the password is checked by the app, not by this page */
     function applyExam(on) {
       examOn = on;
+      setTimeout(() => kit.check(), 0);
       document.documentElement.classList.toggle('exam', on);
       $('exambadge').hidden = !on;
       $('sugg').disabled = on;

@@ -111,7 +111,7 @@ writeFileSync(join(web, 'verilog.js'), readFileSync(join(root, 'verilog.js'), 'u
 for (const f of ['logic.js', 'wave.js', 'verilog-examples.js']) cpSync(join(root, f), join(web, f));
 
 // CodeMirror 5: only the parts the pages use
-for (const d of ['lib', 'mode/clike', 'mode/python', 'mode/markdown', 'mode/verilog', 'addon/edit', 'addon/hint', 'addon/runmode'])
+for (const d of ['lib', 'mode/clike', 'mode/python', 'mode/markdown', 'mode/verilog', 'addon/edit', 'addon/hint', 'addon/runmode', 'addon/comment', 'addon/search', 'addon/dialog', 'addon/fold', 'addon/selection'])
   cpSync(join(nm, 'codemirror', d), join(vendor, 'codemirror', d), { recursive: true });
 
 // fonts (Latin subsets), replacing the Google Fonts stylesheet
@@ -128,6 +128,32 @@ for (const [family, pkg, stem, weights] of fonts) for (const w of weights) {
   css += `@font-face{font-family:"${family}";font-style:normal;font-weight:${w};font-display:swap;src:url(fonts/${f}) format("woff2")}\n`;
 }
 writeFileSync(join(vendor, 'fonts.css'), css);
+
+// editor settings and formatters (editor-kit.js): AStyle (wastyle, MIT), Ruff's formatter (MIT), and the code fonts
+// one can pick, each as its own stylesheet loaded when chosen
+mkdirSync(join(vendor, 'wastyle'), { recursive: true });
+cpSync(join(nm, 'wastyle/dist/astyle.wasm'), join(vendor, 'wastyle/astyle.wasm'));
+cpSync(join(nm, 'wastyle/LICENSE'), join(vendor, 'wastyle/LICENSE'));
+mkdirSync(join(vendor, 'ruff'), { recursive: true });
+for (const f of ['ruff_fmt_web.js', 'ruff_fmt_bg.js', 'ruff_fmt_bg.wasm', 'LICENSE']) cpSync(join(nm, '@wasm-fmt/ruff_fmt', f), join(vendor, 'ruff', f));
+const CODE_FONTS = [['Fira Code', 'fira-code'], ['Source Code Pro', 'source-code-pro'], ['IBM Plex Mono', 'ibm-plex-mono'], ['Roboto Mono', 'roboto-mono'], ['Inconsolata', 'inconsolata'], ['Ubuntu Mono', 'ubuntu-mono']];
+for (const [family, stem] of CODE_FONTS) {
+  let fcss = '';
+  for (const w of [400, 700]) {
+    const f = `${stem}-latin-${w}-normal.woff2`;
+    cpSync(join(nm, '@fontsource', stem, 'files', f), join(vendor, 'fonts', f));
+    fcss += `@font-face{font-family:"${family}";font-style:normal;font-weight:${w};font-display:swap;src:url(${f}) format("woff2")}
+`;
+  }
+  writeFileSync(join(vendor, 'fonts', stem + '.css'), fcss);
+}
+const kit = readFileSync(join(root, 'editor-kit.js'), 'utf8')
+  .replace(/^(\s*)const ASTYLE = .*$/m, "$1const ASTYLE = new URL('vendor/wastyle/astyle.wasm', location.href).href;")
+  .replace(/^(\s*)const RUFF = .*$/m, "$1const RUFF = new URL('vendor/ruff/ruff_fmt_web.js', location.href).href;")
+  .replace(/^(\s*)const FONT_CSS = .*$/m, "$1const FONT_CSS = 'vendor/fonts/';");
+if (/^\s*const (ASTYLE|RUFF|FONT_CSS) = .*https?:/m.test(kit)) throw new Error('editor-kit.js still points to the internet');
+writeFileSync(join(web, 'editor-kit.js'), kit);
+cpSync(join(root, 'circuit-designer.js'), join(web, 'circuit-designer.js'));
 
 // the pages and their scripts, with CDN addresses rewritten
 const localPage = f => readFileSync(join(root, f), 'utf8')
@@ -175,7 +201,7 @@ cpSync(join(root, 'guide-more.js'), join(web, 'guide-more.js'));
 
 // every file the page loads must now be local: fail the build if a CDN address is left anywhere it would be fetched
 const problems = [];
-for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js', 'visualize.js', 'python-tracer.js', 'verilog.html', 'verilog.js', 'verilog-worker.js', 'circuit-worker.js', 'verilog-circuit.js']) {
+for (const f of ['index.html', 'notebook.html', 'stl.html', 'algorithms.html', 'practice.html', 'compiler.js', 'runner.js', 'python-runner.js', 'notebook-runner.js', 'visualize.js', 'python-tracer.js', 'verilog.html', 'verilog.js', 'verilog-worker.js', 'circuit-worker.js', 'verilog-circuit.js', 'editor-kit.js', 'circuit-designer.js']) {
   const text = readFileSync(join(web, f), 'utf8');
   for (const m of text.matchAll(/(?:src|href)="(https?:[^"]+)"|import\s*\(?\s*['"](https?:[^'"]+)|=\s*'(https?:\/\/cdn[^']+)'/g)) {
     const url = m[1] || m[2] || m[3];
